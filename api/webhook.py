@@ -44,8 +44,11 @@ def get_contact_details(contact_id):
     return resp.json().get("properties", {})
 
 def add_to_instantly(email, first_name, last_name, company, campaign_id):
-    resp = requests.post("https://api.instantly.ai/api/v1/lead/add", json={
-        "api_key": INSTANTLY_API_KEY,
+    headers = {
+        "Authorization": f"Bearer {INSTANTLY_API_KEY}",
+        "Content-Type": "application/json"
+    }
+    resp = requests.post("https://api.instantly.ai/api/v2/leads", headers=headers, json={
         "campaign_id": campaign_id,
         "skip_if_in_workspace": True,
         "leads": [{"email": email, "first_name": first_name, "last_name": last_name, "company_name": company}],
