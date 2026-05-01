@@ -149,16 +149,6 @@
     background: rgba(255,100,50,0.06);
   }
 
-  select {
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23fef2de' opacity='0.4' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
-    background-repeat: no-repeat;
-    background-position: right 14px center;
-    background-color: rgba(254,242,222,0.06);
-    padding-right: 36px;
-    cursor: pointer;
-  }
-  select option { background: #1e3a50; color: #fef2de; }
-
   .btn {
     display: inline-flex;
     align-items: center;
@@ -503,6 +493,64 @@
   .toast.show { transform: translateY(0); opacity: 1; }
   .toast.success { border-color: rgba(134,239,172,0.35); }
   .toast.error   { border-color: rgba(255,100,50,0.4); color: #ffb39a; }
+
+  /* ── Searchable dropdown ── */
+  .search-select {
+    position: relative;
+  }
+
+  .search-select input {
+    width: 100%;
+    padding-right: 36px;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23fef2de' opacity='0.4' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 14px center;
+  }
+
+  .search-select input.has-value {
+    border-color: var(--orange);
+    background-color: rgba(255,100,50,0.06);
+  }
+
+  .search-dropdown {
+    display: none;
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0; right: 0;
+    background: #0f1f2e;
+    border: 1px solid var(--border2);
+    border-radius: var(--radius-sm);
+    max-height: 220px;
+    overflow-y: auto;
+    z-index: 50;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+  }
+
+  .search-dropdown.open { display: block; }
+
+  .search-option {
+    padding: 10px 14px;
+    font-size: 14px;
+    color: var(--cream);
+    cursor: pointer;
+    transition: background 0.1s;
+    border-bottom: 1px solid rgba(254,242,222,0.05);
+  }
+
+  .search-option:last-child { border-bottom: none; }
+  .search-option:hover { background: rgba(255,100,50,0.1); color: var(--cream); }
+  .search-option.selected { background: rgba(255,100,50,0.15); color: var(--orange); }
+
+  .search-option-empty {
+    padding: 12px 14px;
+    font-size: 13px;
+    color: var(--muted);
+    font-style: italic;
+  }
+
+  .search-dropdown::-webkit-scrollbar { width: 4px; }
+  .search-dropdown::-webkit-scrollbar-track { background: transparent; }
+  .search-dropdown::-webkit-scrollbar-thumb { background: rgba(254,242,222,0.15); border-radius: 2px; }
 </style>
 </head>
 <body>
@@ -603,17 +651,21 @@
           <label>Automation name</label>
           <input type="text" id="auto-name" placeholder="e.g. Cold UK Leads → Q1 Outreach">
         </div>
+
         <div class="form-row">
           <label>HubSpot list</label>
-          <select id="hs-list-select">
-            <option value="">Loading lists…</option>
-          </select>
+          <div class="search-select" id="hs-wrap">
+            <input type="text" id="hs-search" placeholder="Search HubSpot lists…" autocomplete="off">
+            <div class="search-dropdown" id="hs-dropdown"></div>
+          </div>
         </div>
+
         <div class="form-row">
           <label>Instantly campaign</label>
-          <select id="inst-camp-select">
-            <option value="">Loading campaigns…</option>
-          </select>
+          <div class="search-select" id="camp-wrap">
+            <input type="text" id="camp-search" placeholder="Search Instantly campaigns…" autocomplete="off">
+            <div class="search-dropdown" id="camp-dropdown"></div>
+          </div>
         </div>
 
         <div class="form-footer">
@@ -633,6 +685,10 @@
 const BASE = '/api';
 let TOKEN = '';
 let automations = [];
+let hsList = [];
+let campList = [];
+let hsSelected = { id: '', name: '' };
+let campSelected = { id: '', name: '' };
 
 function showToast(msg, type='success') {
   const t = document.getElementById('toast');
@@ -729,56 +785,124 @@ function renderAutomations() {
   `).join('');
 }
 
+/* ── Searchable dropdown ── */
+function initSearchSelect(inputId, dropdownId, items, selectedObj, placeholder) {
+  const input = document.getElementById(inputId);
+  const dropdown = document.getElementById(dropdownId);
+
+  function renderOptions(filter) {
+    const q = filter.trim().toLowerCase();
+    const filtered = q ? items.filter(x => x.name.toLowerCase().includes(q)) : items;
+    if (!filtered.length) {
+      dropdown.innerHTML = `<div class="search-option-empty">No results for "${esc(filter)}"</div>`;
+    } else {
+      dropdown.innerHTML = filtered.map(x =>
+        `<div class="search-option${selectedObj.id === x.id ? ' selected' : ''}"
+              data-id="${esc(x.id)}" data-name="${esc(x.name)}">${esc(x.name)}</div>`
+      ).join('');
+      dropdown.querySelectorAll('.search-option').forEach(el => {
+        el.addEventListener('mousedown', e => {
+          e.preventDefault();
+          selectedObj.id   = el.dataset.id;
+          selectedObj.name = el.dataset.name;
+          input.value = el.dataset.name;
+          input.classList.add('has-value');
+          dropdown.classList.remove('open');
+        });
+      });
+    }
+    dropdown.classList.add('open');
+  }
+
+  input.addEventListener('focus', () => renderOptions(input.value));
+  input.addEventListener('input', () => {
+    selectedObj.id = '';
+    selectedObj.name = '';
+    input.classList.remove('has-value');
+    renderOptions(input.value);
+  });
+  input.addEventListener('blur', () => {
+    setTimeout(() => dropdown.classList.remove('open'), 150);
+    if (!selectedObj.id) {
+      input.value = '';
+      input.classList.remove('has-value');
+    }
+  });
+  input.placeholder = placeholder;
+}
+
+function resetSearchSelect(inputId, dropdownId, selectedObj) {
+  selectedObj.id = '';
+  selectedObj.name = '';
+  const input = document.getElementById(inputId);
+  input.value = '';
+  input.classList.remove('has-value');
+  document.getElementById(dropdownId).classList.remove('open');
+}
+
 async function loadDropdowns() {
-  const hsEl = document.getElementById('hs-list-select');
-  const instEl = document.getElementById('inst-camp-select');
-  hsEl.innerHTML = '<option value="">Loading HubSpot lists…</option>';
-  instEl.innerHTML = '<option value="">Loading Instantly campaigns…</option>';
+  const hsInput   = document.getElementById('hs-search');
+  const campInput = document.getElementById('camp-search');
+  hsInput.placeholder   = 'Loading HubSpot lists…';
+  campInput.placeholder = 'Loading Instantly campaigns…';
+  hsInput.disabled = campInput.disabled = true;
+
   try {
     const [l, c] = await Promise.all([api('GET','/lists'), api('GET','/campaigns')]);
+
     if (!l.ok || !Array.isArray(l.data)) {
-      hsEl.innerHTML = `<option value="">Error: ${esc((l.data&&l.data.error)||'unexpected response')}</option>`;
+      hsInput.placeholder = `Error: ${(l.data&&l.data.error)||'unexpected response'}`;
     } else {
-      hsEl.innerHTML = '<option value="">Select a HubSpot list…</option>'
-        + l.data.map(x=>`<option value="${esc(x.id)}" data-name="${esc(x.name)}">${esc(x.name)}</option>`).join('');
+      hsList = l.data;
+      initSearchSelect('hs-search', 'hs-dropdown', hsList, hsSelected, 'Search HubSpot lists…');
     }
+
     if (!c.ok || !Array.isArray(c.data)) {
-      instEl.innerHTML = `<option value="">Error: ${esc((c.data&&c.data.error)||'unexpected response')}</option>`;
+      campInput.placeholder = `Error: ${(c.data&&c.data.error)||'unexpected response'}`;
     } else {
-      instEl.innerHTML = '<option value="">Select an Instantly campaign…</option>'
-        + c.data.map(x=>`<option value="${esc(x.id)}" data-name="${esc(x.name)}">${esc(x.name)}</option>`).join('');
+      campList = c.data;
+      initSearchSelect('camp-search', 'camp-dropdown', campList, campSelected, 'Search Instantly campaigns…');
     }
   } catch(e) {
-    hsEl.innerHTML = `<option value="">Network error: ${esc(e.message)}</option>`;
-    instEl.innerHTML = `<option value="">Network error: ${esc(e.message)}</option>`;
+    hsInput.placeholder   = `Network error: ${e.message}`;
+    campInput.placeholder = `Network error: ${e.message}`;
   }
+
+  hsInput.disabled = campInput.disabled = false;
 }
 
 async function createAutomation() {
-  const name   = document.getElementById('auto-name').value.trim();
-  const hsEl   = document.getElementById('hs-list-select');
-  const instEl = document.getElementById('inst-camp-select');
-  const listId = hsEl.value;
-  const listName = hsEl.options[hsEl.selectedIndex]?.dataset?.name || listId;
-  const campId = instEl.value;
-  const campName = instEl.options[instEl.selectedIndex]?.dataset?.name || campId;
-  const errEl  = document.getElementById('form-error');
-  const btn    = document.getElementById('create-btn');
+  const name    = document.getElementById('auto-name').value.trim();
+  const errEl   = document.getElementById('form-error');
+  const btn     = document.getElementById('create-btn');
 
   errEl.style.display = 'none';
-  if (!name || !listId || !campId) {
-    errEl.textContent = 'Please fill in all fields.';
+  if (!name) {
+    errEl.textContent = 'Please enter an automation name.';
+    errEl.style.display = 'block'; return;
+  }
+  if (!hsSelected.id) {
+    errEl.textContent = 'Please select a HubSpot list.';
+    errEl.style.display = 'block'; return;
+  }
+  if (!campSelected.id) {
+    errEl.textContent = 'Please select an Instantly campaign.';
     errEl.style.display = 'block'; return;
   }
 
   btn.disabled = true; btn.textContent = 'Creating…';
   try {
     const { ok, data } = await api('POST', '/automations', {
-      name, hubspot_list_id: listId, hubspot_list_name: listName,
-      instantly_campaign_id: campId, instantly_campaign_name: campName
+      name,
+      hubspot_list_id:        hsSelected.id,
+      hubspot_list_name:      hsSelected.name,
+      instantly_campaign_id:  campSelected.id,
+      instantly_campaign_name: campSelected.name,
     });
     if (ok) {
       document.getElementById('auto-name').value = '';
+      resetSearchSelect('hs-search',   'hs-dropdown',   hsSelected);
+      resetSearchSelect('camp-search', 'camp-dropdown', campSelected);
       showToast('Automation created');
       showPage('dashboard');
       loadAutomations();
