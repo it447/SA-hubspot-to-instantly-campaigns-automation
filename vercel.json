@@ -1,11 +1,16 @@
 {
-  "rewrites": [
-    { "source": "/api/login",       "destination": "/api/automations" },
-    { "source": "/api/automations", "destination": "/api/automations" },
-    { "source": "/api/automations/:id", "destination": "/api/automations" },
-    { "source": "/api/lists",       "destination": "/api/automations" },
-    { "source": "/api/campaigns",   "destination": "/api/automations" },
-    { "source": "/webhook",         "destination": "/api/webhook" },
-    { "source": "/",                "destination": "/index.html" }
+  "version": 2,
+  "builds": [
+    { "src": "api/*.py", "use": "@vercel/python" },
+    { "src": "index.html", "use": "@vercel/static" }
+  ],
+  "routes": [
+    { "src": "/api/login",            "dest": "/api/automations.py" },
+    { "src": "/api/automations",      "dest": "/api/automations.py" },
+    { "src": "/api/automations/(.*)", "dest": "/api/automations.py" },
+    { "src": "/api/lists",            "dest": "/api/automations.py" },
+    { "src": "/api/campaigns",        "dest": "/api/automations.py" },
+    { "src": "/webhook",              "dest": "/api/webhook.py" },
+    { "src": "/",                     "dest": "/index.html" }
   ]
 }
