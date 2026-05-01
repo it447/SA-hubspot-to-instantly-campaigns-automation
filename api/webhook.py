@@ -5,7 +5,7 @@ from http.server import BaseHTTPRequestHandler
 from urllib.request import urlopen, Request
 
 UPSTASH_URL   = os.environ.get("UPSTASH_REDIS_REST_URL", "")
-UPSTASH_TOKEN = os.environ.get("UPSTASH_REDIS_REST_REST_TOKEN", "")
+UPSTASH_TOKEN = os.environ.get("UPSTASH_REDIS_REST_TOKEN", "")
 INSTANTLY_API_KEY = os.environ.get("INSTANTLY_API_KEY", "")
 HUBSPOT_API_KEY   = os.environ.get("HUBSPOT_API_KEY", "")
 
