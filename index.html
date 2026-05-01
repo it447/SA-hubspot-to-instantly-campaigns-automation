@@ -736,13 +736,21 @@ async function loadDropdowns() {
   instEl.innerHTML = '<option value="">Loading Instantly campaigns…</option>';
   try {
     const [l, c] = await Promise.all([api('GET','/lists'), api('GET','/campaigns')]);
-    hsEl.innerHTML = '<option value="">Select a HubSpot list…</option>'
-      + (l.data||[]).map(x=>`<option value="${esc(x.id)}" data-name="${esc(x.name)}">${esc(x.name)}</option>`).join('');
-    instEl.innerHTML = '<option value="">Select an Instantly campaign…</option>'
-      + (c.data||[]).map(x=>`<option value="${esc(x.id)}" data-name="${esc(x.name)}">${esc(x.name)}</option>`).join('');
+    if (!l.ok || !Array.isArray(l.data)) {
+      hsEl.innerHTML = `<option value="">Error: ${esc((l.data&&l.data.error)||'unexpected response')}</option>`;
+    } else {
+      hsEl.innerHTML = '<option value="">Select a HubSpot list…</option>'
+        + l.data.map(x=>`<option value="${esc(x.id)}" data-name="${esc(x.name)}">${esc(x.name)}</option>`).join('');
+    }
+    if (!c.ok || !Array.isArray(c.data)) {
+      instEl.innerHTML = `<option value="">Error: ${esc((c.data&&c.data.error)||'unexpected response')}</option>`;
+    } else {
+      instEl.innerHTML = '<option value="">Select an Instantly campaign…</option>'
+        + c.data.map(x=>`<option value="${esc(x.id)}" data-name="${esc(x.name)}">${esc(x.name)}</option>`).join('');
+    }
   } catch(e) {
-    hsEl.innerHTML = '<option value="">Failed to load — check API keys</option>';
-    instEl.innerHTML = '<option value="">Failed to load — check API keys</option>';
+    hsEl.innerHTML = `<option value="">Network error: ${esc(e.message)}</option>`;
+    instEl.innerHTML = `<option value="">Network error: ${esc(e.message)}</option>`;
   }
 }
 
