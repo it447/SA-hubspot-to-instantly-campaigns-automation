@@ -57,17 +57,18 @@ def get_hs_lists():
         raise Exception(f"HubSpot request failed: {e}")
 
 def get_instantly_campaigns():
-    url = f"https://api.instantly.ai/api/v1/campaign/list?api_key={INSTANTLY_API_KEY}&limit=100&skip=0"
-    _log(f"[Instantly] GET {url[:80]}... (key present: {bool(INSTANTLY_API_KEY)})")
+    url = "https://api.instantly.ai/api/v2/campaigns?limit=100"
+    headers = {"Authorization": f"Bearer {INSTANTLY_API_KEY}"}
+    _log(f"[Instantly] GET {url} (key present: {bool(INSTANTLY_API_KEY)})")
     try:
-        resp = requests.get(url, timeout=10)
+        resp = requests.get(url, headers=headers, timeout=10)
         _log(f"[Instantly] status={resp.status_code} body={resp.text[:300]}")
         resp.raise_for_status()
         data = resp.json()
         if isinstance(data, list):
             campaigns = data
         elif isinstance(data, dict):
-            campaigns = data.get("campaigns", data.get("data", []))
+            campaigns = data.get("items", data.get("campaigns", data.get("data", [])))
         else:
             campaigns = []
         _log(f"[Instantly] returned {len(campaigns)} campaigns")
