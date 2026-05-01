@@ -1,5 +1,6 @@
 import json
 import os
+import sys
 from http.server import BaseHTTPRequestHandler
 from urllib.request import urlopen, Request
 from urllib.error import HTTPError
@@ -10,6 +11,9 @@ UPSTASH_TOKEN = os.environ.get("UPSTASH_REDIS_REST_TOKEN", "")
 DASHBOARD_PASSWORD = os.environ.get("DASHBOARD_PASSWORD", "changeme")
 INSTANTLY_API_KEY  = os.environ.get("INSTANTLY_API_KEY", "")
 HUBSPOT_API_KEY    = os.environ.get("HUBSPOT_API_KEY", "")
+
+def _log(msg):
+    print(msg, file=sys.stderr, flush=True)
 
 def _redis_get(key):
     url = f"{UPSTASH_URL}/get/{key}"
@@ -37,21 +41,41 @@ def save_automations(automations):
     _redis_set("automations_config", automations)
 
 def get_hs_lists():
-    url = "https://api.hubapi.com/contacts/v1/lists/static?count=100"
+    url = "https://api.hubapi.com/contacts/v1/lists?count=100"
     headers = {"Authorization": f"Bearer {HUBSPOT_API_KEY}"}
-    resp = requests.get(url, headers=headers, timeout=10)
-    resp.raise_for_status()
-    lists = resp.json().get("lists", [])
-    return [{"id": str(l["listId"]), "name": l["name"]} for l in lists]
+    _log(f"[HubSpot] GET {url} (key present: {bool(HUBSPOT_API_KEY)})")
+    try:
+        resp = requests.get(url, headers=headers, timeout=10)
+        _log(f"[HubSpot] status={resp.status_code} body={resp.text[:300]}")
+        resp.raise_for_status()
+        lists = resp.json().get("lists", [])
+        _log(f"[HubSpot] returned {len(lists)} lists")
+        return [{"id": str(l["listId"]), "name": l["name"]} for l in lists]
+    except requests.HTTPError as e:
+        raise Exception(f"HubSpot HTTP {e.response.status_code}: {e.response.text[:400]}")
+    except Exception as e:
+        raise Exception(f"HubSpot request failed: {e}")
 
 def get_instantly_campaigns():
     url = f"https://api.instantly.ai/api/v1/campaign/list?api_key={INSTANTLY_API_KEY}&limit=100&skip=0"
-    resp = requests.get(url, timeout=10)
-    resp.raise_for_status()
-    campaigns = resp.json()
-    if isinstance(campaigns, list):
+    _log(f"[Instantly] GET {url[:80]}... (key present: {bool(INSTANTLY_API_KEY)})")
+    try:
+        resp = requests.get(url, timeout=10)
+        _log(f"[Instantly] status={resp.status_code} body={resp.text[:300]}")
+        resp.raise_for_status()
+        data = resp.json()
+        if isinstance(data, list):
+            campaigns = data
+        elif isinstance(data, dict):
+            campaigns = data.get("campaigns", data.get("data", []))
+        else:
+            campaigns = []
+        _log(f"[Instantly] returned {len(campaigns)} campaigns")
         return [{"id": c.get("id", ""), "name": c.get("name", "")} for c in campaigns]
-    return []
+    except requests.HTTPError as e:
+        raise Exception(f"Instantly HTTP {e.response.status_code}: {e.response.text[:400]}")
+    except Exception as e:
+        raise Exception(f"Instantly request failed: {e}")
 
 class handler(BaseHTTPRequestHandler):
 
@@ -76,7 +100,7 @@ class handler(BaseHTTPRequestHandler):
         self.send_response(200)
         self.send_header("Access-Control-Allow-Origin", "*")
         self.send_header("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS")
-        self.send_header("Access-Control-Allow-Headers", "Content-Type")
+        self.send_header("Access-Control-Allow-Headers", "Content-Type, X-Auth-Token")
         self.end_headers()
 
     def do_GET(self):
