@@ -1,0 +1,11 @@
+{
+  "rewrites": [
+    { "source": "/api/login",       "destination": "/api/automations" },
+    { "source": "/api/automations", "destination": "/api/automations" },
+    { "source": "/api/automations/:id", "destination": "/api/automations" },
+    { "source": "/api/lists",       "destination": "/api/automations" },
+    { "source": "/api/campaigns",   "destination": "/api/automations" },
+    { "source": "/webhook",         "destination": "/api/webhook" },
+    { "source": "/",                "destination": "/index.html" }
+  ]
+}
