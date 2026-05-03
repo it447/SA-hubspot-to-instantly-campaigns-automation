@@ -1,5 +1,6 @@
 import json
 import os
+import sys
 import requests
 from http.server import BaseHTTPRequestHandler
 from urllib.request import urlopen, Request
@@ -8,6 +9,9 @@ UPSTASH_URL   = os.environ.get("UPSTASH_REDIS_REST_URL", "")
 UPSTASH_TOKEN = os.environ.get("UPSTASH_REDIS_REST_TOKEN", "")
 INSTANTLY_API_KEY = os.environ.get("INSTANTLY_API_KEY", "")
 HUBSPOT_API_KEY   = os.environ.get("HUBSPOT_API_KEY", "")
+
+def _log(msg):
+    print(msg, file=sys.stderr, flush=True)
 
 def _redis_get(key):
     url = f"{UPSTASH_URL}/get/{key}"
@@ -53,6 +57,7 @@ def add_to_instantly(email, first_name, last_name, company, campaign_id):
         "skip_if_in_workspace": True,
         "leads": [{"email": email, "first_name": first_name, "last_name": last_name, "company_name": company}],
     }, timeout=10)
+    _log(f"[Instantly] add lead status={resp.status_code} body={resp.text[:300]}")
     resp.raise_for_status()
 
 class handler(BaseHTTPRequestHandler):
@@ -63,48 +68,90 @@ class handler(BaseHTTPRequestHandler):
 
     def do_POST(self):
         length = int(self.headers.get("Content-Length", 0))
-        events = json.loads(self.rfile.read(length)) if length else []
+        raw = self.rfile.read(length) if length else b"[]"
+        _log(f"[webhook] received body={raw[:500]}")
+
+        try:
+            events = json.loads(raw)
+        except Exception as e:
+            _log(f"[webhook] JSON parse error: {e}")
+            self._json(400, {"error": "invalid JSON"})
+            return
+
+        if not isinstance(events, list):
+            events = [events]
 
         automations = get_automations()
         lookup = {a["hubspot_list_id"]: a for a in automations if a.get("active")}
+        _log(f"[webhook] active automations={list(lookup.keys())}")
 
         processed = duplicates = skipped = 0
+        errors = []
 
         for event in events:
-            if event.get("subscriptionType") != "contact.listMembership":
+            sub_type    = event.get("subscriptionType", "")
+            change_type = event.get("changeType", "")
+            list_id     = str(event.get("listId", ""))
+            contact_id  = str(event.get("objectId", ""))
+
+            _log(f"[webhook] event type={sub_type} change={change_type} list={list_id} contact={contact_id}")
+
+            if sub_type != "contact.listMembership":
+                _log(f"[webhook] skip: wrong subscriptionType={sub_type}")
                 skipped += 1; continue
 
-            list_id    = str(event.get("listId", ""))
-            contact_id = str(event.get("objectId", ""))
+            if change_type and change_type != "ADDED":
+                _log(f"[webhook] skip: changeType={change_type} (not ADDED)")
+                skipped += 1; continue
+
             automation = lookup.get(list_id)
             if not automation:
+                _log(f"[webhook] skip: no automation for list_id={list_id}")
                 skipped += 1; continue
 
             try:
                 props = get_contact_details(contact_id)
-            except Exception:
+                _log(f"[webhook] contact props={props}")
+            except Exception as e:
+                _log(f"[webhook] failed to fetch contact {contact_id}: {e}")
+                errors.append(f"contact fetch failed: {e}")
                 skipped += 1; continue
 
             email = props.get("email", "").strip().lower()
             if not email:
+                _log(f"[webhook] skip: no email for contact {contact_id}")
                 skipped += 1; continue
 
             campaign_id = automation["instantly_campaign_id"]
 
             try:
                 if already_sent(email, campaign_id):
+                    _log(f"[webhook] duplicate: {email} already in campaign {campaign_id}")
                     duplicates += 1; continue
-            except Exception:
-                pass
+            except Exception as e:
+                _log(f"[webhook] redis check failed: {e}")
 
             try:
-                add_to_instantly(email, props.get("firstname",""), props.get("lastname",""), props.get("company",""), campaign_id)
+                add_to_instantly(
+                    email,
+                    props.get("firstname", ""),
+                    props.get("lastname", ""),
+                    props.get("company", ""),
+                    campaign_id
+                )
                 mark_as_sent(email, campaign_id)
+                _log(f"[webhook] success: {email} -> campaign {campaign_id}")
                 processed += 1
-            except Exception:
+            except Exception as e:
+                _log(f"[webhook] failed to add {email} to Instantly: {e}")
+                errors.append(f"instantly failed for {email}: {e}")
                 skipped += 1
 
-        self._json(200, {"processed": processed, "duplicates": duplicates, "skipped": skipped})
+        result = {"processed": processed, "duplicates": duplicates, "skipped": skipped}
+        if errors:
+            result["errors"] = errors
+        _log(f"[webhook] result={result}")
+        self._json(200, result)
 
     def _json(self, status, data):
         body = json.dumps(data).encode()
