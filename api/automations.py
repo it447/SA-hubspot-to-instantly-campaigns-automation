@@ -41,20 +41,59 @@ def save_automations(automations):
     _redis_set("automations_config", automations)
 
 def get_hs_lists():
-    url = "https://api.hubapi.com/contacts/v1/lists?count=100"
     headers = {"Authorization": f"Bearer {HUBSPOT_API_KEY}"}
-    _log(f"[HubSpot] GET {url} (key present: {bool(HUBSPOT_API_KEY)})")
-    try:
-        resp = requests.get(url, headers=headers, timeout=10)
-        _log(f"[HubSpot] status={resp.status_code} body={resp.text[:300]}")
-        resp.raise_for_status()
-        lists = resp.json().get("lists", [])
-        _log(f"[HubSpot] returned {len(lists)} lists")
-        return [{"id": str(l["listId"]), "name": l["name"]} for l in lists]
-    except requests.HTTPError as e:
-        raise Exception(f"HubSpot HTTP {e.response.status_code}: {e.response.text[:400]}")
-    except Exception as e:
-        raise Exception(f"HubSpot request failed: {e}")
+    seen = {}
+
+    # v1 API — legacy lists (offset-paginated)
+    offset = 0
+    while True:
+        url = f"https://api.hubapi.com/contacts/v1/lists?count=250&offset={offset}"
+        _log(f"[HubSpot v1] GET offset={offset}")
+        try:
+            resp = requests.get(url, headers=headers, timeout=10)
+            _log(f"[HubSpot v1] status={resp.status_code}")
+            resp.raise_for_status()
+            body = resp.json()
+            for l in body.get("lists", []):
+                lid = str(l["listId"])
+                if lid not in seen:
+                    seen[lid] = l["name"]
+            if not body.get("has-more", False):
+                break
+            offset = body.get("offset", offset + 250)
+        except Exception as e:
+            _log(f"[HubSpot v1] error: {e}")
+            break
+
+    # v3 API — newer lists (cursor-paginated)
+    after = None
+    while True:
+        url = "https://api.hubapi.com/crm/v3/lists?objectTypeId=0-1&limit=100"
+        if after:
+            url += f"&after={after}"
+        _log(f"[HubSpot v3] GET after={after}")
+        try:
+            resp = requests.get(url, headers=headers, timeout=10)
+            _log(f"[HubSpot v3] status={resp.status_code} body={resp.text[:300]}")
+            resp.raise_for_status()
+            body = resp.json()
+            for l in body.get("lists", []):
+                lid = str(l.get("listId") or l.get("id", ""))
+                name = l.get("name", "")
+                if lid and lid not in seen:
+                    seen[lid] = name
+            after = body.get("paging", {}).get("next", {}).get("after")
+            if not after:
+                break
+        except Exception as e:
+            _log(f"[HubSpot v3] error: {e}")
+            break
+
+    _log(f"[HubSpot] total unique lists={len(seen)}")
+    return sorted(
+        [{"id": lid, "name": name} for lid, name in seen.items()],
+        key=lambda x: x["name"].lower()
+    )
 
 def get_instantly_campaigns():
     url = "https://api.instantly.ai/api/v2/campaigns?limit=100"
