@@ -93,10 +93,9 @@ def add_to_instantly(email, first_name, last_name, company, campaign_id):
     }
     resp = requests.post("https://api.instantly.ai/api/v2/leads", headers=headers, json={
         "campaign_id": campaign_id,
-        "skip_if_in_workspace": True,
         "leads": [{"email": email, "first_name": first_name, "last_name": last_name, "company_name": company}],
     }, timeout=10)
-    _log(f"[sync] Instantly add {email} status={resp.status_code}")
+    _log(f"[sync] Instantly add {email} status={resp.status_code} body={resp.text[:300]}")
     resp.raise_for_status()
 
 class handler(BaseHTTPRequestHandler):
@@ -150,3 +149,13 @@ class handler(BaseHTTPRequestHandler):
 
     def log_message(self, *args):
         pass
+
+
+
+
+
+
+
+
+
+
