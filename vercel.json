@@ -10,6 +10,7 @@
     { "src": "/api/automations/(.*)", "dest": "/api/automations.py" },
     { "src": "/api/lists", "dest": "/api/automations.py" },
     { "src": "/api/campaigns", "dest": "/api/automations.py" },
+    { "src": "/api/sync", "dest": "/api/sync.py" },
     { "src": "/webhook", "dest": "/api/webhook.py" },
     { "src": "/status", "dest": "/api/webhook.py" },
     { "src": "/(.*)", "dest": "/index.html" }
