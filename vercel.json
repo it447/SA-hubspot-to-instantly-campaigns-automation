@@ -15,11 +15,5 @@
     { "src": "/webhook", "dest": "/api/webhook.py" },
     { "src": "/status", "dest": "/api/webhook.py" },
     { "src": "/(.*)", "dest": "/index.html" }
-  ],
-  "crons": [
-    {
-      "path": "/api/sync",
-      "schedule": "*/10 * * * *"
-    }
   ]
 }
