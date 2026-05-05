@@ -4,18 +4,22 @@
     { "src": "api/*.py", "use": "@vercel/python" },
     { "src": "index.html", "use": "@vercel/static" }
   ],
-  "crons": [
-    { "path": "/api/sync", "schedule": "*/10 * * * *" }
-  ],
   "routes": [
     { "src": "/api/login", "dest": "/api/automations.py" },
     { "src": "/api/automations", "dest": "/api/automations.py" },
     { "src": "/api/automations/(.*)", "dest": "/api/automations.py" },
     { "src": "/api/lists", "dest": "/api/automations.py" },
     { "src": "/api/campaigns", "dest": "/api/automations.py" },
+    { "src": "/api/forms", "dest": "/api/automations.py" },
     { "src": "/api/sync", "dest": "/api/sync.py" },
     { "src": "/webhook", "dest": "/api/webhook.py" },
     { "src": "/status", "dest": "/api/webhook.py" },
     { "src": "/(.*)", "dest": "/index.html" }
+  ],
+  "crons": [
+    {
+      "path": "/api/sync",
+      "schedule": "*/10 * * * *"
+    }
   ]
 }
