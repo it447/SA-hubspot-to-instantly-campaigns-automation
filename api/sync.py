@@ -91,7 +91,8 @@ def add_to_instantly(email, first_name, last_name, company, campaign_id):
         "Authorization": f"Bearer {INSTANTLY_API_KEY}",
         "Content-Type": "application/json"
     }
-    resp = requests.post(f"https://api.instantly.ai/api/v2/campaigns/{campaign_id}/leads", headers=headers, json={
+    resp = requests.post("https://api.instantly.ai/api/v2/leads/add", headers=headers, json={
+        "campaign_id": campaign_id,
         "leads": [{"email": email, "first_name": first_name, "last_name": last_name, "company_name": company}],
     }, timeout=10)
     _log(f"[sync] Instantly add {email} status={resp.status_code} body={resp.text[:300]}")
