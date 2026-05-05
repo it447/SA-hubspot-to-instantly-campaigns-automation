@@ -4,6 +4,9 @@
     { "src": "api/*.py", "use": "@vercel/python" },
     { "src": "index.html", "use": "@vercel/static" }
   ],
+  "crons": [
+    { "path": "/api/sync", "schedule": "*/10 * * * *" }
+  ],
   "routes": [
     { "src": "/api/login", "dest": "/api/automations.py" },
     { "src": "/api/automations", "dest": "/api/automations.py" },
