@@ -44,7 +44,6 @@ def get_hs_lists():
     headers = {"Authorization": f"Bearer {HUBSPOT_API_KEY}"}
     seen = {}
 
-    # v1 API — legacy lists (offset-paginated)
     offset = 0
     while True:
         url = f"https://api.hubapi.com/contacts/v1/lists?count=250&offset={offset}"
@@ -65,7 +64,6 @@ def get_hs_lists():
             _log(f"[HubSpot v1] error: {e}")
             break
 
-    # v3 API — newer lists (cursor-paginated)
     after = None
     while True:
         url = "https://api.hubapi.com/crm/v3/lists?objectTypeId=0-1&limit=100"
@@ -94,6 +92,34 @@ def get_hs_lists():
         [{"id": lid, "name": name} for lid, name in seen.items()],
         key=lambda x: x["name"].lower()
     )
+
+def get_hs_forms():
+    headers = {"Authorization": f"Bearer {HUBSPOT_API_KEY}"}
+    forms = []
+    after = None
+    while True:
+        url = "https://api.hubapi.com/marketing/v3/forms?limit=100"
+        if after:
+            url += f"&after={after}"
+        _log(f"[HubSpot forms] GET after={after}")
+        try:
+            resp = requests.get(url, headers=headers, timeout=10)
+            _log(f"[HubSpot forms] status={resp.status_code}")
+            resp.raise_for_status()
+            body = resp.json()
+            for f in body.get("results", []):
+                fid = f.get("id", "")
+                name = f.get("name", "")
+                if fid:
+                    forms.append({"id": fid, "name": name})
+            after = body.get("paging", {}).get("next", {}).get("after")
+            if not after:
+                break
+        except Exception as e:
+            _log(f"[HubSpot forms] error: {e}")
+            break
+    _log(f"[HubSpot forms] total={len(forms)}")
+    return sorted(forms, key=lambda x: x["name"].lower())
 
 def get_instantly_campaigns():
     url = "https://api.instantly.ai/api/v2/campaigns?limit=100"
@@ -132,10 +158,6 @@ class handler(BaseHTTPRequestHandler):
         length = int(self.headers.get("Content-Length", 0))
         return json.loads(self.rfile.read(length)) if length else {}
 
-    def _check_auth(self):
-        body = self._read_body()
-        return body, body.get("password") == DASHBOARD_PASSWORD
-
     def do_OPTIONS(self):
         self.send_response(200)
         self.send_header("Access-Control-Allow-Origin", "*")
@@ -158,6 +180,11 @@ class handler(BaseHTTPRequestHandler):
         elif path.endswith("/campaigns"):
             try:
                 self._json(200, get_instantly_campaigns())
+            except Exception as e:
+                self._json(500, {"error": str(e)})
+        elif path.endswith("/forms"):
+            try:
+                self._json(200, get_hs_forms())
             except Exception as e:
                 self._json(500, {"error": str(e)})
         elif path.endswith("/automations"):
@@ -186,31 +213,62 @@ class handler(BaseHTTPRequestHandler):
             return
 
         if path.endswith("/automations"):
-            name       = body.get("name", "").strip()
-            list_id    = str(body.get("hubspot_list_id", "")).strip()
-            list_name  = body.get("hubspot_list_name", "").strip()
-            camp_id    = str(body.get("instantly_campaign_id", "")).strip()
-            camp_name  = body.get("instantly_campaign_name", "").strip()
+            name          = body.get("name", "").strip()
+            list_id       = str(body.get("hubspot_list_id", "")).strip()
+            list_name     = body.get("hubspot_list_name", "").strip()
+            delivery_type = body.get("delivery_type", "instantly")
 
-            if not all([name, list_id, camp_id]):
+            if not all([name, list_id, delivery_type]):
                 self._json(400, {"error": "Missing fields"})
                 return
 
             existing = get_automations()
-            for a in existing:
-                if a["hubspot_list_id"] == list_id and a["instantly_campaign_id"] == camp_id:
-                    self._json(409, {"error": "Automation already exists"})
-                    return
 
-            new_auto = {
-                "id": f"{list_id}_{camp_id}",
-                "name": name,
-                "hubspot_list_id": list_id,
-                "hubspot_list_name": list_name,
-                "instantly_campaign_id": camp_id,
-                "instantly_campaign_name": camp_name,
-                "active": True,
-            }
+            if delivery_type == "instantly":
+                camp_id   = str(body.get("instantly_campaign_id", "")).strip()
+                camp_name = body.get("instantly_campaign_name", "").strip()
+                if not camp_id:
+                    self._json(400, {"error": "Missing Instantly campaign"})
+                    return
+                for a in existing:
+                    if a.get("hubspot_list_id") == list_id and a.get("instantly_campaign_id") == camp_id:
+                        self._json(409, {"error": "Automation already exists"})
+                        return
+                new_auto = {
+                    "id": f"{list_id}_{camp_id}",
+                    "name": name,
+                    "delivery_type": "instantly",
+                    "hubspot_list_id": list_id,
+                    "hubspot_list_name": list_name,
+                    "instantly_campaign_id": camp_id,
+                    "instantly_campaign_name": camp_name,
+                    "active": True,
+                }
+
+            elif delivery_type == "hubspot_form":
+                form_id   = str(body.get("hubspot_form_id", "")).strip()
+                form_name = body.get("hubspot_form_name", "").strip()
+                if not form_id:
+                    self._json(400, {"error": "Missing HubSpot form"})
+                    return
+                for a in existing:
+                    if a.get("hubspot_list_id") == list_id and a.get("hubspot_form_id") == form_id:
+                        self._json(409, {"error": "Automation already exists"})
+                        return
+                new_auto = {
+                    "id": f"{list_id}_form_{form_id}",
+                    "name": name,
+                    "delivery_type": "hubspot_form",
+                    "hubspot_list_id": list_id,
+                    "hubspot_list_name": list_name,
+                    "hubspot_form_id": form_id,
+                    "hubspot_form_name": form_name,
+                    "active": True,
+                }
+            else:
+                self._json(400, {"error": "Invalid delivery_type"})
+                return
+
             existing.append(new_auto)
             save_automations(existing)
             self._json(200, new_auto)
