@@ -161,7 +161,7 @@ class handler(BaseHTTPRequestHandler):
     def do_OPTIONS(self):
         self.send_response(200)
         self.send_header("Access-Control-Allow-Origin", "*")
-        self.send_header("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS")
+        self.send_header("Access-Control-Allow-Methods", "GET, POST, PATCH, DELETE, OPTIONS")
         self.send_header("Access-Control-Allow-Headers", "Content-Type, X-Auth-Token")
         self.end_headers()
 
@@ -274,6 +274,32 @@ class handler(BaseHTTPRequestHandler):
             self._json(200, new_auto)
         else:
             self._json(404, {"error": "Not found"})
+
+    def do_PATCH(self):
+        token = self.headers.get("X-Auth-Token", "")
+        if token != DASHBOARD_PASSWORD:
+            self._json(401, {"error": "Unauthorized"})
+            return
+
+        parts = self.path.strip("/").split("/")
+        auto_id = parts[-1] if parts else ""
+        length = int(self.headers.get("Content-Length", 0))
+        body = json.loads(self.rfile.read(length)) if length else {}
+
+        existing = get_automations()
+        found = False
+        for a in existing:
+            if a.get("id") == auto_id:
+                if "active" in body:
+                    a["active"] = bool(body["active"])
+                found = True
+                break
+
+        if not found:
+            self._json(404, {"error": "Not found"})
+            return
+        save_automations(existing)
+        self._json(200, {"ok": True})
 
     def do_DELETE(self):
         token = self.headers.get("X-Auth-Token", "")
