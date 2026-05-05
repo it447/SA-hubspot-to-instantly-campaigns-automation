@@ -15,8 +15,7 @@
     --cream:     #fef2de;
     --cream-dim: #e8d9c0;
     --orange:    #ff6432;
-    --orange-dk: #cc522a;
-    --text:      #fef2de;
+    --teal:      #2dd4bf;
     --muted:     rgba(254,242,222,0.5);
     --border:    rgba(254,242,222,0.1);
     --border2:   rgba(254,242,222,0.2);
@@ -24,533 +23,125 @@
     --radius-sm: 9px;
   }
 
-  body {
-    font-family: 'DM Sans', sans-serif;
-    background: var(--navy);
-    color: var(--cream);
-    min-height: 100vh;
-    font-size: 15px;
-    line-height: 1.6;
-  }
+  body { font-family: 'DM Sans', sans-serif; background: var(--navy); color: var(--cream); min-height: 100vh; font-size: 15px; line-height: 1.6; }
 
-  /* ── Login ── */
   #login-screen {
-    min-height: 100vh;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: var(--navy-deep);
-    position: relative;
-    overflow: hidden;
+    min-height: 100vh; display: flex; align-items: center; justify-content: center;
+    background: var(--navy-deep); position: relative; overflow: hidden;
   }
+  #login-screen::before { content:''; position:absolute; top:-120px; right:-120px; width:420px; height:420px; border-radius:50%; background:rgba(255,100,50,0.07); pointer-events:none; }
+  #login-screen::after  { content:''; position:absolute; bottom:-80px; left:-80px;  width:300px; height:300px; border-radius:50%; background:rgba(254,242,222,0.04); pointer-events:none; }
 
-  #login-screen::before {
-    content: '';
-    position: absolute;
-    top: -120px; right: -120px;
-    width: 420px; height: 420px;
-    border-radius: 50%;
-    background: rgba(255,100,50,0.07);
-    pointer-events: none;
-  }
+  .login-card { width:100%; max-width:400px; background:var(--navy-soft); border:1px solid var(--border2); border-radius:var(--radius); padding:2.75rem 2.25rem; position:relative; z-index:1; }
+  .brand-mark { display:flex; align-items:center; gap:10px; margin-bottom:2rem; }
+  .brand-s { width:38px; height:38px; background:var(--orange); border-radius:9px; display:flex; align-items:center; justify-content:center; font-family:'Playfair Display',serif; font-size:20px; font-weight:800; color:var(--cream); letter-spacing:-1px; flex-shrink:0; }
+  .brand-name { font-size:17px; font-weight:500; color:var(--cream); letter-spacing:-0.01em; }
+  .login-card h1 { font-family:'Playfair Display',serif; font-size:26px; font-weight:700; color:var(--cream); margin-bottom:0.35rem; line-height:1.2; }
+  .login-card > p { color:var(--muted); font-size:14px; margin-bottom:2rem; }
 
-  #login-screen::after {
-    content: '';
-    position: absolute;
-    bottom: -80px; left: -80px;
-    width: 300px; height: 300px;
-    border-radius: 50%;
-    background: rgba(254,242,222,0.04);
-    pointer-events: none;
-  }
-
-  .login-card {
-    width: 100%;
-    max-width: 400px;
-    background: var(--navy-soft);
-    border: 1px solid var(--border2);
-    border-radius: var(--radius);
-    padding: 2.75rem 2.25rem;
-    position: relative;
-    z-index: 1;
-  }
-
-  .brand-mark {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    margin-bottom: 2rem;
-  }
-
-  .brand-s {
-    width: 38px; height: 38px;
-    background: var(--orange);
-    border-radius: 9px;
-    display: flex; align-items: center; justify-content: center;
-    font-family: 'Playfair Display', serif;
-    font-size: 20px;
-    font-weight: 800;
-    color: var(--cream);
-    letter-spacing: -1px;
-    flex-shrink: 0;
-  }
-
-  .brand-name {
-    font-family: 'DM Sans', sans-serif;
-    font-size: 17px;
-    font-weight: 500;
-    color: var(--cream);
-    letter-spacing: -0.01em;
-  }
-
-  .login-card h1 {
-    font-family: 'Playfair Display', serif;
-    font-size: 26px;
-    font-weight: 700;
-    color: var(--cream);
-    margin-bottom: 0.35rem;
-    line-height: 1.2;
-  }
-
-  .login-card > p {
-    color: var(--muted);
-    font-size: 14px;
-    margin-bottom: 2rem;
-  }
-
-  label {
-    display: block;
-    font-size: 12px;
-    font-weight: 500;
-    color: var(--muted);
-    margin-bottom: 7px;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-  }
+  label { display:block; font-size:12px; font-weight:500; color:var(--muted); margin-bottom:7px; text-transform:uppercase; letter-spacing:0.08em; }
 
   input, select {
-    width: 100%;
-    background: rgba(254,242,222,0.06);
-    border: 1px solid var(--border2);
-    border-radius: var(--radius-sm);
-    color: var(--cream);
-    font-family: 'DM Sans', sans-serif;
-    font-size: 15px;
-    padding: 11px 14px;
-    outline: none;
-    transition: border-color 0.15s, background 0.15s;
-    appearance: none;
-    -webkit-appearance: none;
+    width:100%; background:rgba(254,242,222,0.06); border:1px solid var(--border2); border-radius:var(--radius-sm);
+    color:var(--cream); font-family:'DM Sans',sans-serif; font-size:15px; padding:11px 14px;
+    outline:none; transition:border-color 0.15s,background 0.15s; appearance:none; -webkit-appearance:none;
   }
+  input::placeholder { color:var(--muted); }
+  input:focus { border-color:var(--orange); background:rgba(255,100,50,0.06); }
 
-  input::placeholder { color: var(--muted); }
-  input:focus, select:focus {
-    border-color: var(--orange);
-    background: rgba(255,100,50,0.06);
-  }
+  .btn { display:inline-flex; align-items:center; justify-content:center; gap:8px; padding:11px 20px; border-radius:var(--radius-sm); border:none; font-family:'DM Sans',sans-serif; font-size:15px; font-weight:500; cursor:pointer; transition:all 0.15s; letter-spacing:-0.01em; }
+  .btn-primary { background:var(--orange); color:var(--cream); width:100%; padding:13px; }
+  .btn-primary:hover { background:#e8522a; }
+  .btn-primary:active { transform:scale(0.98); }
+  .btn-primary:disabled { opacity:0.45; cursor:not-allowed; }
+  .btn-cream { background:transparent; color:var(--cream); border:1px solid var(--border2); font-size:13px; padding:8px 14px; }
+  .btn-cream:hover { background:rgba(254,242,222,0.07); border-color:var(--cream-dim); }
+  .btn-danger { background:transparent; color:var(--orange); border:1px solid rgba(255,100,50,0.3); font-size:13px; padding:8px 14px; }
+  .btn-danger:hover { background:rgba(255,100,50,0.1); }
 
-  .btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    padding: 11px 20px;
-    border-radius: var(--radius-sm);
-    border: none;
-    font-family: 'DM Sans', sans-serif;
-    font-size: 15px;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.15s;
-    text-decoration: none;
-    letter-spacing: -0.01em;
-  }
+  .error-msg { background:rgba(255,100,50,0.1); border:1px solid rgba(255,100,50,0.3); color:#ffb39a; border-radius:var(--radius-sm); padding:10px 14px; font-size:13px; margin-top:1rem; display:none; }
 
-  .btn-primary {
-    background: var(--orange);
-    color: var(--cream);
-    width: 100%;
-    padding: 13px;
-  }
-  .btn-primary:hover { background: #e8522a; }
-  .btn-primary:active { transform: scale(0.98); }
-  .btn-primary:disabled { opacity: 0.45; cursor: not-allowed; }
+  #app { display:none; min-height:100vh; }
 
-  .btn-cream {
-    background: transparent;
-    color: var(--cream);
-    border: 1px solid var(--border2);
-    font-size: 13px;
-    padding: 8px 14px;
-  }
-  .btn-cream:hover { background: rgba(254,242,222,0.07); border-color: var(--cream-dim); }
+  .sidebar { position:fixed; top:0; left:0; width:224px; height:100vh; background:var(--navy-deep); border-right:1px solid var(--border); padding:1.5rem 1rem; display:flex; flex-direction:column; gap:2px; z-index:10; }
+  .sidebar-brand { display:flex; align-items:center; gap:10px; padding:0.5rem 0.75rem 1.25rem; }
+  .nav-item { display:flex; align-items:center; gap:10px; padding:9px 12px; border-radius:var(--radius-sm); font-size:14px; color:var(--muted); cursor:pointer; transition:all 0.12s; border:none; background:none; width:100%; font-family:'DM Sans',sans-serif; text-align:left; }
+  .nav-item:hover { background:rgba(254,242,222,0.05); color:var(--cream); }
+  .nav-item.active { background:rgba(255,100,50,0.12); color:var(--orange); }
+  .nav-icon { font-size:15px; width:20px; text-align:center; }
+  .sidebar-footer { margin-top:auto; padding-top:1rem; border-top:1px solid var(--border); }
 
-  .btn-danger {
-    background: transparent;
-    color: var(--orange);
-    border: 1px solid rgba(255,100,50,0.3);
-    font-size: 13px;
-    padding: 8px 14px;
-  }
-  .btn-danger:hover { background: rgba(255,100,50,0.1); }
+  .main { margin-left:224px; padding:2.25rem 2.5rem; min-height:100vh; }
+  .page { display:none; }
+  .page.active { display:block; }
 
-  .error-msg {
-    background: rgba(255,100,50,0.1);
-    border: 1px solid rgba(255,100,50,0.3);
-    color: #ffb39a;
-    border-radius: var(--radius-sm);
-    padding: 10px 14px;
-    font-size: 13px;
-    margin-top: 1rem;
-    display: none;
-  }
+  .page-header { display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:2rem; }
+  .page-header h2 { font-family:'Playfair Display',serif; font-size:26px; font-weight:700; color:var(--cream); letter-spacing:-0.02em; line-height:1.2; }
+  .page-header p { font-size:14px; color:var(--muted); margin-top:3px; }
 
-  /* ── App ── */
-  #app { display: none; min-height: 100vh; }
+  .stats-row { display:grid; grid-template-columns:repeat(3,1fr); gap:1rem; margin-bottom:1.75rem; }
+  .stat-card { background:var(--navy-soft); border:1px solid var(--border); border-radius:var(--radius); padding:1.25rem 1.5rem; position:relative; overflow:hidden; }
+  .stat-card::after { content:''; position:absolute; top:0; right:0; width:60px; height:60px; border-radius:0 var(--radius) 0 60px; background:rgba(254,242,222,0.03); }
+  .stat-label { font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:0.09em; font-weight:500; margin-bottom:0.6rem; }
+  .stat-value { font-family:'Playfair Display',serif; font-size:36px; font-weight:700; letter-spacing:-0.03em; color:var(--cream); line-height:1; }
+  .stat-value.orange { color:var(--orange); }
 
-  .sidebar {
-    position: fixed;
-    top: 0; left: 0;
-    width: 224px;
-    height: 100vh;
-    background: var(--navy-deep);
-    border-right: 1px solid var(--border);
-    padding: 1.5rem 1rem;
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-    z-index: 10;
-  }
+  .card { background:var(--navy-soft); border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; }
+  .card-header { padding:1.25rem 1.5rem; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; }
+  .card-header h3 { font-size:15px; font-weight:500; color:var(--cream); }
 
-  .sidebar-brand {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 0.5rem 0.75rem 1.25rem;
-  }
+  .automation-row { display:flex; align-items:center; padding:1rem 1.5rem; border-bottom:1px solid var(--border); gap:1rem; transition:background 0.1s; }
+  .automation-row:last-child { border-bottom:none; }
+  .automation-row:hover { background:rgba(254,242,222,0.03); }
+  .auto-name { font-weight:500; font-size:14px; color:var(--cream); }
+  .auto-meta { display:flex; gap:7px; margin-top:5px; flex-wrap:wrap; }
+  .auto-actions { margin-left:auto; flex-shrink:0; }
 
-  .nav-item {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 9px 12px;
-    border-radius: var(--radius-sm);
-    font-size: 14px;
-    color: var(--muted);
-    cursor: pointer;
-    transition: all 0.12s;
-    border: none;
-    background: none;
-    width: 100%;
-    font-family: 'DM Sans', sans-serif;
-    text-align: left;
-  }
+  .chip { display:inline-flex; align-items:center; gap:5px; font-size:11px; padding:3px 10px; border-radius:100px; font-weight:500; border:1px solid; letter-spacing:0.01em; }
+  .chip-hs   { color:var(--cream-dim); border-color:rgba(254,242,222,0.2); background:rgba(254,242,222,0.06); }
+  .chip-in   { color:var(--orange);    border-color:rgba(255,100,50,0.3);  background:rgba(255,100,50,0.08); }
+  .chip-form { color:var(--teal);      border-color:rgba(45,212,191,0.3);  background:rgba(45,212,191,0.08); }
+  .chip-active { color:#86efac; border-color:rgba(134,239,172,0.25); background:rgba(134,239,172,0.08); }
 
-  .nav-item:hover { background: rgba(254,242,222,0.05); color: var(--cream); }
-  .nav-item.active { background: rgba(255,100,50,0.12); color: var(--orange); }
-  .nav-icon { font-size: 15px; width: 20px; text-align: center; }
+  .empty-state { padding:3.5rem; text-align:center; color:var(--muted); }
+  .empty-icon { font-size:28px; margin-bottom:0.75rem; }
+  .empty-state p { font-size:14px; }
 
-  .sidebar-footer {
-    margin-top: auto;
-    padding-top: 1rem;
-    border-top: 1px solid var(--border);
-  }
+  .tab-bar { display:flex; gap:4px; background:rgba(254,242,222,0.04); border:1px solid var(--border); border-radius:var(--radius-sm); padding:4px; margin-bottom:1.75rem; max-width:560px; }
+  .tab-btn { flex:1; padding:9px 16px; border-radius:7px; border:none; background:transparent; color:var(--muted); font-family:'DM Sans',sans-serif; font-size:13px; font-weight:500; cursor:pointer; transition:all 0.15s; }
+  .tab-btn:hover { color:var(--cream); background:rgba(254,242,222,0.06); }
+  .tab-btn.active { background:var(--navy-soft); color:var(--cream); border:1px solid var(--border2); }
+  .tab-btn.active.teal { color:var(--teal); border-color:rgba(45,212,191,0.3); }
+  .tab-panel { display:none; }
+  .tab-panel.active { display:block; }
 
-  .main {
-    margin-left: 224px;
-    padding: 2.25rem 2.5rem;
-    min-height: 100vh;
-  }
+  .form-card { background:var(--navy-soft); border:1px solid var(--border); border-radius:var(--radius); padding:2.25rem; max-width:560px; }
+  .form-card h3 { font-family:'Playfair Display',serif; font-size:20px; font-weight:700; margin-bottom:0.4rem; color:var(--cream); }
+  .form-desc { color:var(--muted); font-size:14px; margin-bottom:2rem; line-height:1.65; }
+  .form-row { margin-bottom:1.25rem; }
+  .form-footer { display:flex; gap:10px; margin-top:2rem; }
+  .form-footer .btn-primary { flex:1; width:auto; }
 
-  .page { display: none; }
-  .page.active { display: block; }
+  .orange-bar { height:3px; background:var(--orange); border-radius:2px; width:36px; margin:0.5rem 0 1.5rem; }
+  .badge-count { background:rgba(255,100,50,0.15); color:var(--orange); font-size:12px; font-weight:600; padding:2px 9px; border-radius:100px; }
 
-  .page-header {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    margin-bottom: 2rem;
-  }
+  .toast { position:fixed; bottom:2rem; right:2rem; background:var(--navy-soft); border:1px solid var(--border2); border-radius:var(--radius-sm); padding:12px 18px; font-size:14px; font-weight:500; z-index:100; transform:translateY(70px); opacity:0; transition:all 0.22s; color:var(--cream); }
+  .toast.show { transform:translateY(0); opacity:1; }
+  .toast.success { border-color:rgba(134,239,172,0.35); }
+  .toast.error   { border-color:rgba(255,100,50,0.4); color:#ffb39a; }
 
-  .page-header h2 {
-    font-family: 'Playfair Display', serif;
-    font-size: 26px;
-    font-weight: 700;
-    color: var(--cream);
-    letter-spacing: -0.02em;
-    line-height: 1.2;
-  }
-
-  .page-header p {
-    font-size: 14px;
-    color: var(--muted);
-    margin-top: 3px;
-  }
-
-  /* ── Stats ── */
-  .stats-row {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 1rem;
-    margin-bottom: 1.75rem;
-  }
-
-  .stat-card {
-    background: var(--navy-soft);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 1.25rem 1.5rem;
-    position: relative;
-    overflow: hidden;
-  }
-
-  .stat-card::after {
-    content: '';
-    position: absolute;
-    top: 0; right: 0;
-    width: 60px; height: 60px;
-    border-radius: 0 var(--radius) 0 60px;
-    background: rgba(254,242,222,0.03);
-  }
-
-  .stat-label {
-    font-size: 11px;
-    color: var(--muted);
-    text-transform: uppercase;
-    letter-spacing: 0.09em;
-    font-weight: 500;
-    margin-bottom: 0.6rem;
-  }
-
-  .stat-value {
-    font-family: 'Playfair Display', serif;
-    font-size: 36px;
-    font-weight: 700;
-    letter-spacing: -0.03em;
-    color: var(--cream);
-    line-height: 1;
-  }
-
-  .stat-value.orange { color: var(--orange); }
-
-  /* ── Card ── */
-  .card {
-    background: var(--navy-soft);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    overflow: hidden;
-  }
-
-  .card-header {
-    padding: 1.25rem 1.5rem;
-    border-bottom: 1px solid var(--border);
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-  }
-
-  .card-header h3 {
-    font-size: 15px;
-    font-weight: 500;
-    color: var(--cream);
-  }
-
-  .automation-row {
-    display: flex;
-    align-items: center;
-    padding: 1rem 1.5rem;
-    border-bottom: 1px solid var(--border);
-    gap: 1rem;
-    transition: background 0.1s;
-  }
-
-  .automation-row:last-child { border-bottom: none; }
-  .automation-row:hover { background: rgba(254,242,222,0.03); }
-
-  .auto-name {
-    font-weight: 500;
-    font-size: 14px;
-    color: var(--cream);
-  }
-
-  .auto-meta {
-    display: flex;
-    gap: 7px;
-    margin-top: 5px;
-    flex-wrap: wrap;
-  }
-
-  .chip {
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-    font-size: 11px;
-    padding: 3px 10px;
-    border-radius: 100px;
-    font-weight: 500;
-    border: 1px solid;
-    letter-spacing: 0.01em;
-  }
-
-  .chip-hs {
-    color: var(--cream-dim);
-    border-color: rgba(254,242,222,0.2);
-    background: rgba(254,242,222,0.06);
-  }
-
-  .chip-in {
-    color: var(--orange);
-    border-color: rgba(255,100,50,0.3);
-    background: rgba(255,100,50,0.08);
-  }
-
-  .chip-active {
-    color: #86efac;
-    border-color: rgba(134,239,172,0.25);
-    background: rgba(134,239,172,0.08);
-  }
-
-  .auto-actions { margin-left: auto; flex-shrink: 0; }
-
-  .empty-state {
-    padding: 3.5rem;
-    text-align: center;
-    color: var(--muted);
-  }
-
-  .empty-icon { font-size: 28px; margin-bottom: 0.75rem; }
-  .empty-state p { font-size: 14px; }
-
-  /* ── Form ── */
-  .form-card {
-    background: var(--navy-soft);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 2.25rem;
-    max-width: 560px;
-  }
-
-  .form-card h3 {
-    font-family: 'Playfair Display', serif;
-    font-size: 20px;
-    font-weight: 700;
-    margin-bottom: 0.4rem;
-    color: var(--cream);
-  }
-
-  .form-card > p {
-    color: var(--muted);
-    font-size: 14px;
-    margin-bottom: 2rem;
-    line-height: 1.65;
-  }
-
-  .form-row { margin-bottom: 1.25rem; }
-
-  .form-footer {
-    display: flex;
-    gap: 10px;
-    margin-top: 2rem;
-  }
-
-  .form-footer .btn-primary { flex: 1; width: auto; }
-
-  /* ── Divider ── */
-  .orange-bar {
-    height: 3px;
-    background: var(--orange);
-    border-radius: 2px;
-    width: 36px;
-    margin: 0.5rem 0 1.5rem;
-  }
-
-  /* ── Badge ── */
-  .badge-count {
-    background: rgba(255,100,50,0.15);
-    color: var(--orange);
-    font-size: 12px;
-    font-weight: 600;
-    padding: 2px 9px;
-    border-radius: 100px;
-  }
-
-  /* ── Toast ── */
-  .toast {
-    position: fixed;
-    bottom: 2rem; right: 2rem;
-    background: var(--navy-soft);
-    border: 1px solid var(--border2);
-    border-radius: var(--radius-sm);
-    padding: 12px 18px;
-    font-size: 14px;
-    font-weight: 500;
-    z-index: 100;
-    transform: translateY(70px);
-    opacity: 0;
-    transition: all 0.22s;
-    color: var(--cream);
-  }
-  .toast.show { transform: translateY(0); opacity: 1; }
-  .toast.success { border-color: rgba(134,239,172,0.35); }
-  .toast.error   { border-color: rgba(255,100,50,0.4); color: #ffb39a; }
-
-  /* ── Searchable dropdown ── */
-  .search-select {
-    position: relative;
-  }
-
-  .search-select input {
-    width: 100%;
-    padding-right: 36px;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23fef2de' opacity='0.4' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
-    background-repeat: no-repeat;
-    background-position: right 14px center;
-  }
-
-  .search-select input.has-value {
-    border-color: var(--orange);
-    background-color: rgba(255,100,50,0.06);
-  }
-
-  .search-dropdown {
-    display: none;
-    position: absolute;
-    top: calc(100% + 4px);
-    left: 0; right: 0;
-    background: #0f1f2e;
-    border: 1px solid var(--border2);
-    border-radius: var(--radius-sm);
-    max-height: 220px;
-    overflow-y: auto;
-    z-index: 50;
-    box-shadow: 0 8px 24px rgba(0,0,0,0.4);
-  }
-
-  .search-dropdown.open { display: block; }
-
-  .search-option {
-    padding: 10px 14px;
-    font-size: 14px;
-    color: var(--cream);
-    cursor: pointer;
-    transition: background 0.1s;
-    border-bottom: 1px solid rgba(254,242,222,0.05);
-  }
-
-  .search-option:last-child { border-bottom: none; }
-  .search-option:hover { background: rgba(255,100,50,0.1); color: var(--cream); }
-  .search-option.selected { background: rgba(255,100,50,0.15); color: var(--orange); }
-
-  .search-option-empty {
-    padding: 12px 14px;
-    font-size: 13px;
-    color: var(--muted);
-    font-style: italic;
-  }
-
-  .search-dropdown::-webkit-scrollbar { width: 4px; }
-  .search-dropdown::-webkit-scrollbar-track { background: transparent; }
-  .search-dropdown::-webkit-scrollbar-thumb { background: rgba(254,242,222,0.15); border-radius: 2px; }
+  .search-select { position:relative; }
+  .search-select input { padding-right:36px; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23fef2de' opacity='0.4' d='M6 8L1 3h10z'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 14px center; }
+  .search-select input.has-value { border-color:var(--orange); background-color:rgba(255,100,50,0.06); }
+  .search-dropdown { display:none; position:absolute; top:calc(100% + 4px); left:0; right:0; background:#0f1f2e; border:1px solid var(--border2); border-radius:var(--radius-sm); max-height:220px; overflow-y:auto; z-index:50; box-shadow:0 8px 24px rgba(0,0,0,0.4); }
+  .search-dropdown.open { display:block; }
+  .search-option { padding:10px 14px; font-size:14px; color:var(--cream); cursor:pointer; transition:background 0.1s; border-bottom:1px solid rgba(254,242,222,0.05); }
+  .search-option:last-child { border-bottom:none; }
+  .search-option:hover { background:rgba(255,100,50,0.1); }
+  .search-option.selected { background:rgba(255,100,50,0.15); color:var(--orange); }
+  .search-option-empty { padding:12px 14px; font-size:13px; color:var(--muted); font-style:italic; }
+  .search-dropdown::-webkit-scrollbar { width:4px; }
+  .search-dropdown::-webkit-scrollbar-thumb { background:rgba(254,242,222,0.15); border-radius:2px; }
 </style>
 </head>
 <body>
@@ -564,7 +155,7 @@
     </div>
     <h1>Automation Hub</h1>
     <div class="orange-bar"></div>
-    <p>Sign in to manage your HubSpot → Instantly automations</p>
+    <p>Sign in to manage your HubSpot automations</p>
     <div class="form-row">
       <label>Team password</label>
       <input type="password" id="pw-input" placeholder="Enter password" onkeydown="if(event.key==='Enter')login()">
@@ -602,23 +193,23 @@
         <div>
           <h2>Automations</h2>
           <div class="orange-bar" style="margin-top:8px;margin-bottom:0;"></div>
-          <p style="margin-top:10px;">HubSpot lists syncing to Instantly campaigns</p>
+          <p style="margin-top:10px;">HubSpot lists syncing to your outreach channels</p>
         </div>
         <button class="btn btn-primary" style="width:auto;padding:11px 20px;margin-top:4px;" onclick="showPage('add')">+ New automation</button>
       </div>
 
       <div class="stats-row">
         <div class="stat-card">
-          <div class="stat-label">Active automations</div>
+          <div class="stat-label">Total automations</div>
           <div class="stat-value orange" id="stat-total">—</div>
         </div>
         <div class="stat-card">
-          <div class="stat-label">HubSpot lists</div>
-          <div class="stat-value" id="stat-lists">—</div>
+          <div class="stat-label">Instantly automations</div>
+          <div class="stat-value" id="stat-instantly">—</div>
         </div>
         <div class="stat-card">
-          <div class="stat-label">Instantly campaigns</div>
-          <div class="stat-value" id="stat-camps">—</div>
+          <div class="stat-label">HS form automations</div>
+          <div class="stat-value" id="stat-forms">—</div>
         </div>
       </div>
 
@@ -639,43 +230,78 @@
         <div>
           <h2>New automation</h2>
           <div class="orange-bar" style="margin-top:8px;margin-bottom:0;"></div>
-          <p style="margin-top:10px;">Connect a HubSpot list to an Instantly campaign</p>
+          <p style="margin-top:10px;">Choose how to reach contacts from your HubSpot list</p>
         </div>
       </div>
 
-      <div class="form-card">
-        <h3>Set up your automation</h3>
-        <p>When a contact is added to the selected HubSpot list, they'll be enrolled in your Instantly campaign automatically — with duplicate protection built in.</p>
-
-        <div class="form-row">
-          <label>Automation name</label>
-          <input type="text" id="auto-name" placeholder="e.g. Cold UK Leads → Q1 Outreach">
-        </div>
-
-        <div class="form-row">
-          <label>HubSpot list</label>
-          <div class="search-select" id="hs-wrap">
-            <input type="text" id="hs-search" placeholder="Search HubSpot lists…" autocomplete="off">
-            <div class="search-dropdown" id="hs-dropdown"></div>
-          </div>
-        </div>
-
-        <div class="form-row">
-          <label>Instantly campaign</label>
-          <div class="search-select" id="camp-wrap">
-            <input type="text" id="camp-search" placeholder="Search Instantly campaigns…" autocomplete="off">
-            <div class="search-dropdown" id="camp-dropdown"></div>
-          </div>
-        </div>
-
-        <div class="form-footer">
-          <button class="btn btn-cream" onclick="showPage('dashboard')">Cancel</button>
-          <button class="btn btn-primary" onclick="createAutomation()" id="create-btn">Create automation</button>
-        </div>
-        <div class="error-msg" id="form-error"></div>
+      <div class="tab-bar">
+        <button class="tab-btn active" id="tab-btn-instantly" onclick="switchTab('instantly')">Instantly Automation</button>
+        <button class="tab-btn teal" id="tab-btn-hubspot_form" onclick="switchTab('hubspot_form')">HS Form Fill Sequence</button>
       </div>
+
+      <!-- Tab: Instantly -->
+      <div class="tab-panel active" id="tab-instantly">
+        <div class="form-card">
+          <h3>Instantly Automation</h3>
+          <p class="form-desc">Contacts added to the HubSpot list will be enrolled in your Instantly email campaign automatically, with duplicate protection.</p>
+          <div class="form-row">
+            <label>Automation name</label>
+            <input type="text" id="auto-name-instantly" placeholder="e.g. Cold UK Leads → Q1 Outreach">
+          </div>
+          <div class="form-row">
+            <label>HubSpot list</label>
+            <div class="search-select">
+              <input type="text" id="hs-search-instantly" placeholder="Search HubSpot lists…" autocomplete="off">
+              <div class="search-dropdown" id="hs-dropdown-instantly"></div>
+            </div>
+          </div>
+          <div class="form-row">
+            <label>Instantly campaign</label>
+            <div class="search-select">
+              <input type="text" id="camp-search" placeholder="Search Instantly campaigns…" autocomplete="off">
+              <div class="search-dropdown" id="camp-dropdown"></div>
+            </div>
+          </div>
+          <div class="form-footer">
+            <button class="btn btn-cream" onclick="showPage('dashboard')">Cancel</button>
+            <button class="btn btn-primary" onclick="createAutomation('instantly')" id="create-btn-instantly">Create automation</button>
+          </div>
+          <div class="error-msg" id="form-error-instantly"></div>
+        </div>
+      </div>
+
+      <!-- Tab: HS Form Fill -->
+      <div class="tab-panel" id="tab-hubspot_form">
+        <div class="form-card" style="border-color:rgba(45,212,191,0.2);">
+          <h3 style="color:var(--teal);">HS Form Fill Sequence</h3>
+          <p class="form-desc">Contacts added to the HubSpot list will have a form submitted on their behalf, triggering any HubSpot sequence attached to that form.</p>
+          <div class="form-row">
+            <label>Automation name</label>
+            <input type="text" id="auto-name-hubspot_form" placeholder="e.g. New Leads → Nurture Sequence">
+          </div>
+          <div class="form-row">
+            <label>HubSpot list</label>
+            <div class="search-select">
+              <input type="text" id="hs-search-hubspot_form" placeholder="Search HubSpot lists…" autocomplete="off">
+              <div class="search-dropdown" id="hs-dropdown-hubspot_form"></div>
+            </div>
+          </div>
+          <div class="form-row">
+            <label>HubSpot form</label>
+            <div class="search-select">
+              <input type="text" id="form-search" placeholder="Search HubSpot forms…" autocomplete="off">
+              <div class="search-dropdown" id="form-dropdown"></div>
+            </div>
+          </div>
+          <div class="form-footer">
+            <button class="btn btn-cream" onclick="showPage('dashboard')">Cancel</button>
+            <button class="btn btn-primary" onclick="createAutomation('hubspot_form')" id="create-btn-hubspot_form" style="background:var(--teal);color:#0f1f2e;">Create automation</button>
+          </div>
+          <div class="error-msg" id="form-error-hubspot_form"></div>
+        </div>
+      </div>
+
     </div>
-
   </main>
 </div>
 
@@ -685,10 +311,12 @@
 const BASE = '/api';
 let TOKEN = '';
 let automations = [];
-let hsList = [];
-let campList = [];
-let hsSelected = { id: '', name: '' };
-let campSelected = { id: '', name: '' };
+let hsList = [], campList = [], formList = [];
+let hsSelectedInstantly = { id:'', name:'' };
+let hsSelectedForm      = { id:'', name:'' };
+let campSelected        = { id:'', name:'' };
+let formSelected        = { id:'', name:'' };
+let dropdownsLoaded = false;
 
 function showToast(msg, type='success') {
   const t = document.getElementById('toast');
@@ -703,10 +331,7 @@ async function login() {
   const err = document.getElementById('login-error');
   btn.disabled = true; btn.textContent = 'Signing in…'; err.style.display = 'none';
   try {
-    const res = await fetch(`${BASE}/login`, {
-      method: 'POST', headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({password: pw})
-    });
+    const res = await fetch(`${BASE}/login`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({password:pw}) });
     const data = await res.json();
     if (res.ok) {
       TOKEN = data.token;
@@ -730,14 +355,21 @@ function showPage(page) {
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   document.getElementById(`page-${page}`).classList.add('active');
   document.getElementById(`nav-${page}`)?.classList.add('active');
-  if (page === 'add') loadDropdowns();
+  if (page === 'add' && !dropdownsLoaded) loadDropdowns();
+}
+
+function switchTab(tab) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.getElementById(`tab-btn-${tab}`).classList.add('active');
+  document.getElementById(`tab-${tab}`).classList.add('active');
 }
 
 async function api(method, path, body) {
-  const opts = { method, headers: {'Content-Type':'application/json','X-Auth-Token':TOKEN} };
+  const opts = { method, headers:{'Content-Type':'application/json','X-Auth-Token':TOKEN} };
   if (body) opts.body = JSON.stringify(body);
   const res = await fetch(`${BASE}${path}`, opts);
-  return { ok: res.ok, status: res.status, data: await res.json() };
+  return { ok:res.ok, status:res.status, data:await res.json() };
 }
 
 async function loadAutomations() {
@@ -755,40 +387,44 @@ async function loadAutomations() {
 function renderAutomations() {
   const list = document.getElementById('automations-list');
   const count = automations.length;
+  const instantlyCount = automations.filter(a => a.delivery_type !== 'hubspot_form').length;
+  const formCount = automations.filter(a => a.delivery_type === 'hubspot_form').length;
+
   document.getElementById('auto-count').textContent = count;
   document.getElementById('stat-total').textContent = count || '0';
-  document.getElementById('stat-lists').textContent = new Set(automations.map(a=>a.hubspot_list_id)).size || '0';
-  document.getElementById('stat-camps').textContent = new Set(automations.map(a=>a.instantly_campaign_id)).size || '0';
+  document.getElementById('stat-instantly').textContent = instantlyCount || '0';
+  document.getElementById('stat-forms').textContent = formCount || '0';
 
   if (!count) {
-    list.innerHTML = `<div class="empty-state">
-      <div class="empty-icon">⚡</div>
-      <p>No automations yet.<br>Create your first one to get started.</p>
-    </div>`;
+    list.innerHTML = `<div class="empty-state"><div class="empty-icon">⚡</div><p>No automations yet.<br>Create your first one to get started.</p></div>`;
     return;
   }
 
-  list.innerHTML = automations.map(a => `
-    <div class="automation-row" id="row-${a.id}">
+  list.innerHTML = automations.map(a => {
+    const isForm = a.delivery_type === 'hubspot_form';
+    const deliveryChip = isForm
+      ? `<span class="chip chip-form">HS Form · ${esc(a.hubspot_form_name || a.hubspot_form_id)}</span>`
+      : `<span class="chip chip-in">Instantly · ${esc(a.instantly_campaign_name || a.instantly_campaign_id)}</span>`;
+    return `<div class="automation-row" id="row-${a.id}">
       <div style="flex:1;min-width:0;">
         <div class="auto-name">${esc(a.name)}</div>
         <div class="auto-meta">
           <span class="chip chip-hs">HubSpot · ${esc(a.hubspot_list_name || a.hubspot_list_id)}</span>
-          <span class="chip chip-in">Instantly · ${esc(a.instantly_campaign_name || a.instantly_campaign_id)}</span>
+          ${deliveryChip}
           <span class="chip chip-active">● Active</span>
         </div>
       </div>
       <div class="auto-actions">
-        <button class="btn btn-danger" onclick="deleteAutomation('${a.id}')">Remove</button>
+        <button class="btn btn-danger" onclick="deleteAutomation('${esc(a.id)}')">Remove</button>
       </div>
-    </div>
-  `).join('');
+    </div>`;
+  }).join('');
 }
 
-/* ── Searchable dropdown ── */
 function initSearchSelect(inputId, dropdownId, items, selectedObj, placeholder) {
   const input = document.getElementById(inputId);
   const dropdown = document.getElementById(dropdownId);
+  if (!input || !dropdown) return;
 
   function renderOptions(filter) {
     const q = filter.trim().toLowerCase();
@@ -797,16 +433,13 @@ function initSearchSelect(inputId, dropdownId, items, selectedObj, placeholder) 
       dropdown.innerHTML = `<div class="search-option-empty">No results for "${esc(filter)}"</div>`;
     } else {
       dropdown.innerHTML = filtered.map(x =>
-        `<div class="search-option${selectedObj.id === x.id ? ' selected' : ''}"
-              data-id="${esc(x.id)}" data-name="${esc(x.name)}">${esc(x.name)}</div>`
+        `<div class="search-option${selectedObj.id===x.id?' selected':''}" data-id="${esc(x.id)}" data-name="${esc(x.name)}">${esc(x.name)}</div>`
       ).join('');
       dropdown.querySelectorAll('.search-option').forEach(el => {
         el.addEventListener('mousedown', e => {
           e.preventDefault();
-          selectedObj.id   = el.dataset.id;
-          selectedObj.name = el.dataset.name;
-          input.value = el.dataset.name;
-          input.classList.add('has-value');
+          selectedObj.id = el.dataset.id; selectedObj.name = el.dataset.name;
+          input.value = el.dataset.name; input.classList.add('has-value');
           dropdown.classList.remove('open');
         });
       });
@@ -816,93 +449,94 @@ function initSearchSelect(inputId, dropdownId, items, selectedObj, placeholder) 
 
   input.addEventListener('focus', () => renderOptions(input.value));
   input.addEventListener('input', () => {
-    selectedObj.id = '';
-    selectedObj.name = '';
+    selectedObj.id=''; selectedObj.name='';
     input.classList.remove('has-value');
     renderOptions(input.value);
   });
   input.addEventListener('blur', () => {
     setTimeout(() => dropdown.classList.remove('open'), 150);
-    if (!selectedObj.id) {
-      input.value = '';
-      input.classList.remove('has-value');
-    }
+    if (!selectedObj.id) { input.value=''; input.classList.remove('has-value'); }
   });
   input.placeholder = placeholder;
 }
 
 function resetSearchSelect(inputId, dropdownId, selectedObj) {
-  selectedObj.id = '';
-  selectedObj.name = '';
+  selectedObj.id=''; selectedObj.name='';
   const input = document.getElementById(inputId);
-  input.value = '';
-  input.classList.remove('has-value');
-  document.getElementById(dropdownId).classList.remove('open');
+  if (input) { input.value=''; input.classList.remove('has-value'); }
+  const dd = document.getElementById(dropdownId);
+  if (dd) dd.classList.remove('open');
 }
 
 async function loadDropdowns() {
-  const hsInput   = document.getElementById('hs-search');
-  const campInput = document.getElementById('camp-search');
-  hsInput.placeholder   = 'Loading HubSpot lists…';
-  campInput.placeholder = 'Loading Instantly campaigns…';
-  hsInput.disabled = campInput.disabled = true;
+  dropdownsLoaded = true;
+  const ids = ['hs-search-instantly','hs-search-hubspot_form','camp-search','form-search'];
+  ids.forEach(id => { const el=document.getElementById(id); if(el){el.disabled=true; el.placeholder='Loading…';} });
 
   try {
-    const [l, c] = await Promise.all([api('GET','/lists'), api('GET','/campaigns')]);
+    const [l, c, f] = await Promise.all([api('GET','/lists'), api('GET','/campaigns'), api('GET','/forms')]);
 
-    if (!l.ok || !Array.isArray(l.data)) {
-      hsInput.placeholder = `Error: ${(l.data&&l.data.error)||'unexpected response'}`;
-    } else {
+    if (l.ok && Array.isArray(l.data)) {
       hsList = l.data;
-      initSearchSelect('hs-search', 'hs-dropdown', hsList, hsSelected, 'Search HubSpot lists…');
+      initSearchSelect('hs-search-instantly',   'hs-dropdown-instantly',   hsList, hsSelectedInstantly, 'Search HubSpot lists…');
+      initSearchSelect('hs-search-hubspot_form','hs-dropdown-hubspot_form',hsList, hsSelectedForm,      'Search HubSpot lists…');
+    } else {
+      ['hs-search-instantly','hs-search-hubspot_form'].forEach(id => {
+        const el=document.getElementById(id); if(el) el.placeholder=`Error: ${(l.data&&l.data.error)||'failed'}`;
+      });
     }
 
-    if (!c.ok || !Array.isArray(c.data)) {
-      campInput.placeholder = `Error: ${(c.data&&c.data.error)||'unexpected response'}`;
-    } else {
+    if (c.ok && Array.isArray(c.data)) {
       campList = c.data;
-      initSearchSelect('camp-search', 'camp-dropdown', campList, campSelected, 'Search Instantly campaigns…');
+      initSearchSelect('camp-search','camp-dropdown',campList,campSelected,'Search Instantly campaigns…');
+    } else {
+      const el=document.getElementById('camp-search'); if(el) el.placeholder=`Error: ${(c.data&&c.data.error)||'failed'}`;
+    }
+
+    if (f.ok && Array.isArray(f.data)) {
+      formList = f.data;
+      initSearchSelect('form-search','form-dropdown',formList,formSelected,'Search HubSpot forms…');
+    } else {
+      const el=document.getElementById('form-search'); if(el) el.placeholder=`Error: ${(f.data&&f.data.error)||'failed'}`;
     }
   } catch(e) {
-    hsInput.placeholder   = `Network error: ${e.message}`;
-    campInput.placeholder = `Network error: ${e.message}`;
+    ids.forEach(id => { const el=document.getElementById(id); if(el) el.placeholder='Network error'; });
   }
 
-  hsInput.disabled = campInput.disabled = false;
+  ids.forEach(id => { const el=document.getElementById(id); if(el) el.disabled=false; });
 }
 
-async function createAutomation() {
-  const name    = document.getElementById('auto-name').value.trim();
-  const errEl   = document.getElementById('form-error');
-  const btn     = document.getElementById('create-btn');
+async function createAutomation(deliveryType) {
+  const nameEl = document.getElementById(`auto-name-${deliveryType}`);
+  const errEl  = document.getElementById(`form-error-${deliveryType}`);
+  const btn    = document.getElementById(`create-btn-${deliveryType}`);
+  const name   = nameEl.value.trim();
+  const hsSelected = deliveryType === 'instantly' ? hsSelectedInstantly : hsSelectedForm;
 
   errEl.style.display = 'none';
-  if (!name) {
-    errEl.textContent = 'Please enter an automation name.';
-    errEl.style.display = 'block'; return;
-  }
-  if (!hsSelected.id) {
-    errEl.textContent = 'Please select a HubSpot list.';
-    errEl.style.display = 'block'; return;
-  }
-  if (!campSelected.id) {
-    errEl.textContent = 'Please select an Instantly campaign.';
-    errEl.style.display = 'block'; return;
+  if (!name)          { errEl.textContent='Please enter an automation name.'; errEl.style.display='block'; return; }
+  if (!hsSelected.id) { errEl.textContent='Please select a HubSpot list.';   errEl.style.display='block'; return; }
+
+  let payload = { name, delivery_type:deliveryType, hubspot_list_id:hsSelected.id, hubspot_list_name:hsSelected.name };
+
+  if (deliveryType === 'instantly') {
+    if (!campSelected.id) { errEl.textContent='Please select an Instantly campaign.'; errEl.style.display='block'; return; }
+    payload.instantly_campaign_id   = campSelected.id;
+    payload.instantly_campaign_name = campSelected.name;
+  } else {
+    if (!formSelected.id) { errEl.textContent='Please select a HubSpot form.'; errEl.style.display='block'; return; }
+    payload.hubspot_form_id   = formSelected.id;
+    payload.hubspot_form_name = formSelected.name;
   }
 
-  btn.disabled = true; btn.textContent = 'Creating…';
+  btn.disabled=true; btn.textContent='Creating…';
   try {
-    const { ok, data } = await api('POST', '/automations', {
-      name,
-      hubspot_list_id:        hsSelected.id,
-      hubspot_list_name:      hsSelected.name,
-      instantly_campaign_id:  campSelected.id,
-      instantly_campaign_name: campSelected.name,
-    });
+    const { ok, data } = await api('POST', '/automations', payload);
     if (ok) {
-      document.getElementById('auto-name').value = '';
-      resetSearchSelect('hs-search',   'hs-dropdown',   hsSelected);
-      resetSearchSelect('camp-search', 'camp-dropdown', campSelected);
+      nameEl.value = '';
+      resetSearchSelect(`hs-search-${deliveryType}`,`hs-dropdown-${deliveryType}`,hsSelected);
+      if (deliveryType==='instantly') resetSearchSelect('camp-search','camp-dropdown',campSelected);
+      else resetSearchSelect('form-search','form-dropdown',formSelected);
       showToast('Automation created');
       showPage('dashboard');
       loadAutomations();
@@ -911,22 +545,18 @@ async function createAutomation() {
       errEl.style.display = 'block';
     }
   } catch(e) {
-    errEl.textContent = 'Network error. Try again.';
-    errEl.style.display = 'block';
+    errEl.textContent='Network error. Try again.'; errEl.style.display='block';
   }
-  btn.disabled = false; btn.textContent = 'Create automation';
+  btn.disabled=false; btn.textContent='Create automation';
 }
 
 async function deleteAutomation(id) {
   if (!confirm('Remove this automation? Leads already sent won\'t be affected.')) return;
   try {
     const { ok } = await api('DELETE', `/automations/${id}`);
-    if (ok) {
-      automations = automations.filter(a => a.id !== id);
-      renderAutomations();
-      showToast('Automation removed');
-    } else { showToast('Failed to remove', 'error'); }
-  } catch(e) { showToast('Network error', 'error'); }
+    if (ok) { automations=automations.filter(a=>a.id!==id); renderAutomations(); showToast('Automation removed'); }
+    else showToast('Failed to remove','error');
+  } catch(e) { showToast('Network error','error'); }
 }
 
 function esc(str) {
