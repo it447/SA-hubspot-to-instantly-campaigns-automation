@@ -9,6 +9,7 @@ UPSTASH_URL       = os.environ.get("UPSTASH_REDIS_REST_URL", "")
 UPSTASH_TOKEN     = os.environ.get("UPSTASH_REDIS_REST_TOKEN", "")
 INSTANTLY_API_KEY = os.environ.get("INSTANTLY_API_KEY", "")
 HUBSPOT_API_KEY   = os.environ.get("HUBSPOT_API_KEY", "")
+HUBSPOT_PORTAL_ID = os.environ.get("HUBSPOT_PORTAL_ID", "22650739")
 SYNC_SECRET       = os.environ.get("SYNC_SECRET", "")
 
 def _log(msg):
@@ -22,30 +23,20 @@ def _redis_get(key):
     val = data.get("result")
     return json.loads(val) if val else None
 
-def _redis_set(key, value):
-    url = f"{UPSTASH_URL}/set/{key}"
-    body = json.dumps(value).encode()
-    req = Request(url, data=body, headers={
-        "Authorization": f"Bearer {UPSTASH_TOKEN}",
-        "Content-Type": "application/json"
-    }, method="POST")
-    with urlopen(req, timeout=5) as r:
-        return json.loads(r.read())
-
 def get_automations():
     data = _redis_get("automations_config")
     return data if isinstance(data, list) else []
 
-def already_sent(email, campaign_id):
-    key = f"sent:{email.lower()}:{campaign_id}"
+def already_sent(email, target_id):
+    key = f"sent:{email.lower()}:{target_id}"
     url = f"{UPSTASH_URL}/get/{key}"
     req = Request(url, headers={"Authorization": f"Bearer {UPSTASH_TOKEN}"})
     with urlopen(req, timeout=5) as r:
         result = json.loads(r.read())
     return result.get("result") is not None
 
-def mark_as_sent(email, campaign_id):
-    key = f"sent:{email.lower()}:{campaign_id}"
+def mark_as_sent(email, target_id):
+    key = f"sent:{email.lower()}:{target_id}"
     url = f"{UPSTASH_URL}/set/{key}/1"
     req = Request(url, headers={"Authorization": f"Bearer {UPSTASH_TOKEN}"})
     with urlopen(req, timeout=5) as r:
@@ -98,6 +89,19 @@ def add_to_instantly(email, first_name, last_name, company, campaign_id):
     _log(f"[sync] Instantly add {email} status={resp.status_code} body={resp.text[:300]}")
     resp.raise_for_status()
 
+def submit_hs_form(email, first_name, last_name, company, form_id):
+    url = f"https://api.hsforms.com/submissions/v3/integration/submit/{HUBSPOT_PORTAL_ID}/{form_id}"
+    resp = requests.post(url, json={
+        "fields": [
+            {"name": "email",     "value": email},
+            {"name": "firstname", "value": first_name},
+            {"name": "lastname",  "value": last_name},
+            {"name": "company",   "value": company},
+        ]
+    }, timeout=10)
+    _log(f"[sync] HS form {form_id} submit {email} status={resp.status_code} body={resp.text[:300]}")
+    resp.raise_for_status()
+
 class handler(BaseHTTPRequestHandler):
 
     def do_GET(self):
@@ -115,21 +119,32 @@ class handler(BaseHTTPRequestHandler):
         total_processed = total_duplicates = total_errors = 0
 
         for automation in active:
-            list_id     = automation["hubspot_list_id"]
-            campaign_id = automation["instantly_campaign_id"]
-            _log(f"[sync] automation list={list_id} campaign={campaign_id}")
+            list_id       = automation["hubspot_list_id"]
+            delivery_type = automation.get("delivery_type", "instantly")
+            target_id     = automation.get("instantly_campaign_id") if delivery_type == "instantly" else automation.get("hubspot_form_id")
+
+            _log(f"[sync] automation list={list_id} delivery={delivery_type} target={target_id}")
+
+            if not target_id:
+                _log(f"[sync] skip: no target_id for automation {automation.get('id')}")
+                continue
 
             contacts = get_list_contacts(list_id)
 
             for c in contacts:
                 email = c["email"]
                 try:
-                    if already_sent(email, campaign_id):
+                    if already_sent(email, target_id):
                         total_duplicates += 1
                         continue
-                    add_to_instantly(email, c["firstname"], c["lastname"], c["company"], campaign_id)
-                    mark_as_sent(email, campaign_id)
-                    _log(f"[sync] added {email} -> campaign {campaign_id}")
+
+                    if delivery_type == "hubspot_form":
+                        submit_hs_form(email, c["firstname"], c["lastname"], c["company"], target_id)
+                    else:
+                        add_to_instantly(email, c["firstname"], c["lastname"], c["company"], target_id)
+
+                    mark_as_sent(email, target_id)
+                    _log(f"[sync] added {email} -> {delivery_type} {target_id}")
                     total_processed += 1
                 except Exception as e:
                     _log(f"[sync] error for {email}: {e}")
