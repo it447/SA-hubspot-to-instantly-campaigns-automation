@@ -234,6 +234,7 @@ class handler(BaseHTTPRequestHandler):
                     if a.get("hubspot_list_id") == list_id and a.get("instantly_campaign_id") == camp_id:
                         self._json(409, {"error": "Automation already exists"})
                         return
+                delay_hours = int(body.get("delay_hours", 0))
                 new_auto = {
                     "id": f"{list_id}_{camp_id}",
                     "name": name,
@@ -242,6 +243,7 @@ class handler(BaseHTTPRequestHandler):
                     "hubspot_list_name": list_name,
                     "instantly_campaign_id": camp_id,
                     "instantly_campaign_name": camp_name,
+                    "delay_hours": delay_hours,
                     "active": True,
                 }
 
