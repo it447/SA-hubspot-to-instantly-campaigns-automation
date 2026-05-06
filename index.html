@@ -280,6 +280,16 @@
               <div class="search-dropdown" id="camp-dropdown"></div>
             </div>
           </div>
+          <div class="form-row">
+            <label>Delay before sending <span style="font-size:11px;opacity:0.6;">(0 = send immediately)</span></label>
+            <div style="display:flex;gap:8px;">
+              <input type="number" id="delay-amount" min="0" value="0" placeholder="0" style="width:100px;flex-shrink:0;">
+              <select id="delay-unit">
+                <option value="hours">Hours</option>
+                <option value="days">Days</option>
+              </select>
+            </div>
+          </div>
           <div class="form-footer">
             <button class="btn btn-cream" onclick="showPage('dashboard')">Cancel</button>
             <button class="btn btn-primary" onclick="createAutomation('instantly')" id="create-btn-instantly">Create automation</button>
@@ -452,12 +462,16 @@ function renderAutomations() {
       ? `<span class="chip chip-form">HS Form · ${esc(a.hubspot_form_name || a.hubspot_form_id)}</span>`
       : `<span class="chip chip-in">Instantly · ${esc(a.instantly_campaign_name || a.instantly_campaign_id)}</span>`;
     const active = a.active !== false;
+    const delayLabel = (!isForm && a.delay_hours > 0)
+      ? `<span class="chip chip-hs">⏱ ${a.delay_hours >= 24 ? (a.delay_hours/24) + 'd delay' : a.delay_hours + 'h delay'}</span>`
+      : '';
     return `<div class="automation-row" id="row-${esc(a.id)}">
       <div style="flex:1;min-width:0;">
         <div class="auto-name">${esc(a.name)}</div>
         <div class="auto-meta">
           <span class="chip chip-hs">HubSpot · ${esc(a.hubspot_list_name || a.hubspot_list_id)}</span>
           ${deliveryChip}
+          ${delayLabel}
           <span class="chip ${active ? 'chip-active' : 'chip-inactive'}">${active ? '● Active' : '○ Paused'}</span>
         </div>
       </div>
@@ -591,6 +605,9 @@ async function createAutomation(deliveryType) {
     if (!campSelected.id) { errEl.textContent='Please select an Instantly campaign.'; errEl.style.display='block'; return; }
     payload.instantly_campaign_id   = campSelected.id;
     payload.instantly_campaign_name = campSelected.name;
+    const delayAmount = parseInt(document.getElementById('delay-amount').value) || 0;
+    const delayUnit   = document.getElementById('delay-unit').value;
+    payload.delay_hours = delayUnit === 'days' ? delayAmount * 24 : delayAmount;
   } else {
     if (!formSelected.id) { errEl.textContent='Please select a HubSpot form.'; errEl.style.display='block'; return; }
     payload.hubspot_form_id   = formSelected.id;
