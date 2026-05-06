@@ -1,6 +1,7 @@
 import json
 import os
 import sys
+import time
 import requests
 from http.server import BaseHTTPRequestHandler
 from urllib.request import urlopen, Request
@@ -23,6 +24,12 @@ def _redis_get(key):
     val = data.get("result")
     return json.loads(val) if val else None
 
+def _redis_set_raw(key, value):
+    url = f"{UPSTASH_URL}/set/{key}/{value}"
+    req = Request(url, headers={"Authorization": f"Bearer {UPSTASH_TOKEN}"})
+    with urlopen(req, timeout=5) as r:
+        r.read()
+
 def get_automations():
     data = _redis_get("automations_config")
     return data if isinstance(data, list) else []
@@ -36,11 +43,19 @@ def already_sent(email, target_id):
     return result.get("result") is not None
 
 def mark_as_sent(email, target_id):
-    key = f"sent:{email.lower()}:{target_id}"
-    url = f"{UPSTASH_URL}/set/{key}/1"
+    _redis_set_raw(f"sent:{email.lower()}:{target_id}", 1)
+
+def get_first_seen(email, target_id):
+    key = f"first_seen:{email.lower()}:{target_id}"
+    url = f"{UPSTASH_URL}/get/{key}"
     req = Request(url, headers={"Authorization": f"Bearer {UPSTASH_TOKEN}"})
     with urlopen(req, timeout=5) as r:
-        r.read()
+        result = json.loads(r.read())
+    val = result.get("result")
+    return float(val) if val else None
+
+def set_first_seen(email, target_id):
+    _redis_set_raw(f"first_seen:{email.lower()}:{target_id}", time.time())
 
 def get_list_contacts(list_id):
     headers = {"Authorization": f"Bearer {HUBSPOT_API_KEY}"}
@@ -116,14 +131,15 @@ class handler(BaseHTTPRequestHandler):
         active = [a for a in automations if a.get("active")]
         _log(f"[sync] running for {len(active)} active automations")
 
-        total_processed = total_duplicates = total_errors = 0
+        total_processed = total_duplicates = total_errors = total_waiting = 0
 
         for automation in active:
             list_id       = automation["hubspot_list_id"]
             delivery_type = automation.get("delivery_type", "instantly")
             target_id     = automation.get("instantly_campaign_id") if delivery_type == "instantly" else automation.get("hubspot_form_id")
+            delay_hours   = float(automation.get("delay_hours", 0))
 
-            _log(f"[sync] automation list={list_id} delivery={delivery_type} target={target_id}")
+            _log(f"[sync] automation list={list_id} delivery={delivery_type} target={target_id} delay={delay_hours}h")
 
             if not target_id:
                 _log(f"[sync] skip: no target_id for automation {automation.get('id')}")
@@ -138,6 +154,20 @@ class handler(BaseHTTPRequestHandler):
                         total_duplicates += 1
                         continue
 
+                    if delivery_type == "instantly" and delay_hours > 0:
+                        first_seen = get_first_seen(email, target_id)
+                        if first_seen is None:
+                            set_first_seen(email, target_id)
+                            _log(f"[sync] delay: first seen {email}, waiting {delay_hours}h")
+                            total_waiting += 1
+                            continue
+                        elapsed_hours = (time.time() - first_seen) / 3600
+                        if elapsed_hours < delay_hours:
+                            remaining = round(delay_hours - elapsed_hours, 1)
+                            _log(f"[sync] delay: {email} waiting {remaining}h more")
+                            total_waiting += 1
+                            continue
+
                     if delivery_type == "hubspot_form":
                         submit_hs_form(email, c["firstname"], c["lastname"], c["company"], target_id)
                     else:
@@ -150,7 +180,7 @@ class handler(BaseHTTPRequestHandler):
                     _log(f"[sync] error for {email}: {e}")
                     total_errors += 1
 
-        result = {"processed": total_processed, "duplicates": total_duplicates, "errors": total_errors}
+        result = {"processed": total_processed, "duplicates": total_duplicates, "waiting": total_waiting, "errors": total_errors}
         _log(f"[sync] done: {result}")
         self._json(200, result)
 
