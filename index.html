@@ -773,25 +773,29 @@ async function editAutomation(id) {
 }
 
 async function loadEditLogs(id) {
-  const body = document.getElementById('edit-log-body');
+  const logBody = document.getElementById('edit-log-body');
   const countEl = document.getElementById('edit-log-count');
-  body.innerHTML = '<div class="empty-state" style="padding:2rem;"><p>Loading…</p></div>';
+  logBody.innerHTML = '<div class="empty-state" style="padding:2rem;"><p>Loading…</p></div>';
   try {
     const { ok, data } = await api('GET', `/logs/${id}`);
     if (ok && Array.isArray(data) && data.length) {
       countEl.textContent = data.length;
-      body.innerHTML = data.map(e =>
-        `<div class="log-row">
-          <span class="log-email">${esc(e.email)}</span>
-          <span class="log-meta">${esc(e.ts)}</span>
-        </div>`
-      ).join('');
+      logBody.innerHTML = data.map(raw => {
+        let e = raw;
+        if (typeof e === 'string') { try { e = JSON.parse(e); } catch(_) {} }
+        const email = (e && e.email) || '—';
+        const ts    = (e && e.ts)    || '';
+        return `<div class="log-row">
+          <span class="log-email">${esc(email)}</span>
+          <span class="log-meta">${esc(ts)}</span>
+        </div>`;
+      }).join('');
     } else if (ok) {
       countEl.textContent = '0';
-      body.innerHTML = '<div class="empty-state" style="padding:2rem;"><p>No enrollments recorded yet.</p></div>';
+      logBody.innerHTML = '<div class="empty-state" style="padding:2rem;"><p>No enrollments recorded yet.</p></div>';
     }
   } catch(e) {
-    body.innerHTML = '<div class="empty-state" style="padding:2rem;"><p>Failed to load.</p></div>';
+    logBody.innerHTML = '<div class="empty-state" style="padding:2rem;"><p>Failed to load.</p></div>';
   }
 }
 
@@ -805,11 +809,15 @@ async function viewLogs(id) {
   try {
     const { ok, data } = await api('GET', `/logs/${id}`);
     if (ok && Array.isArray(data) && data.length) {
-      document.getElementById('logs-body').innerHTML = data.map(e => {
-        const typeLabel = e.type === 'hubspot_form' ? 'HS Form' : 'Instantly';
+      document.getElementById('logs-body').innerHTML = data.map(raw => {
+        let e = raw;
+        if (typeof e === 'string') { try { e = JSON.parse(e); } catch(_) {} }
+        const email = (e && e.email) || '—';
+        const ts    = (e && e.ts)    || '';
+        const typeLabel = (e && e.type === 'hubspot_form') ? 'HS Form' : 'Instantly';
         return `<div class="log-row">
-          <span class="log-email">${esc(e.email)}</span>
-          <span class="log-meta">${esc(typeLabel)} · ${esc(e.ts)}</span>
+          <span class="log-email">${esc(email)}</span>
+          <span class="log-meta">${esc(typeLabel)} · ${esc(ts)}</span>
         </div>`;
       }).join('');
     } else if (ok) {
