@@ -40,14 +40,32 @@ def get_automations():
 def save_automations(automations):
     _redis_set("automations_config", automations)
 
-def get_logs(auto_id):
-    key = f"logs:{auto_id}"
-    url = f"{UPSTASH_URL}/lrange/{key}/0/99"
-    req = Request(url, headers={"Authorization": f"Bearer {UPSTASH_TOKEN}"})
-    with urlopen(req, timeout=5) as r:
-        data = json.loads(r.read())
-    entries = data.get("result") or []
-    return [json.loads(e) for e in entries if e]
+def get_list_contacts(list_id):
+    headers = {"Authorization": f"Bearer {HUBSPOT_API_KEY}"}
+    contacts = []
+    vid_offset = None
+    while True:
+        url = f"https://api.hubapi.com/contacts/v1/lists/{list_id}/contacts/all?count=100&property=email&property=firstname&property=lastname"
+        if vid_offset:
+            url += f"&vidOffset={vid_offset}"
+        try:
+            resp = requests.get(url, headers=headers, timeout=15)
+            resp.raise_for_status()
+            body = resp.json()
+        except Exception as e:
+            _log(f"[contacts] list {list_id} error: {e}")
+            break
+        for c in body.get("contacts", []):
+            props = c.get("properties", {})
+            email = props.get("email", {}).get("value", "").strip().lower()
+            first = props.get("firstname", {}).get("value", "")
+            last  = props.get("lastname",  {}).get("value", "")
+            if email:
+                contacts.append({"email": email, "name": f"{first} {last}".strip()})
+        if not body.get("has-more", False):
+            break
+        vid_offset = body.get("vid-offset")
+    return contacts
 
 def get_hs_lists():
     headers = {"Authorization": f"Bearer {HUBSPOT_API_KEY}"}
@@ -201,10 +219,10 @@ class handler(BaseHTTPRequestHandler):
                 self._json(200, get_automations())
             except Exception as e:
                 self._json(500, {"error": str(e)})
-        elif "/logs/" in path:
-            auto_id = path.split("/logs/")[-1].strip("/")
+        elif "/contacts/" in path:
+            list_id = path.split("/contacts/")[-1].strip("/")
             try:
-                self._json(200, get_logs(auto_id))
+                self._json(200, get_list_contacts(list_id))
             except Exception as e:
                 self._json(500, {"error": str(e)})
         else:
