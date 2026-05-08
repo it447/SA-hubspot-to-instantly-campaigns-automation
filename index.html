@@ -122,7 +122,6 @@
   .empty-icon { font-size:28px; margin-bottom:0.75rem; }
   .empty-state p { font-size:14px; }
 
-  /* Tabs */
   .tab-bar { display:flex; gap:4px; background:rgba(254,242,222,0.04); border:1px solid var(--border); border-radius:var(--radius-sm); padding:4px; margin-bottom:1.75rem; max-width:560px; }
   .tab-btn { flex:1; padding:9px 16px; border-radius:7px; border:none; background:transparent; color:var(--muted); font-family:'DM Sans',sans-serif; font-size:13px; font-weight:500; cursor:pointer; transition:all 0.15s; }
   .tab-btn:hover { color:var(--cream); background:rgba(254,242,222,0.06); }
@@ -212,7 +211,7 @@
     <button class="nav-item active" onclick="showPage('dashboard')" id="nav-dashboard">
       <span class="nav-icon">◻</span> Dashboard
     </button>
-    <button class="nav-item" onclick="showPage('add')" id="nav-add">
+    <button class="nav-item" onclick="newAutomation()" id="nav-add">
       <span class="nav-icon">+</span> New automation
     </button>
     <div class="sidebar-footer">
@@ -232,7 +231,7 @@
           <div class="orange-bar" style="margin-top:8px;margin-bottom:0;"></div>
           <p style="margin-top:10px;">HubSpot lists syncing to your outreach channels</p>
         </div>
-        <button class="btn btn-primary" style="width:auto;padding:11px 20px;margin-top:4px;" onclick="showPage('add')">+ New automation</button>
+        <button class="btn btn-primary" style="width:auto;padding:11px 20px;margin-top:4px;" onclick="newAutomation()">+ New automation</button>
       </div>
 
       <div class="stats-row">
@@ -357,7 +356,7 @@
 
       </div><!-- close form col -->
 
-      <!-- Edit: inline logs sidebar -->
+      <!-- Edit: inline contacts sidebar -->
       <div id="edit-logs-panel" style="display:none;">
         <div class="card">
           <div class="card-header">
@@ -382,7 +381,10 @@
 <div id="logs-modal" class="modal-overlay" style="display:none;" onclick="if(event.target===this)closeLogs()">
   <div class="modal">
     <div class="modal-header">
-      <div><h3 id="logs-modal-title">Enrollment logs</h3></div>
+      <div style="display:flex;align-items:center;gap:10px;">
+        <h3 id="logs-modal-title">List contacts</h3>
+        <span class="badge-count" id="logs-modal-count" style="display:none;"></span>
+      </div>
       <button class="btn btn-cream" onclick="closeLogs()" style="padding:5px 11px;font-size:13px;">✕</button>
     </div>
     <div class="modal-body" id="logs-body"></div>
@@ -441,6 +443,25 @@ function showPage(page) {
   document.getElementById(`page-${page}`).classList.add('active');
   document.getElementById(`nav-${page}`)?.classList.add('active');
   if (page === 'add' && !dropdownsLoaded) loadDropdowns();
+}
+
+function newAutomation() {
+  editingId = null;
+  document.getElementById('add-page-title').textContent = 'New automation';
+  document.querySelector('.tab-bar').style.display = '';
+  document.getElementById('edit-logs-panel').style.display = 'none';
+  document.getElementById('create-btn-instantly').textContent = 'Create automation';
+  document.getElementById('create-btn-hubspot_form').textContent = 'Create automation';
+  document.getElementById('auto-name-instantly').value = '';
+  document.getElementById('auto-name-hubspot_form').value = '';
+  document.getElementById('form-error-instantly').style.display = 'none';
+  document.getElementById('form-error-hubspot_form').style.display = 'none';
+  resetSearchSelect('hs-search-instantly','hs-dropdown-instantly',hsSelectedInstantly);
+  resetSearchSelect('hs-search-hubspot_form','hs-dropdown-hubspot_form',hsSelectedForm);
+  resetSearchSelect('camp-search','camp-dropdown',campSelected);
+  resetSearchSelect('form-search','form-dropdown',formSelected);
+  switchTab('instantly');
+  showPage('add');
 }
 
 function switchTab(tab) {
@@ -799,27 +820,28 @@ async function viewLogs(id) {
   const a = automations.find(x => x.id === id);
   if (!a) return;
   const modal = document.getElementById('logs-modal');
-  document.getElementById('logs-modal-title').textContent = `Logs · ${a.name}`;
+  const countEl = document.getElementById('logs-modal-count');
+  document.getElementById('logs-modal-title').textContent = `List contacts · ${a.name}`;
+  countEl.style.display = 'none';
   document.getElementById('logs-body').innerHTML = '<div class="empty-state"><p>Loading…</p></div>';
   modal.style.display = 'flex';
   try {
-    const { ok, data } = await api('GET', `/logs/${id}`);
+    const { ok, data } = await api('GET', `/contacts/${a.hubspot_list_id}`);
     if (ok && Array.isArray(data) && data.length) {
-      document.getElementById('logs-body').innerHTML = data.map(raw => {
-        let e = raw;
-        if (typeof e === 'string') { try { e = JSON.parse(e); } catch(_) {} }
-        const email = (e && e.email) || '—';
-        const ts    = (e && e.ts)    || '';
-        const typeLabel = (e && e.type === 'hubspot_form') ? 'HS Form' : 'Instantly';
-        return `<div class="log-row">
-          <span class="log-email">${esc(email)}</span>
-          <span class="log-meta">${esc(typeLabel)} · ${esc(ts)}</span>
-        </div>`;
-      }).join('');
+      countEl.textContent = data.length;
+      countEl.style.display = '';
+      document.getElementById('logs-body').innerHTML = data.map(e =>
+        `<div class="log-row">
+          <span class="log-email">${esc(e.email)}</span>
+          <span class="log-meta">${esc(e.name)}</span>
+        </div>`
+      ).join('');
     } else if (ok) {
-      document.getElementById('logs-body').innerHTML = '<div class="empty-state"><div class="empty-icon">📋</div><p>No enrollments recorded yet.</p></div>';
+      countEl.textContent = '0';
+      countEl.style.display = '';
+      document.getElementById('logs-body').innerHTML = '<div class="empty-state"><div class="empty-icon">📋</div><p>No contacts in this list yet.</p></div>';
     } else {
-      document.getElementById('logs-body').innerHTML = '<div class="empty-state"><p>Failed to load logs.</p></div>';
+      document.getElementById('logs-body').innerHTML = `<div class="empty-state"><p>Error: ${esc((data&&data.error)||'Failed to load contacts.')}</p></div>`;
     }
   } catch(e) {
     document.getElementById('logs-body').innerHTML = '<div class="empty-state"><p>Network error.</p></div>';
