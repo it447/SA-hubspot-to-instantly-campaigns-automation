@@ -40,6 +40,15 @@ def get_automations():
 def save_automations(automations):
     _redis_set("automations_config", automations)
 
+def get_logs(auto_id):
+    key = f"logs:{auto_id}"
+    url = f"{UPSTASH_URL}/lrange/{key}/0/99"
+    req = Request(url, headers={"Authorization": f"Bearer {UPSTASH_TOKEN}"})
+    with urlopen(req, timeout=5) as r:
+        data = json.loads(r.read())
+    entries = data.get("result") or []
+    return [json.loads(e) for e in entries if e]
+
 def get_hs_lists():
     headers = {"Authorization": f"Bearer {HUBSPOT_API_KEY}"}
     seen = {}
@@ -190,6 +199,12 @@ class handler(BaseHTTPRequestHandler):
         elif path.endswith("/automations"):
             try:
                 self._json(200, get_automations())
+            except Exception as e:
+                self._json(500, {"error": str(e)})
+        elif "/logs/" in path:
+            auto_id = path.split("/logs/")[-1].strip("/")
+            try:
+                self._json(200, get_logs(auto_id))
             except Exception as e:
                 self._json(500, {"error": str(e)})
         else:
