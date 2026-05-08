@@ -2,6 +2,7 @@ import json
 import os
 import sys
 import time
+import datetime
 import requests
 from http.server import BaseHTTPRequestHandler
 from urllib.request import urlopen, Request
@@ -30,9 +31,22 @@ def _redis_set_raw(key, value):
     with urlopen(req, timeout=5) as r:
         r.read()
 
+def _redis_set_json(key, value):
+    url = f"{UPSTASH_URL}/set/{key}"
+    body = json.dumps(value).encode()
+    req = Request(url, data=body, headers={
+        "Authorization": f"Bearer {UPSTASH_TOKEN}",
+        "Content-Type": "application/json"
+    }, method="POST")
+    with urlopen(req, timeout=5) as r:
+        r.read()
+
 def get_automations():
     data = _redis_get("automations_config")
     return data if isinstance(data, list) else []
+
+def save_automations(automations):
+    _redis_set_json("automations_config", automations)
 
 def already_sent(email, target_id):
     key = f"sent:{email.lower()}:{target_id}"
@@ -127,8 +141,8 @@ class handler(BaseHTTPRequestHandler):
         self._run_sync()
 
     def _run_sync(self):
-        automations = get_automations()
-        active = [a for a in automations if a.get("active")]
+        all_automations = get_automations()
+        active = [a for a in all_automations if a.get("active")]
         _log(f"[sync] running for {len(active)} active automations")
 
         total_processed = total_duplicates = total_errors = total_waiting = 0
@@ -179,6 +193,10 @@ class handler(BaseHTTPRequestHandler):
                 except Exception as e:
                     _log(f"[sync] error for {email}: {e}")
                     total_errors += 1
+
+            automation["last_run"] = datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
+
+        save_automations(all_automations)
 
         result = {"processed": total_processed, "duplicates": total_duplicates, "waiting": total_waiting, "errors": total_errors}
         _log(f"[sync] done: {result}")
