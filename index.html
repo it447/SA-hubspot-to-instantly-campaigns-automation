@@ -361,7 +361,7 @@
       <div id="edit-logs-panel" style="display:none;">
         <div class="card">
           <div class="card-header">
-            <h3>Enrollment log</h3>
+            <h3>List contacts</h3>
             <span class="badge-count" id="edit-log-count">0</span>
           </div>
           <div id="edit-log-body">
@@ -741,7 +741,7 @@ async function editAutomation(id) {
   document.getElementById('edit-logs-panel').style.display = 'block';
   showPage('add');
   switchTab(isForm ? 'hubspot_form' : 'instantly');
-  loadEditLogs(id);
+  loadEditLogs(a.hubspot_list_id);
 
   if (isForm) {
     document.getElementById('auto-name-hubspot_form').value = a.name || '';
@@ -772,27 +772,23 @@ async function editAutomation(id) {
   }
 }
 
-async function loadEditLogs(id) {
+async function loadEditLogs(listId) {
   const logBody = document.getElementById('edit-log-body');
   const countEl = document.getElementById('edit-log-count');
   logBody.innerHTML = '<div class="empty-state" style="padding:2rem;"><p>Loading…</p></div>';
   try {
-    const { ok, data } = await api('GET', `/logs/${id}`);
+    const { ok, data } = await api('GET', `/contacts/${listId}`);
     if (ok && Array.isArray(data) && data.length) {
       countEl.textContent = data.length;
-      logBody.innerHTML = data.map(raw => {
-        let e = raw;
-        if (typeof e === 'string') { try { e = JSON.parse(e); } catch(_) {} }
-        const email = (e && e.email) || '—';
-        const ts    = (e && e.ts)    || '';
-        return `<div class="log-row">
-          <span class="log-email">${esc(email)}</span>
-          <span class="log-meta">${esc(ts)}</span>
-        </div>`;
-      }).join('');
+      logBody.innerHTML = data.map(e =>
+        `<div class="log-row">
+          <span class="log-email">${esc(e.email)}</span>
+          <span class="log-meta">${esc(e.name)}</span>
+        </div>`
+      ).join('');
     } else if (ok) {
       countEl.textContent = '0';
-      logBody.innerHTML = '<div class="empty-state" style="padding:2rem;"><p>No enrollments recorded yet.</p></div>';
+      logBody.innerHTML = '<div class="empty-state" style="padding:2rem;"><p>No contacts in this list yet.</p></div>';
     }
   } catch(e) {
     logBody.innerHTML = '<div class="empty-state" style="padding:2rem;"><p>Failed to load.</p></div>';
