@@ -71,6 +71,21 @@ def get_first_seen(email, target_id):
 def set_first_seen(email, target_id):
     _redis_set_raw(f"first_seen:{email.lower()}:{target_id}", time.time())
 
+def log_enrollment(auto_id, email, delivery_type, ts):
+    key = f"logs:{auto_id}"
+    entry = json.dumps({"email": email, "ts": ts, "type": delivery_type})
+    url = f"{UPSTASH_URL}/lpush/{key}"
+    req = Request(url, data=json.dumps([entry]).encode(), headers={
+        "Authorization": f"Bearer {UPSTASH_TOKEN}",
+        "Content-Type": "application/json"
+    }, method="POST")
+    with urlopen(req, timeout=5) as r:
+        r.read()
+    trim_req = Request(f"{UPSTASH_URL}/ltrim/{key}/0/499",
+                       headers={"Authorization": f"Bearer {UPSTASH_TOKEN}"})
+    with urlopen(trim_req, timeout=5) as r:
+        r.read()
+
 def get_list_contacts(list_id):
     headers = {"Authorization": f"Bearer {HUBSPOT_API_KEY}"}
     contacts = []
@@ -188,6 +203,11 @@ class handler(BaseHTTPRequestHandler):
                         add_to_instantly(email, c["firstname"], c["lastname"], c["company"], target_id)
 
                     mark_as_sent(email, target_id)
+                    ts = datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
+                    try:
+                        log_enrollment(automation.get("id", target_id), email, delivery_type, ts)
+                    except Exception:
+                        pass
                     _log(f"[sync] added {email} -> {delivery_type} {target_id}")
                     total_processed += 1
                 except Exception as e:
