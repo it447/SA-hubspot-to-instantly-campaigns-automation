@@ -6,6 +6,7 @@ import datetime
 import requests
 from http.server import BaseHTTPRequestHandler
 from urllib.request import urlopen, Request
+from urllib.parse import quote
 
 UPSTASH_URL       = os.environ.get("UPSTASH_REDIS_REST_URL", "")
 UPSTASH_TOKEN     = os.environ.get("UPSTASH_REDIS_REST_TOKEN", "")
@@ -74,15 +75,13 @@ def set_first_seen(email, target_id):
 def log_enrollment(auto_id, email, delivery_type, ts):
     key = f"logs:{auto_id}"
     entry = json.dumps({"email": email, "ts": ts, "type": delivery_type})
-    url = f"{UPSTASH_URL}/lpush/{key}"
-    req = Request(url, data=json.dumps([entry]).encode(), headers={
-        "Authorization": f"Bearer {UPSTASH_TOKEN}",
-        "Content-Type": "application/json"
-    }, method="POST")
+    encoded = quote(entry, safe='')
+    url = f"{UPSTASH_URL}/lpush/{key}/{encoded}"
+    req = Request(url, data=b'', headers={"Authorization": f"Bearer {UPSTASH_TOKEN}"}, method="POST")
     with urlopen(req, timeout=5) as r:
         r.read()
-    trim_req = Request(f"{UPSTASH_URL}/ltrim/{key}/0/499",
-                       headers={"Authorization": f"Bearer {UPSTASH_TOKEN}"})
+    trim_req = Request(f"{UPSTASH_URL}/ltrim/{key}/0/499", data=b'',
+                       headers={"Authorization": f"Bearer {UPSTASH_TOKEN}"}, method="POST")
     with urlopen(trim_req, timeout=5) as r:
         r.read()
 
