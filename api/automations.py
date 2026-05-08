@@ -294,6 +294,19 @@ class handler(BaseHTTPRequestHandler):
             if a.get("id") == auto_id:
                 if "active" in body:
                     a["active"] = bool(body["active"])
+                if "name" in body:
+                    a["name"] = str(body["name"]).strip()
+                if "hubspot_list_id" in body:
+                    a["hubspot_list_id"] = str(body["hubspot_list_id"]).strip()
+                    a["hubspot_list_name"] = body.get("hubspot_list_name", "")
+                if "instantly_campaign_id" in body:
+                    a["instantly_campaign_id"] = str(body["instantly_campaign_id"]).strip()
+                    a["instantly_campaign_name"] = body.get("instantly_campaign_name", "")
+                if "hubspot_form_id" in body:
+                    a["hubspot_form_id"] = str(body["hubspot_form_id"]).strip()
+                    a["hubspot_form_name"] = body.get("hubspot_form_name", "")
+                if "delay_hours" in body:
+                    a["delay_hours"] = int(body["delay_hours"])
                 found = True
                 break
 
