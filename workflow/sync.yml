@@ -1,0 +1,24 @@
+name: HubSpot Sync
+
+on:
+  schedule:
+    - cron: '*/10 * * * *'
+  workflow_dispatch:
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run sync
+        run: |
+          RESULT=$(curl -s -w "\n%{http_code}" \
+            -X GET "${{ secrets.VERCEL_URL }}/api/sync" \
+            -H "X-Sync-Secret: ${{ secrets.SYNC_SECRET }}")
+          HTTP_CODE=$(echo "$RESULT" | tail -n1)
+          BODY=$(echo "$RESULT" | head -n-1)
+          echo "Status: $HTTP_CODE"
+          echo "Response: $BODY"
+          if [ "$HTTP_CODE" != "200" ]; then
+            echo "Sync failed with status $HTTP_CODE"
+            exit 1
+          fi
