@@ -12,8 +12,7 @@ jobs:
       - name: Run sync
         run: |
           RESULT=$(curl -s -w "\n%{http_code}" \
-            -X GET "${{ secrets.VERCEL_URL }}/api/sync" \
-            -H "X-Sync-Secret: ${{ secrets.SYNC_SECRET }}")
+            -X GET "${{ secrets.VERCEL_URL }}/api/sync")
           HTTP_CODE=$(echo "$RESULT" | tail -n1)
           BODY=$(echo "$RESULT" | head -n-1)
           echo "Status: $HTTP_CODE"
