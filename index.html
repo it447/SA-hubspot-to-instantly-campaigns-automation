@@ -81,7 +81,9 @@
   .page-header p { font-size:14px; color:var(--muted); margin-top:3px; }
 
   .stats-row { display:grid; grid-template-columns:repeat(3,1fr); gap:1rem; margin-bottom:1.75rem; }
-  .stat-card { background:var(--navy-soft); border:1px solid var(--border); border-radius:var(--radius); padding:1.25rem 1.5rem; position:relative; overflow:hidden; transition:border-color 0.15s, background 0.15s; }
+  .stat-card { background:var(--navy-soft); border:1px solid var(--border); border-radius:var(--radius); padding:1.25rem 1.5rem; position:relative; overflow:hidden; cursor:pointer; transition:border-color 0.15s, background 0.15s; }
+  .stat-card:hover { border-color:var(--border2); background:rgba(254,242,222,0.05); }
+  .stat-card.filter-active { border-color:var(--orange); background:rgba(255,100,50,0.07); }
   .stat-card::after { content:''; position:absolute; top:0; right:0; width:60px; height:60px; border-radius:0 var(--radius) 0 60px; background:rgba(254,242,222,0.03); }
   .stat-label { font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:0.09em; font-weight:500; margin-bottom:0.6rem; }
   .stat-value { font-family:'Playfair Display',serif; font-size:36px; font-weight:700; letter-spacing:-0.03em; color:var(--cream); line-height:1; }
@@ -121,7 +123,6 @@
   .empty-icon { font-size:28px; margin-bottom:0.75rem; }
   .empty-state p { font-size:14px; }
 
-  /* Tabs */
   .tab-bar { display:flex; gap:4px; background:rgba(254,242,222,0.04); border:1px solid var(--border); border-radius:var(--radius-sm); padding:4px; margin-bottom:1.75rem; max-width:560px; }
   .tab-btn { flex:1; padding:9px 16px; border-radius:7px; border:none; background:transparent; color:var(--muted); font-family:'DM Sans',sans-serif; font-size:13px; font-weight:500; cursor:pointer; transition:all 0.15s; }
   .tab-btn:hover { color:var(--cream); background:rgba(254,242,222,0.06); }
@@ -243,22 +244,17 @@
           <h2>Automations</h2>
           <div class="orange-bar" style="margin-top:8px;margin-bottom:0;"></div>
         </div>
+        <button class="btn btn-primary" style="width:auto;padding:11px 20px;margin-top:4px;" onclick="newAutomation()">+ New automation</button>
       </div>
 
-      <div class="stats-row">
+      <div class="stats-row" style="grid-template-columns:200px;">
         <div class="stat-card" style="cursor:default;">
           <div class="stat-label">Total automations</div>
           <div class="stat-value orange" id="stat-total">—</div>
         </div>
-        <div class="stat-card" style="cursor:default;">
-          <div class="stat-label">Instantly automations</div>
-          <div class="stat-value" id="stat-instantly">—</div>
-        </div>
-        <div class="stat-card" style="cursor:default;">
-          <div class="stat-label">HS form automations</div>
-          <div class="stat-value" id="stat-forms">—</div>
-        </div>
       </div>
+      <span id="stat-instantly" style="display:none;"></span>
+      <span id="stat-forms" style="display:none;"></span>
 
       <div class="card">
         <div class="card-header">
