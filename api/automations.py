@@ -126,7 +126,7 @@ def get_hs_forms():
     forms = []
     after = None
     while True:
-        url = "https://api.hubspot.com/marketing/v3/forms?limit=100"
+        url = "https://api.hubapi.com/marketing/v3/forms?limit=100"
         if after:
             url += f"&after={after}"
         _log(f"[HubSpot forms] GET after={after}")
@@ -148,6 +148,40 @@ def get_hs_forms():
             break
     _log(f"[HubSpot forms] total={len(forms)}")
     return sorted(forms, key=lambda x: x["name"].lower())
+
+def get_hs_contact_properties():
+    headers = {"Authorization": f"Bearer {HUBSPOT_API_KEY}"}
+    props = []
+    after = None
+    while True:
+        url = "https://api.hubapi.com/crm/v3/properties/contacts?limit=500"
+        if after:
+            url += f"&after={after}"
+        try:
+            resp = requests.get(url, headers=headers, timeout=15)
+            resp.raise_for_status()
+            body = resp.json()
+            for p in body.get("results", []):
+                name       = p.get("name", "")
+                label      = p.get("label", name)
+                field_type = p.get("fieldType", "text")
+                prop_type  = p.get("type", "string")
+                options = []
+                if prop_type == "enumeration" or field_type in ("select", "radio", "checkbox", "booleancheckbox"):
+                    options = [
+                        {"label": o.get("label", ""), "value": o.get("value", "")}
+                        for o in p.get("options", []) if o.get("value")
+                    ]
+                if name:
+                    props.append({"name": name, "label": label, "type": prop_type, "fieldType": field_type, "options": options})
+            after = body.get("paging", {}).get("next", {}).get("after")
+            if not after:
+                break
+        except Exception as e:
+            _log(f"[HubSpot properties] error: {e}")
+            break
+    _log(f"[HubSpot properties] total={len(props)}")
+    return sorted(props, key=lambda x: x["label"].lower())
 
 def get_slack_channels():
     if not SLACK_BOT_TOKEN:
@@ -242,14 +276,14 @@ class handler(BaseHTTPRequestHandler):
                 self._json(200, get_hs_forms())
             except Exception as e:
                 self._json(500, {"error": str(e)})
+        elif path.endswith("/properties"):
+            try:
+                self._json(200, get_hs_contact_properties())
+            except Exception as e:
+                self._json(500, {"error": str(e)})
         elif path.endswith("/automations"):
             try:
                 self._json(200, get_automations())
-            except Exception as e:
-                self._json(500, {"error": str(e)})
-        elif path.endswith("/slack/channels"):
-            try:
-                self._json(200, get_slack_channels())
             except Exception as e:
                 self._json(500, {"error": str(e)})
         elif "/contacts/" in path:
@@ -289,7 +323,6 @@ class handler(BaseHTTPRequestHandler):
                 return
 
             existing = get_automations()
-            filters = [f for f in body.get("filters", []) if isinstance(f, dict) and f.get("property")]
 
             if delivery_type == "instantly":
                 camp_id   = str(body.get("instantly_campaign_id", "")).strip()
@@ -302,6 +335,7 @@ class handler(BaseHTTPRequestHandler):
                         self._json(409, {"error": "Automation already exists"})
                         return
                 delay_hours = int(body.get("delay_hours", 0))
+                filters = [f for f in body.get("filters", []) if isinstance(f, dict) and f.get("property")]
                 new_auto = {
                     "id": f"{list_id}_{camp_id}",
                     "name": name,
@@ -325,6 +359,7 @@ class handler(BaseHTTPRequestHandler):
                     if a.get("hubspot_list_id") == list_id and a.get("hubspot_form_id") == form_id:
                         self._json(409, {"error": "Automation already exists"})
                         return
+                filters = [f for f in body.get("filters", []) if isinstance(f, dict) and f.get("property")]
                 new_auto = {
                     "id": f"{list_id}_form_{form_id}",
                     "name": name,
@@ -339,12 +374,6 @@ class handler(BaseHTTPRequestHandler):
             else:
                 self._json(400, {"error": "Invalid delivery_type"})
                 return
-
-            # Slack fields
-            new_auto["slack_enabled"]      = bool(body.get("slack_enabled", False))
-            new_auto["slack_channel"]      = body.get("slack_channel", "")
-            new_auto["slack_channel_name"] = body.get("slack_channel_name", "")
-            new_auto["slack_message"]      = body.get("slack_message", "")
 
             existing.append(new_auto)
             save_automations(existing)
@@ -384,11 +413,6 @@ class handler(BaseHTTPRequestHandler):
                     a["delay_hours"] = int(body["delay_hours"])
                 if "filters" in body:
                     a["filters"] = [f for f in body["filters"] if isinstance(f, dict) and f.get("property")]
-                if "slack_enabled" in body:
-                    a["slack_enabled"]      = bool(body["slack_enabled"])
-                    a["slack_channel"]      = body.get("slack_channel", "")
-                    a["slack_channel_name"] = body.get("slack_channel_name", "")
-                    a["slack_message"]      = body.get("slack_message", "")
                 found = True
                 break
 
