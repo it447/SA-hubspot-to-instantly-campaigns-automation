@@ -123,6 +123,7 @@
   .empty-icon { font-size:28px; margin-bottom:0.75rem; }
   .empty-state p { font-size:14px; }
 
+  /* Tabs */
   .tab-bar { display:flex; gap:4px; background:rgba(254,242,222,0.04); border:1px solid var(--border); border-radius:var(--radius-sm); padding:4px; margin-bottom:1.75rem; max-width:560px; }
   .tab-btn { flex:1; padding:9px 16px; border-radius:7px; border:none; background:transparent; color:var(--muted); font-family:'DM Sans',sans-serif; font-size:13px; font-weight:500; cursor:pointer; transition:all 0.15s; }
   .tab-btn:hover { color:var(--cream); background:rgba(254,242,222,0.06); }
@@ -323,6 +324,15 @@
             </div>
           </div>
           <hr class="slack-divider">
+          <div class="form-row">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.75rem;">
+              <label style="margin-bottom:0;">Filter conditions <span style="font-size:11px;opacity:0.6;">(optional)</span></label>
+              <button type="button" class="btn btn-cream" onclick="addFilter('instantly')" style="font-size:12px;padding:5px 10px;">+ Add condition</button>
+            </div>
+            <div id="filters-instantly"><div style="font-size:13px;color:var(--muted);padding:6px 0;">No conditions — all contacts will be enrolled.</div></div>
+            <div class="token-hint" style="margin-top:8px;">Common properties: lifecyclestage, hs_lead_status, country, industry, jobtitle</div>
+          </div>
+          <hr class="slack-divider">
           <div class="slack-toggle-row">
             <span class="slack-toggle-label">
               <span class="slack-icon">
@@ -388,6 +398,15 @@
               <input type="text" id="form-search" placeholder="Search HubSpot forms…" autocomplete="off">
               <div class="search-dropdown" id="form-dropdown"></div>
             </div>
+          </div>
+          <hr class="slack-divider">
+          <div class="form-row">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.75rem;">
+              <label style="margin-bottom:0;">Filter conditions <span style="font-size:11px;opacity:0.6;">(optional)</span></label>
+              <button type="button" class="btn btn-cream" onclick="addFilter('hubspot_form')" style="font-size:12px;padding:5px 10px;">+ Add condition</button>
+            </div>
+            <div id="filters-hubspot_form"><div style="font-size:13px;color:var(--muted);padding:6px 0;">No conditions — all contacts will be enrolled.</div></div>
+            <div class="token-hint" style="margin-top:8px;">Common properties: lifecyclestage, hs_lead_status, country, industry, jobtitle</div>
           </div>
           <hr class="slack-divider">
           <div class="slack-toggle-row">
@@ -481,6 +500,8 @@ let campSelected              = { id:'', name:'' };
 let formSelected              = { id:'', name:'' };
 let slackChSelectedInstantly  = { id:'', name:'' };
 let slackChSelectedForm       = { id:'', name:'' };
+let filtersInstantly = [];
+let filtersForm      = [];
 let dropdownsLoaded = false;
 let currentFilter = 'all';
 let searchQuery = '';
@@ -541,6 +562,10 @@ function newAutomation() {
   resetSearchSelect('hs-search-hubspot_form','hs-dropdown-hubspot_form',hsSelectedForm);
   resetSearchSelect('camp-search','camp-dropdown',campSelected);
   resetSearchSelect('form-search','form-dropdown',formSelected);
+  // Reset filters
+  filtersInstantly = []; filtersForm = [];
+  renderFilters('instantly'); renderFilters('hubspot_form');
+  // Reset Slack fields
   ['instantly','hubspot_form'].forEach(dt => {
     const cb = document.getElementById(`slack-enabled-${dt}`);
     if (cb) { cb.checked = false; toggleSlackSection(dt, false); }
@@ -550,6 +575,56 @@ function newAutomation() {
   });
   switchTab('instantly');
   showPage('add');
+}
+
+function addFilter(deliveryType) {
+  const arr = deliveryType === 'instantly' ? filtersInstantly : filtersForm;
+  arr.push({ property: '', operator: 'equals', value: '' });
+  renderFilters(deliveryType);
+}
+
+function removeFilter(deliveryType, index) {
+  const arr = deliveryType === 'instantly' ? filtersInstantly : filtersForm;
+  arr.splice(index, 1);
+  renderFilters(deliveryType);
+}
+
+function updateFilter(deliveryType, index, field, value) {
+  const arr = deliveryType === 'instantly' ? filtersInstantly : filtersForm;
+  arr[index][field] = value;
+  if (field === 'operator') renderFilters(deliveryType);
+}
+
+function renderFilters(deliveryType) {
+  const arr = deliveryType === 'instantly' ? filtersInstantly : filtersForm;
+  const container = document.getElementById(`filters-${deliveryType}`);
+  if (!container) return;
+  if (!arr.length) {
+    container.innerHTML = '<div style="font-size:13px;color:var(--muted);padding:6px 0;">No conditions — all contacts will be enrolled.</div>';
+    return;
+  }
+  container.innerHTML = arr.map((f, i) => `
+    <div style="display:flex;gap:8px;margin-bottom:8px;align-items:center;">
+      <input type="text" placeholder="Property (e.g. lifecyclestage)" value="${esc(f.property)}"
+        oninput="updateFilter('${deliveryType}',${i},'property',this.value)"
+        style="flex:2;font-size:13px;padding:8px 10px;min-width:0;">
+      <select onchange="updateFilter('${deliveryType}',${i},'operator',this.value)"
+        style="flex:1;font-size:13px;padding:8px 10px;min-width:0;">
+        <option value="equals"      ${f.operator==='equals'      ?'selected':''}>equals</option>
+        <option value="not_equals"  ${f.operator==='not_equals'  ?'selected':''}>not equals</option>
+        <option value="contains"    ${f.operator==='contains'    ?'selected':''}>contains</option>
+        <option value="not_contains"${f.operator==='not_contains'?'selected':''}>not contains</option>
+        <option value="exists"      ${f.operator==='exists'      ?'selected':''}>exists</option>
+      </select>
+      ${f.operator !== 'exists'
+        ? `<input type="text" placeholder="Value" value="${esc(f.value)}"
+             oninput="updateFilter('${deliveryType}',${i},'value',this.value)"
+             style="flex:2;font-size:13px;padding:8px 10px;min-width:0;">`
+        : `<div style="flex:2;"></div>`}
+      <button type="button" onclick="removeFilter('${deliveryType}',${i})"
+        style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:18px;line-height:1;flex-shrink:0;padding:0 2px;">×</button>
+    </div>
+  `).join('');
 }
 
 function toggleSlackSection(deliveryType, enabled) {
@@ -624,8 +699,6 @@ function renderAutomations() {
     return;
   }
 
-  const SLACK_SVG = `<svg width="10" height="10" viewBox="0 0 54 54" xmlns="http://www.w3.org/2000/svg"><path d="M19.7 32.2c0 2.9-2.4 5.3-5.3 5.3s-5.3-2.4-5.3-5.3 2.4-5.3 5.3-5.3H19.7v5.3z" fill="#E01E5A"/><path d="M22.3 32.2c0-2.9 2.4-5.3 5.3-5.3s5.3 2.4 5.3 5.3v13.3c0 2.9-2.4 5.3-5.3 5.3s-5.3-2.4-5.3-5.3V32.2z" fill="#E01E5A"/><path d="M27.6 19.7c-2.9 0-5.3-2.4-5.3-5.3s2.4-5.3 5.3-5.3 5.3 2.4 5.3 5.3V19.7H27.6z" fill="#36C5F0"/><path d="M27.6 22.3c2.9 0 5.3 2.4 5.3 5.3s-2.4 5.3-5.3 5.3H14.4c-2.9 0-5.3-2.4-5.3-5.3s2.4-5.3 5.3-5.3H27.6z" fill="#36C5F0"/><path d="M40.1 27.6c0-2.9 2.4-5.3 5.3-5.3s5.3 2.4 5.3 5.3-2.4 5.3-5.3 5.3H40.1V27.6z" fill="#2EB67D"/><path d="M37.4 27.6c0 2.9-2.4 5.3-5.3 5.3s-5.3-2.4-5.3-5.3V14.4c0-2.9 2.4-5.3 5.3-5.3s5.3 2.4 5.3 5.3V27.6z" fill="#2EB67D"/><path d="M32.1 40.1c2.9 0 5.3 2.4 5.3 5.3s-2.4 5.3-5.3 5.3-5.3-2.4-5.3-5.3V40.1h5.3z" fill="#ECB22E"/><path d="M32.1 37.4c-2.9 0-5.3-2.4-5.3-5.3s2.4-5.3 5.3-5.3h13.3c2.9 0 5.3 2.4 5.3 5.3s-2.4 5.3-5.3 5.3H32.1z" fill="#ECB22E"/></svg>`;
-
   list.innerHTML = filtered.map(a => {
     const isForm = a.delivery_type === 'hubspot_form';
     const deliveryChip = isForm
@@ -636,7 +709,7 @@ function renderAutomations() {
       ? `<span class="chip chip-hs">⏱ ${a.delay_hours >= 24 ? (a.delay_hours/24) + 'd delay' : a.delay_hours + 'h delay'}</span>`
       : '';
     const slackChip = a.slack_enabled
-      ? `<span class="chip chip-hs" style="gap:4px;">${SLACK_SVG}${esc(a.slack_channel_name || 'Slack')}</span>`
+      ? `<span class="chip chip-hs" style="gap:4px;"><svg width="10" height="10" viewBox="0 0 54 54" xmlns="http://www.w3.org/2000/svg"><path d="M19.7 32.2c0 2.9-2.4 5.3-5.3 5.3s-5.3-2.4-5.3-5.3 2.4-5.3 5.3-5.3H19.7v5.3z" fill="#E01E5A"/><path d="M22.3 32.2c0-2.9 2.4-5.3 5.3-5.3s5.3 2.4 5.3 5.3v13.3c0 2.9-2.4 5.3-5.3 5.3s-5.3-2.4-5.3-5.3V32.2z" fill="#E01E5A"/><path d="M27.6 19.7c-2.9 0-5.3-2.4-5.3-5.3s2.4-5.3 5.3-5.3 5.3 2.4 5.3 5.3V19.7H27.6z" fill="#36C5F0"/><path d="M27.6 22.3c2.9 0 5.3 2.4 5.3 5.3s-2.4 5.3-5.3 5.3H14.4c-2.9 0-5.3-2.4-5.3-5.3s2.4-5.3 5.3-5.3H27.6z" fill="#36C5F0"/><path d="M40.1 27.6c0-2.9 2.4-5.3 5.3-5.3s5.3 2.4 5.3 5.3-2.4 5.3-5.3 5.3H40.1V27.6z" fill="#2EB67D"/><path d="M37.4 27.6c0 2.9-2.4 5.3-5.3 5.3s-5.3-2.4-5.3-5.3V14.4c0-2.9 2.4-5.3 5.3-5.3s5.3 2.4 5.3 5.3V27.6z" fill="#2EB67D"/><path d="M32.1 40.1c2.9 0 5.3 2.4 5.3 5.3s-2.4 5.3-5.3 5.3-5.3-2.4-5.3-5.3V40.1h5.3z" fill="#ECB22E"/><path d="M32.1 37.4c-2.9 0-5.3-2.4-5.3-5.3s2.4-5.3 5.3-5.3h13.3c2.9 0 5.3 2.4 5.3 5.3s-2.4 5.3-5.3 5.3H32.1z" fill="#ECB22E"/></svg>${esc(a.slack_channel_name || 'Slack')}</span>`
       : '';
     const lastRunLabel = a.last_run
       ? `<span style="font-size:11px;color:var(--muted);">Last run: ${timeAgo(a.last_run)}</span>`
@@ -802,6 +875,11 @@ async function createAutomation(deliveryType) {
     payload.hubspot_form_name = formSelected.name;
   }
 
+  // Filters
+  const filtersArr = (deliveryType === 'instantly' ? filtersInstantly : filtersForm)
+    .filter(f => f.property.trim());
+  payload.filters = filtersArr;
+
   const slackEnabled = document.getElementById(`slack-enabled-${deliveryType}`)?.checked;
   if (slackEnabled) {
     const slackChSelected = deliveryType === 'instantly' ? slackChSelectedInstantly : slackChSelectedForm;
@@ -912,7 +990,11 @@ async function editAutomation(id) {
     document.getElementById('create-btn-instantly').textContent = 'Save changes';
   }
 
+  // Populate filters
   const dt = isForm ? 'hubspot_form' : 'instantly';
+  if (isForm) { filtersForm      = JSON.parse(JSON.stringify(a.filters || [])); renderFilters('hubspot_form'); }
+  else        { filtersInstantly = JSON.parse(JSON.stringify(a.filters || [])); renderFilters('instantly'); }
+
   const slackCb = document.getElementById(`slack-enabled-${dt}`);
   if (slackCb) {
     slackCb.checked = !!a.slack_enabled;
