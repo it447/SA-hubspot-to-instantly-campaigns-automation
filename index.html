@@ -330,7 +330,7 @@
               <button type="button" class="btn btn-cream" onclick="addFilter('instantly')" style="font-size:12px;padding:5px 10px;">+ Add condition</button>
             </div>
             <div id="filters-instantly"><div style="font-size:13px;color:var(--muted);padding:6px 0;">No conditions — all contacts will be enrolled.</div></div>
-            <div class="token-hint" style="margin-top:8px;">Common properties: lifecyclestage, hs_lead_status, country, industry, jobtitle</div>
+            <div class="token-hint" style="margin-top:8px;">Properties are loaded from your HubSpot account. Enumeration fields show a value picker automatically.</div>
           </div>
           <hr class="slack-divider">
           <div class="slack-toggle-row">
@@ -406,7 +406,7 @@
               <button type="button" class="btn btn-cream" onclick="addFilter('hubspot_form')" style="font-size:12px;padding:5px 10px;">+ Add condition</button>
             </div>
             <div id="filters-hubspot_form"><div style="font-size:13px;color:var(--muted);padding:6px 0;">No conditions — all contacts will be enrolled.</div></div>
-            <div class="token-hint" style="margin-top:8px;">Common properties: lifecyclestage, hs_lead_status, country, industry, jobtitle</div>
+            <div class="token-hint" style="margin-top:8px;">Properties are loaded from your HubSpot account. Enumeration fields show a value picker automatically.</div>
           </div>
           <hr class="slack-divider">
           <div class="slack-toggle-row">
@@ -493,7 +493,7 @@
 const BASE = '/api';
 let TOKEN = '';
 let automations = [];
-let hsList = [], campList = [], formList = [], slackChannels = [];
+let hsList = [], campList = [], formList = [], slackChannels = [], hsPropList = [];
 let hsSelectedInstantly       = { id:'', name:'' };
 let hsSelectedForm            = { id:'', name:'' };
 let campSelected              = { id:'', name:'' };
@@ -562,10 +562,8 @@ function newAutomation() {
   resetSearchSelect('hs-search-hubspot_form','hs-dropdown-hubspot_form',hsSelectedForm);
   resetSearchSelect('camp-search','camp-dropdown',campSelected);
   resetSearchSelect('form-search','form-dropdown',formSelected);
-  // Reset filters
   filtersInstantly = []; filtersForm = [];
   renderFilters('instantly'); renderFilters('hubspot_form');
-  // Reset Slack fields
   ['instantly','hubspot_form'].forEach(dt => {
     const cb = document.getElementById(`slack-enabled-${dt}`);
     if (cb) { cb.checked = false; toggleSlackSection(dt, false); }
@@ -592,7 +590,8 @@ function removeFilter(deliveryType, index) {
 function updateFilter(deliveryType, index, field, value) {
   const arr = deliveryType === 'instantly' ? filtersInstantly : filtersForm;
   arr[index][field] = value;
-  if (field === 'operator') renderFilters(deliveryType);
+  if (field === 'property') arr[index].value = '';
+  if (field === 'operator' || field === 'property') renderFilters(deliveryType);
 }
 
 function renderFilters(deliveryType) {
@@ -603,28 +602,51 @@ function renderFilters(deliveryType) {
     container.innerHTML = '<div style="font-size:13px;color:var(--muted);padding:6px 0;">No conditions — all contacts will be enrolled.</div>';
     return;
   }
-  container.innerHTML = arr.map((f, i) => `
-    <div style="display:flex;gap:8px;margin-bottom:8px;align-items:center;">
-      <input type="text" placeholder="Property (e.g. lifecyclestage)" value="${esc(f.property)}"
-        oninput="updateFilter('${deliveryType}',${i},'property',this.value)"
-        style="flex:2;font-size:13px;padding:8px 10px;min-width:0;">
+
+  container.innerHTML = arr.map((f, i) => {
+    const propMeta = hsPropList.find(p => p.name === f.property);
+    const isEnum = propMeta && (propMeta.type === 'enumeration' || ['select','radio','checkbox','booleancheckbox'].includes(propMeta.fieldType)) && propMeta.options.length;
+
+    const propertyField = hsPropList.length
+      ? `<select onchange="updateFilter('${deliveryType}',${i},'property',this.value)"
+           style="flex:2;font-size:13px;padding:8px 10px;min-width:0;">
+           <option value="" disabled ${!f.property?'selected':''}>Select property…</option>
+           ${hsPropList.map(p => `<option value="${esc(p.name)}" ${f.property===p.name?'selected':''}>${esc(p.label)}</option>`).join('')}
+         </select>`
+      : `<input type="text" placeholder="Property (e.g. lifecyclestage)" value="${esc(f.property)}"
+           oninput="updateFilter('${deliveryType}',${i},'property',this.value)"
+           style="flex:2;font-size:13px;padding:8px 10px;min-width:0;">`;
+
+    let valueField = `<div style="flex:2;"></div>`;
+    if (f.operator !== 'exists') {
+      if (isEnum) {
+        valueField = `<select onchange="updateFilter('${deliveryType}',${i},'value',this.value)"
+            style="flex:2;font-size:13px;padding:8px 10px;min-width:0;">
+            <option value="" disabled ${!f.value?'selected':''}>Select value…</option>
+            ${propMeta.options.map(o => `<option value="${esc(o.value)}" ${f.value===o.value?'selected':''}>${esc(o.label)}</option>`).join('')}
+          </select>`;
+      } else {
+        valueField = `<input type="text" placeholder="Value" value="${esc(f.value)}"
+            oninput="updateFilter('${deliveryType}',${i},'value',this.value)"
+            style="flex:2;font-size:13px;padding:8px 10px;min-width:0;">`;
+      }
+    }
+
+    return `<div style="display:flex;gap:8px;margin-bottom:8px;align-items:center;">
+      ${propertyField}
       <select onchange="updateFilter('${deliveryType}',${i},'operator',this.value)"
         style="flex:1;font-size:13px;padding:8px 10px;min-width:0;">
-        <option value="equals"      ${f.operator==='equals'      ?'selected':''}>equals</option>
-        <option value="not_equals"  ${f.operator==='not_equals'  ?'selected':''}>not equals</option>
-        <option value="contains"    ${f.operator==='contains'    ?'selected':''}>contains</option>
-        <option value="not_contains"${f.operator==='not_contains'?'selected':''}>not contains</option>
-        <option value="exists"      ${f.operator==='exists'      ?'selected':''}>exists</option>
+        <option value="equals"       ${f.operator==='equals'       ?'selected':''}>equals</option>
+        <option value="not_equals"   ${f.operator==='not_equals'   ?'selected':''}>not equals</option>
+        <option value="contains"     ${f.operator==='contains'     ?'selected':''}>contains</option>
+        <option value="not_contains" ${f.operator==='not_contains' ?'selected':''}>not contains</option>
+        <option value="exists"       ${f.operator==='exists'       ?'selected':''}>exists</option>
       </select>
-      ${f.operator !== 'exists'
-        ? `<input type="text" placeholder="Value" value="${esc(f.value)}"
-             oninput="updateFilter('${deliveryType}',${i},'value',this.value)"
-             style="flex:2;font-size:13px;padding:8px 10px;min-width:0;">`
-        : `<div style="flex:2;"></div>`}
+      ${valueField}
       <button type="button" onclick="removeFilter('${deliveryType}',${i})"
         style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:18px;line-height:1;flex-shrink:0;padding:0 2px;">×</button>
-    </div>
-  `).join('');
+    </div>`;
+  }).join('');
 }
 
 function toggleSlackSection(deliveryType, enabled) {
@@ -809,8 +831,8 @@ async function loadDropdowns() {
   ids.forEach(id => { const el=document.getElementById(id); if(el){el.disabled=true; el.placeholder='Loading…';} });
 
   try {
-    const [l, c, f, s] = await Promise.all([
-      api('GET','/lists'), api('GET','/campaigns'), api('GET','/forms'), api('GET','/slack/channels')
+    const [l, c, f, s, pr] = await Promise.all([
+      api('GET','/lists'), api('GET','/campaigns'), api('GET','/forms'), api('GET','/slack/channels'), api('GET','/properties')
     ]);
 
     if (l.ok && Array.isArray(l.data)) {
@@ -841,6 +863,10 @@ async function loadDropdowns() {
       slackChannels = s.data;
       initSearchSelect('slack-ch-search-instantly',   'slack-ch-dropdown-instantly',   slackChannels, slackChSelectedInstantly, 'Search channels…');
       initSearchSelect('slack-ch-search-hubspot_form','slack-ch-dropdown-hubspot_form', slackChannels, slackChSelectedForm,      'Search channels…');
+    }
+
+    if (pr.ok && Array.isArray(pr.data)) {
+      hsPropList = pr.data;
     }
   } catch(e) {
     ids.forEach(id => { const el=document.getElementById(id); if(el) el.placeholder='Network error'; });
@@ -875,7 +901,6 @@ async function createAutomation(deliveryType) {
     payload.hubspot_form_name = formSelected.name;
   }
 
-  // Filters
   const filtersArr = (deliveryType === 'instantly' ? filtersInstantly : filtersForm)
     .filter(f => f.property.trim());
   payload.filters = filtersArr;
@@ -990,7 +1015,6 @@ async function editAutomation(id) {
     document.getElementById('create-btn-instantly').textContent = 'Save changes';
   }
 
-  // Populate filters
   const dt = isForm ? 'hubspot_form' : 'instantly';
   if (isForm) { filtersForm      = JSON.parse(JSON.stringify(a.filters || [])); renderFilters('hubspot_form'); }
   else        { filtersInstantly = JSON.parse(JSON.stringify(a.filters || [])); renderFilters('instantly'); }
