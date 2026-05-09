@@ -6,8 +6,8 @@ from urllib.request import urlopen, Request
 from urllib.error import HTTPError
 import requests
 
-UPSTASH_URL        = os.environ.get("UPSTASH_REDIS_REST_URL", "")
-UPSTASH_TOKEN      = os.environ.get("UPSTASH_REDIS_REST_TOKEN", "")
+UPSTASH_URL   = os.environ.get("UPSTASH_REDIS_REST_URL", "")
+UPSTASH_TOKEN = os.environ.get("UPSTASH_REDIS_REST_TOKEN", "")
 DASHBOARD_PASSWORD = os.environ.get("DASHBOARD_PASSWORD", "changeme")
 INSTANTLY_API_KEY  = os.environ.get("INSTANTLY_API_KEY", "")
 HUBSPOT_API_KEY    = os.environ.get("HUBSPOT_API_KEY", "")
@@ -71,6 +71,7 @@ def get_list_contacts(list_id):
 def get_hs_lists():
     headers = {"Authorization": f"Bearer {HUBSPOT_API_KEY}"}
     seen = {}
+
     offset = 0
     while True:
         url = f"https://api.hubapi.com/contacts/v1/lists?count=250&offset={offset}"
@@ -125,7 +126,7 @@ def get_hs_forms():
     forms = []
     after = None
     while True:
-        url = "https://api.hubapi.com/marketing/v3/forms?limit=100"
+        url = "https://api.hubspot.com/marketing/v3/forms?limit=100"
         if after:
             url += f"&after={after}"
         _log(f"[HubSpot forms] GET after={after}")
@@ -147,28 +148,6 @@ def get_hs_forms():
             break
     _log(f"[HubSpot forms] total={len(forms)}")
     return sorted(forms, key=lambda x: x["name"].lower())
-
-def get_instantly_campaigns():
-    url = "https://api.instantly.ai/api/v2/campaigns?limit=100"
-    headers = {"Authorization": f"Bearer {INSTANTLY_API_KEY}"}
-    _log(f"[Instantly] GET {url} (key present: {bool(INSTANTLY_API_KEY)})")
-    try:
-        resp = requests.get(url, headers=headers, timeout=10)
-        _log(f"[Instantly] status={resp.status_code} body={resp.text[:300]}")
-        resp.raise_for_status()
-        data = resp.json()
-        if isinstance(data, list):
-            campaigns = data
-        elif isinstance(data, dict):
-            campaigns = data.get("items", data.get("campaigns", data.get("data", [])))
-        else:
-            campaigns = []
-        _log(f"[Instantly] returned {len(campaigns)} campaigns")
-        return [{"id": c.get("id", ""), "name": c.get("name", "")} for c in campaigns]
-    except requests.HTTPError as e:
-        raise Exception(f"Instantly HTTP {e.response.status_code}: {e.response.text[:400]}")
-    except Exception as e:
-        raise Exception(f"Instantly request failed: {e}")
 
 def get_slack_channels():
     if not SLACK_BOT_TOKEN:
@@ -196,6 +175,28 @@ def get_slack_channels():
             _log(f"[Slack] channels error: {e}")
             break
     return sorted(channels, key=lambda x: x["name"].lower())
+
+def get_instantly_campaigns():
+    url = "https://api.instantly.ai/api/v2/campaigns?limit=100"
+    headers = {"Authorization": f"Bearer {INSTANTLY_API_KEY}"}
+    _log(f"[Instantly] GET {url} (key present: {bool(INSTANTLY_API_KEY)})")
+    try:
+        resp = requests.get(url, headers=headers, timeout=10)
+        _log(f"[Instantly] status={resp.status_code} body={resp.text[:300]}")
+        resp.raise_for_status()
+        data = resp.json()
+        if isinstance(data, list):
+            campaigns = data
+        elif isinstance(data, dict):
+            campaigns = data.get("items", data.get("campaigns", data.get("data", [])))
+        else:
+            campaigns = []
+        _log(f"[Instantly] returned {len(campaigns)} campaigns")
+        return [{"id": c.get("id", ""), "name": c.get("name", "")} for c in campaigns]
+    except requests.HTTPError as e:
+        raise Exception(f"Instantly HTTP {e.response.status_code}: {e.response.text[:400]}")
+    except Exception as e:
+        raise Exception(f"Instantly request failed: {e}")
 
 class handler(BaseHTTPRequestHandler):
 
@@ -288,6 +289,7 @@ class handler(BaseHTTPRequestHandler):
                 return
 
             existing = get_automations()
+            filters = [f for f in body.get("filters", []) if isinstance(f, dict) and f.get("property")]
 
             if delivery_type == "instantly":
                 camp_id   = str(body.get("instantly_campaign_id", "")).strip()
@@ -309,6 +311,7 @@ class handler(BaseHTTPRequestHandler):
                     "instantly_campaign_id": camp_id,
                     "instantly_campaign_name": camp_name,
                     "delay_hours": delay_hours,
+                    "filters": filters,
                     "active": True,
                 }
 
@@ -330,12 +333,14 @@ class handler(BaseHTTPRequestHandler):
                     "hubspot_list_name": list_name,
                     "hubspot_form_id": form_id,
                     "hubspot_form_name": form_name,
+                    "filters": filters,
                     "active": True,
                 }
             else:
                 self._json(400, {"error": "Invalid delivery_type"})
                 return
 
+            # Slack fields
             new_auto["slack_enabled"]      = bool(body.get("slack_enabled", False))
             new_auto["slack_channel"]      = body.get("slack_channel", "")
             new_auto["slack_channel_name"] = body.get("slack_channel_name", "")
@@ -377,13 +382,13 @@ class handler(BaseHTTPRequestHandler):
                     a["hubspot_form_name"] = body.get("hubspot_form_name", "")
                 if "delay_hours" in body:
                     a["delay_hours"] = int(body["delay_hours"])
+                if "filters" in body:
+                    a["filters"] = [f for f in body["filters"] if isinstance(f, dict) and f.get("property")]
                 if "slack_enabled" in body:
-                    a["slack_enabled"] = bool(body["slack_enabled"])
-                if "slack_channel" in body:
-                    a["slack_channel"] = str(body["slack_channel"])
+                    a["slack_enabled"]      = bool(body["slack_enabled"])
+                    a["slack_channel"]      = body.get("slack_channel", "")
                     a["slack_channel_name"] = body.get("slack_channel_name", "")
-                if "slack_message" in body:
-                    a["slack_message"] = str(body["slack_message"])
+                    a["slack_message"]      = body.get("slack_message", "")
                 found = True
                 break
 
