@@ -562,8 +562,10 @@ function newAutomation() {
   resetSearchSelect('hs-search-hubspot_form','hs-dropdown-hubspot_form',hsSelectedForm);
   resetSearchSelect('camp-search','camp-dropdown',campSelected);
   resetSearchSelect('form-search','form-dropdown',formSelected);
+  // Reset filters
   filtersInstantly = []; filtersForm = [];
   renderFilters('instantly'); renderFilters('hubspot_form');
+  // Reset Slack fields
   ['instantly','hubspot_form'].forEach(dt => {
     const cb = document.getElementById(`slack-enabled-${dt}`);
     if (cb) { cb.checked = false; toggleSlackSection(dt, false); }
@@ -607,17 +609,7 @@ function renderFilters(deliveryType) {
     const propMeta = hsPropList.find(p => p.name === f.property);
     const isEnum = propMeta && (propMeta.type === 'enumeration' || ['select','radio','checkbox','booleancheckbox'].includes(propMeta.fieldType)) && propMeta.options.length;
 
-    const propertyField = hsPropList.length
-      ? `<select onchange="updateFilter('${deliveryType}',${i},'property',this.value)"
-           style="flex:2;font-size:13px;padding:8px 10px;min-width:0;">
-           <option value="" disabled ${!f.property?'selected':''}>Select property…</option>
-           ${hsPropList.map(p => `<option value="${esc(p.name)}" ${f.property===p.name?'selected':''}>${esc(p.label)}</option>`).join('')}
-         </select>`
-      : `<input type="text" placeholder="Property (e.g. lifecyclestage)" value="${esc(f.property)}"
-           oninput="updateFilter('${deliveryType}',${i},'property',this.value)"
-           style="flex:2;font-size:13px;padding:8px 10px;min-width:0;">`;
-
-    let valueField = `<div style="flex:2;"></div>`;
+    let valueField = `<div style="flex:2;min-width:0;"></div>`;
     if (f.operator !== 'exists') {
       if (isEnum) {
         valueField = `<select onchange="updateFilter('${deliveryType}',${i},'value',this.value)"
@@ -633,7 +625,11 @@ function renderFilters(deliveryType) {
     }
 
     return `<div style="display:flex;gap:8px;margin-bottom:8px;align-items:center;">
-      ${propertyField}
+      <div class="search-select" style="flex:2;min-width:0;">
+        <input type="text" id="prop-search-${deliveryType}-${i}" placeholder="Search properties…" autocomplete="off"
+          style="font-size:13px;padding:8px 10px;">
+        <div class="search-dropdown" id="prop-dropdown-${deliveryType}-${i}"></div>
+      </div>
       <select onchange="updateFilter('${deliveryType}',${i},'operator',this.value)"
         style="flex:1;font-size:13px;padding:8px 10px;min-width:0;">
         <option value="equals"       ${f.operator==='equals'       ?'selected':''}>equals</option>
@@ -647,6 +643,48 @@ function renderFilters(deliveryType) {
         style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:18px;line-height:1;flex-shrink:0;padding:0 2px;">×</button>
     </div>`;
   }).join('');
+
+  arr.forEach((f, i) => initFilterPropSearch(deliveryType, i, f.property));
+}
+
+function initFilterPropSearch(deliveryType, index, currentPropName) {
+  const input    = document.getElementById(`prop-search-${deliveryType}-${index}`);
+  const dropdown = document.getElementById(`prop-dropdown-${deliveryType}-${index}`);
+  if (!input || !dropdown) return;
+
+  const currentProp = hsPropList.find(p => p.name === currentPropName);
+  if (currentProp) { input.value = currentProp.label; input.classList.add('has-value'); }
+
+  function renderOptions(query) {
+    const q = query.trim().toLowerCase();
+    const matches = q
+      ? hsPropList.filter(p => p.label.toLowerCase().includes(q) || p.name.toLowerCase().includes(q))
+      : hsPropList;
+    if (!matches.length) {
+      dropdown.innerHTML = `<div class="search-option-empty">No properties found</div>`;
+    } else {
+      dropdown.innerHTML = matches.map(p =>
+        `<div class="search-option${currentPropName===p.name?' selected':''}" data-name="${esc(p.name)}" data-label="${esc(p.label)}">${esc(p.label)}<span style="font-size:10px;opacity:0.45;margin-left:6px;">${esc(p.name)}</span></div>`
+      ).join('');
+      dropdown.querySelectorAll('.search-option').forEach(el => {
+        el.addEventListener('mousedown', e => {
+          e.preventDefault();
+          updateFilter(deliveryType, index, 'property', el.dataset.name);
+        });
+      });
+    }
+    dropdown.classList.add('open');
+  }
+
+  input.addEventListener('focus', () => renderOptions(''));
+  input.addEventListener('input', () => { input.classList.remove('has-value'); renderOptions(input.value); });
+  input.addEventListener('blur', () => {
+    setTimeout(() => dropdown.classList.remove('open'), 150);
+    const arr2 = deliveryType === 'instantly' ? filtersInstantly : filtersForm;
+    const meta = hsPropList.find(p => p.name === arr2[index]?.property);
+    if (meta) { input.value = meta.label; input.classList.add('has-value'); }
+    else { input.value = ''; input.classList.remove('has-value'); }
+  });
 }
 
 function toggleSlackSection(deliveryType, enabled) {
@@ -901,6 +939,7 @@ async function createAutomation(deliveryType) {
     payload.hubspot_form_name = formSelected.name;
   }
 
+  // Filters
   const filtersArr = (deliveryType === 'instantly' ? filtersInstantly : filtersForm)
     .filter(f => f.property.trim());
   payload.filters = filtersArr;
@@ -1015,6 +1054,7 @@ async function editAutomation(id) {
     document.getElementById('create-btn-instantly').textContent = 'Save changes';
   }
 
+  // Populate filters
   const dt = isForm ? 'hubspot_form' : 'instantly';
   if (isForm) { filtersForm      = JSON.parse(JSON.stringify(a.filters || [])); renderFilters('hubspot_form'); }
   else        { filtersInstantly = JSON.parse(JSON.stringify(a.filters || [])); renderFilters('instantly'); }
