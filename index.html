@@ -81,9 +81,7 @@
   .page-header p { font-size:14px; color:var(--muted); margin-top:3px; }
 
   .stats-row { display:grid; grid-template-columns:repeat(3,1fr); gap:1rem; margin-bottom:1.75rem; }
-  .stat-card { background:var(--navy-soft); border:1px solid var(--border); border-radius:var(--radius); padding:1.25rem 1.5rem; position:relative; overflow:hidden; cursor:pointer; transition:border-color 0.15s, background 0.15s; }
-  .stat-card:hover { border-color:var(--border2); background:rgba(254,242,222,0.05); }
-  .stat-card.filter-active { border-color:var(--orange); background:rgba(255,100,50,0.07); }
+  .stat-card { background:var(--navy-soft); border:1px solid var(--border); border-radius:var(--radius); padding:1.25rem 1.5rem; position:relative; overflow:hidden; transition:border-color 0.15s, background 0.15s; }
   .stat-card::after { content:''; position:absolute; top:0; right:0; width:60px; height:60px; border-radius:0 var(--radius) 0 60px; background:rgba(254,242,222,0.03); }
   .stat-label { font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:0.09em; font-weight:500; margin-bottom:0.6rem; }
   .stat-value { font-family:'Playfair Display',serif; font-size:36px; font-weight:700; letter-spacing:-0.03em; color:var(--cream); line-height:1; }
@@ -217,10 +215,16 @@
       <div class="brand-s">S</div>
       <span class="brand-name">scalearmy</span>
     </div>
-    <button class="nav-item active" onclick="showPage('dashboard')" id="nav-dashboard">
+    <button class="nav-item active" onclick="showPage('dashboard');setFilter('all')" id="nav-dashboard">
       <span class="nav-icon">◻</span> Dashboard
     </button>
-    <button class="nav-item" onclick="newAutomation()" id="nav-add">
+    <button class="nav-item" id="nav-filter-instantly" onclick="showPage('dashboard');setFilter('instantly')" style="padding-left:28px;font-size:13px;">
+      <span class="nav-icon" style="font-size:12px;">⚡</span> Instantly
+    </button>
+    <button class="nav-item" id="nav-filter-hubspot_form" onclick="showPage('dashboard');setFilter('hubspot_form')" style="padding-left:28px;font-size:13px;">
+      <span class="nav-icon" style="font-size:12px;">◈</span> HS Form
+    </button>
+    <button class="nav-item" onclick="newAutomation()" id="nav-add" style="margin-top:4px;">
       <span class="nav-icon">+</span> New automation
     </button>
     <div class="sidebar-footer">
@@ -239,19 +243,18 @@
           <h2>Automations</h2>
           <div class="orange-bar" style="margin-top:8px;margin-bottom:0;"></div>
         </div>
-        <button class="btn btn-primary" style="width:auto;padding:11px 20px;margin-top:4px;" onclick="newAutomation()">+ New automation</button>
       </div>
 
       <div class="stats-row">
-        <div class="stat-card filter-active" id="filter-card-all" onclick="setFilter('all')">
+        <div class="stat-card" style="cursor:default;">
           <div class="stat-label">Total automations</div>
           <div class="stat-value orange" id="stat-total">—</div>
         </div>
-        <div class="stat-card" id="filter-card-instantly" onclick="setFilter('instantly')">
+        <div class="stat-card" style="cursor:default;">
           <div class="stat-label">Instantly automations</div>
           <div class="stat-value" id="stat-instantly">—</div>
         </div>
-        <div class="stat-card" id="filter-card-hubspot_form" onclick="setFilter('hubspot_form')">
+        <div class="stat-card" style="cursor:default;">
           <div class="stat-label">HS form automations</div>
           <div class="stat-value" id="stat-forms">—</div>
         </div>
@@ -545,6 +548,7 @@ function showPage(page) {
   document.getElementById(`page-${page}`).classList.add('active');
   document.getElementById(`nav-${page}`)?.classList.add('active');
   if (page === 'add' && !dropdownsLoaded) loadDropdowns();
+  if (page === 'dashboard') setFilter(currentFilter);
 }
 
 function newAutomation() {
@@ -562,10 +566,8 @@ function newAutomation() {
   resetSearchSelect('hs-search-hubspot_form','hs-dropdown-hubspot_form',hsSelectedForm);
   resetSearchSelect('camp-search','camp-dropdown',campSelected);
   resetSearchSelect('form-search','form-dropdown',formSelected);
-  // Reset filters
   filtersInstantly = []; filtersForm = [];
   renderFilters('instantly'); renderFilters('hubspot_form');
-  // Reset Slack fields
   ['instantly','hubspot_form'].forEach(dt => {
     const cb = document.getElementById(`slack-enabled-${dt}`);
     if (cb) { cb.checked = false; toggleSlackSection(dt, false); }
@@ -719,9 +721,9 @@ async function loadAutomations() {
 
 function setFilter(filter) {
   currentFilter = filter;
-  ['all','instantly','hubspot_form'].forEach(f => {
-    document.getElementById(`filter-card-${f}`)?.classList.toggle('filter-active', f === filter);
-  });
+  document.getElementById('nav-dashboard').classList.toggle('active', filter === 'all');
+  document.getElementById('nav-filter-instantly').classList.toggle('active', filter === 'instantly');
+  document.getElementById('nav-filter-hubspot_form').classList.toggle('active', filter === 'hubspot_form');
   renderAutomations();
 }
 
@@ -939,7 +941,6 @@ async function createAutomation(deliveryType) {
     payload.hubspot_form_name = formSelected.name;
   }
 
-  // Filters
   const filtersArr = (deliveryType === 'instantly' ? filtersInstantly : filtersForm)
     .filter(f => f.property.trim());
   payload.filters = filtersArr;
@@ -1054,7 +1055,6 @@ async function editAutomation(id) {
     document.getElementById('create-btn-instantly').textContent = 'Save changes';
   }
 
-  // Populate filters
   const dt = isForm ? 'hubspot_form' : 'instantly';
   if (isForm) { filtersForm      = JSON.parse(JSON.stringify(a.filters || [])); renderFilters('hubspot_form'); }
   else        { filtersInstantly = JSON.parse(JSON.stringify(a.filters || [])); renderFilters('instantly'); }
