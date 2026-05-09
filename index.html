@@ -46,7 +46,7 @@
     color:var(--cream); font-family:'DM Sans',sans-serif; font-size:15px; padding:11px 14px;
     outline:none; transition:border-color 0.15s,background 0.15s; appearance:none; -webkit-appearance:none;
   }
-  textarea { resize:vertical; min-height:90px; line-height:1.5; }
+  textarea { resize:vertical; min-height:80px; line-height:1.5; }
   input::placeholder, textarea::placeholder { color:var(--muted); }
   input:focus, textarea:focus { border-color:var(--orange); background:rgba(255,100,50,0.06); }
 
@@ -172,6 +172,13 @@
   .log-email { color:var(--cream); font-weight:500; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .log-meta { color:var(--muted); font-size:11px; white-space:nowrap; flex-shrink:0; text-align:right; }
 
+  .slack-divider { border:none; border-top:1px solid var(--border); margin:1.5rem 0 1.25rem; }
+  .slack-toggle-row { display:flex; align-items:center; justify-content:space-between; }
+  .slack-toggle-label { display:flex; align-items:center; gap:8px; font-size:14px; font-weight:500; color:var(--cream); }
+  .slack-icon { display:inline-flex; align-items:center; }
+  .slack-body { margin-top:1rem; display:flex; flex-direction:column; gap:0.9rem; }
+  .token-hint { font-size:11px; color:var(--muted); margin-top:5px; }
+
   .edit-grid { display:flex; gap:2rem; align-items:start; }
   .edit-grid > :first-child { flex-shrink:0; }
   #edit-logs-panel { flex:1; min-width:0; }
@@ -179,13 +186,6 @@
   #edit-log-body { max-height:520px; overflow-y:auto; }
   #edit-log-body::-webkit-scrollbar { width:4px; }
   #edit-log-body::-webkit-scrollbar-thumb { background:rgba(254,242,222,0.15); border-radius:2px; }
-
-  .slack-divider { border-top:1px solid var(--border); margin-top:1.5rem; padding-top:1.5rem; }
-  .slack-toggle-row { display:flex; align-items:center; justify-content:space-between; margin-bottom:1rem; }
-  .slack-toggle-label { font-size:14px; font-weight:500; color:var(--cream); display:flex; align-items:center; gap:8px; }
-  .slack-icon { font-size:16px; }
-  .token-hint { font-size:11px; color:var(--muted); margin-top:6px; line-height:1.6; }
-  .token-hint code { background:rgba(254,242,222,0.08); padding:1px 5px; border-radius:4px; font-family:monospace; font-size:11px; color:var(--cream-dim); }
 </style>
 </head>
 <body>
@@ -271,7 +271,7 @@
       </div>
     </div>
 
-    <!-- ADD / EDIT -->
+    <!-- ADD -->
     <div class="page" id="page-add">
       <div class="page-header">
         <div>
@@ -323,32 +323,42 @@
               </select>
             </div>
           </div>
-
-          <!-- Slack section -->
-          <div class="slack-divider">
-            <div class="slack-toggle-row">
-              <span class="slack-toggle-label"><span class="slack-icon">💬</span> Slack notification</span>
-              <label class="toggle">
-                <input type="checkbox" id="slack-enabled-instantly" onchange="toggleSlackSection('instantly', this.checked)">
-                <span class="toggle-slider"></span>
-              </label>
+          <hr class="slack-divider">
+          <div class="slack-toggle-row">
+            <span class="slack-toggle-label">
+              <span class="slack-icon">
+                <svg width="16" height="16" viewBox="0 0 54 54" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M19.7 32.2c0 2.9-2.4 5.3-5.3 5.3s-5.3-2.4-5.3-5.3 2.4-5.3 5.3-5.3H19.7v5.3z" fill="#E01E5A"/>
+                  <path d="M22.3 32.2c0-2.9 2.4-5.3 5.3-5.3s5.3 2.4 5.3 5.3v13.3c0 2.9-2.4 5.3-5.3 5.3s-5.3-2.4-5.3-5.3V32.2z" fill="#E01E5A"/>
+                  <path d="M27.6 19.7c-2.9 0-5.3-2.4-5.3-5.3s2.4-5.3 5.3-5.3 5.3 2.4 5.3 5.3V19.7H27.6z" fill="#36C5F0"/>
+                  <path d="M27.6 22.3c2.9 0 5.3 2.4 5.3 5.3s-2.4 5.3-5.3 5.3H14.4c-2.9 0-5.3-2.4-5.3-5.3s2.4-5.3 5.3-5.3H27.6z" fill="#36C5F0"/>
+                  <path d="M40.1 27.6c0-2.9 2.4-5.3 5.3-5.3s5.3 2.4 5.3 5.3-2.4 5.3-5.3 5.3H40.1V27.6z" fill="#2EB67D"/>
+                  <path d="M37.4 27.6c0 2.9-2.4 5.3-5.3 5.3s-5.3-2.4-5.3-5.3V14.4c0-2.9 2.4-5.3 5.3-5.3s5.3 2.4 5.3 5.3V27.6z" fill="#2EB67D"/>
+                  <path d="M32.1 40.1c2.9 0 5.3 2.4 5.3 5.3s-2.4 5.3-5.3 5.3-5.3-2.4-5.3-5.3V40.1h5.3z" fill="#ECB22E"/>
+                  <path d="M32.1 37.4c-2.9 0-5.3-2.4-5.3-5.3s2.4-5.3 5.3-5.3h13.3c2.9 0 5.3 2.4 5.3 5.3s-2.4 5.3-5.3 5.3H32.1z" fill="#ECB22E"/>
+                </svg>
+              </span>
+              Slack notification
+            </span>
+            <label class="toggle">
+              <input type="checkbox" id="slack-enabled-instantly" onchange="toggleSlackSection('instantly', this.checked)">
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+          <div id="slack-body-instantly" class="slack-body" style="display:none;">
+            <div>
+              <label>Channel</label>
+              <div class="search-select">
+                <input type="text" id="slack-ch-search-instantly" placeholder="Search channels…" autocomplete="off">
+                <div class="search-dropdown" id="slack-ch-dropdown-instantly"></div>
+              </div>
             </div>
-            <div id="slack-section-instantly" style="display:none;">
-              <div class="form-row">
-                <label>Channel</label>
-                <div class="search-select">
-                  <input type="text" id="slack-channel-search-instantly" placeholder="Search channels…" autocomplete="off">
-                  <div class="search-dropdown" id="slack-channel-dropdown-instantly"></div>
-                </div>
-              </div>
-              <div class="form-row">
-                <label>Message</label>
-                <textarea id="slack-message-instantly" placeholder="e.g. New lead: {{first_name}} {{last_name}} ({{email}}) from {{company}}"></textarea>
-                <p class="token-hint">Available tokens: <code>{{first_name}}</code> <code>{{last_name}}</code> <code>{{email}}</code> <code>{{company}}</code></p>
-              </div>
+            <div>
+              <label>Message template</label>
+              <textarea id="slack-msg-instantly" rows="3" placeholder="e.g. New lead enrolled: {{first_name}} {{last_name}} ({{email}})"></textarea>
+              <div class="token-hint">Available tokens: {{first_name}} {{last_name}} {{email}} {{company}}</div>
             </div>
           </div>
-
           <div class="form-footer">
             <button class="btn btn-cream" onclick="cancelEdit()">Cancel</button>
             <button class="btn btn-primary" onclick="createAutomation('instantly')" id="create-btn-instantly">Create automation</button>
@@ -380,32 +390,42 @@
               <div class="search-dropdown" id="form-dropdown"></div>
             </div>
           </div>
-
-          <!-- Slack section -->
-          <div class="slack-divider">
-            <div class="slack-toggle-row">
-              <span class="slack-toggle-label"><span class="slack-icon">💬</span> Slack notification</span>
-              <label class="toggle">
-                <input type="checkbox" id="slack-enabled-hubspot_form" onchange="toggleSlackSection('hubspot_form', this.checked)">
-                <span class="toggle-slider"></span>
-              </label>
+          <hr class="slack-divider">
+          <div class="slack-toggle-row">
+            <span class="slack-toggle-label">
+              <span class="slack-icon">
+                <svg width="16" height="16" viewBox="0 0 54 54" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M19.7 32.2c0 2.9-2.4 5.3-5.3 5.3s-5.3-2.4-5.3-5.3 2.4-5.3 5.3-5.3H19.7v5.3z" fill="#E01E5A"/>
+                  <path d="M22.3 32.2c0-2.9 2.4-5.3 5.3-5.3s5.3 2.4 5.3 5.3v13.3c0 2.9-2.4 5.3-5.3 5.3s-5.3-2.4-5.3-5.3V32.2z" fill="#E01E5A"/>
+                  <path d="M27.6 19.7c-2.9 0-5.3-2.4-5.3-5.3s2.4-5.3 5.3-5.3 5.3 2.4 5.3 5.3V19.7H27.6z" fill="#36C5F0"/>
+                  <path d="M27.6 22.3c2.9 0 5.3 2.4 5.3 5.3s-2.4 5.3-5.3 5.3H14.4c-2.9 0-5.3-2.4-5.3-5.3s2.4-5.3 5.3-5.3H27.6z" fill="#36C5F0"/>
+                  <path d="M40.1 27.6c0-2.9 2.4-5.3 5.3-5.3s5.3 2.4 5.3 5.3-2.4 5.3-5.3 5.3H40.1V27.6z" fill="#2EB67D"/>
+                  <path d="M37.4 27.6c0 2.9-2.4 5.3-5.3 5.3s-5.3-2.4-5.3-5.3V14.4c0-2.9 2.4-5.3 5.3-5.3s5.3 2.4 5.3 5.3V27.6z" fill="#2EB67D"/>
+                  <path d="M32.1 40.1c2.9 0 5.3 2.4 5.3 5.3s-2.4 5.3-5.3 5.3-5.3-2.4-5.3-5.3V40.1h5.3z" fill="#ECB22E"/>
+                  <path d="M32.1 37.4c-2.9 0-5.3-2.4-5.3-5.3s2.4-5.3 5.3-5.3h13.3c2.9 0 5.3 2.4 5.3 5.3s-2.4 5.3-5.3 5.3H32.1z" fill="#ECB22E"/>
+                </svg>
+              </span>
+              Slack notification
+            </span>
+            <label class="toggle">
+              <input type="checkbox" id="slack-enabled-hubspot_form" onchange="toggleSlackSection('hubspot_form', this.checked)">
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+          <div id="slack-body-hubspot_form" class="slack-body" style="display:none;">
+            <div>
+              <label>Channel</label>
+              <div class="search-select">
+                <input type="text" id="slack-ch-search-hubspot_form" placeholder="Search channels…" autocomplete="off">
+                <div class="search-dropdown" id="slack-ch-dropdown-hubspot_form"></div>
+              </div>
             </div>
-            <div id="slack-section-hubspot_form" style="display:none;">
-              <div class="form-row">
-                <label>Channel</label>
-                <div class="search-select">
-                  <input type="text" id="slack-channel-search-hubspot_form" placeholder="Search channels…" autocomplete="off">
-                  <div class="search-dropdown" id="slack-channel-dropdown-hubspot_form"></div>
-                </div>
-              </div>
-              <div class="form-row">
-                <label>Message</label>
-                <textarea id="slack-message-hubspot_form" placeholder="e.g. New lead: {{first_name}} {{last_name}} ({{email}}) from {{company}}"></textarea>
-                <p class="token-hint">Available tokens: <code>{{first_name}}</code> <code>{{last_name}}</code> <code>{{email}}</code> <code>{{company}}</code></p>
-              </div>
+            <div>
+              <label>Message template</label>
+              <textarea id="slack-msg-hubspot_form" rows="3" placeholder="e.g. New lead enrolled: {{first_name}} {{last_name}} ({{email}})"></textarea>
+              <div class="token-hint">Available tokens: {{first_name}} {{last_name}} {{email}} {{company}}</div>
             </div>
           </div>
-
           <div class="form-footer">
             <button class="btn btn-cream" onclick="cancelEdit()">Cancel</button>
             <button class="btn btn-primary" onclick="createAutomation('hubspot_form')" id="create-btn-hubspot_form">Create automation</button>
@@ -416,7 +436,7 @@
 
       </div><!-- close form col -->
 
-      <!-- Edit: inline contacts sidebar -->
+      <!-- Edit: inline logs sidebar -->
       <div id="edit-logs-panel" style="display:none;">
         <div class="card">
           <div class="card-header">
@@ -460,8 +480,8 @@ let hsSelectedInstantly       = { id:'', name:'' };
 let hsSelectedForm            = { id:'', name:'' };
 let campSelected              = { id:'', name:'' };
 let formSelected              = { id:'', name:'' };
-let slackChannelSelectedInstantly = { id:'', name:'' };
-let slackChannelSelectedForm      = { id:'', name:'' };
+let slackChSelectedInstantly  = { id:'', name:'' };
+let slackChSelectedForm       = { id:'', name:'' };
 let dropdownsLoaded = false;
 let currentFilter = 'all';
 let searchQuery = '';
@@ -518,24 +538,23 @@ function newAutomation() {
   document.getElementById('auto-name-hubspot_form').value = '';
   document.getElementById('form-error-instantly').style.display = 'none';
   document.getElementById('form-error-hubspot_form').style.display = 'none';
-  document.getElementById('slack-enabled-instantly').checked = false;
-  document.getElementById('slack-enabled-hubspot_form').checked = false;
-  document.getElementById('slack-section-instantly').style.display = 'none';
-  document.getElementById('slack-section-hubspot_form').style.display = 'none';
-  document.getElementById('slack-message-instantly').value = '';
-  document.getElementById('slack-message-hubspot_form').value = '';
   resetSearchSelect('hs-search-instantly','hs-dropdown-instantly',hsSelectedInstantly);
   resetSearchSelect('hs-search-hubspot_form','hs-dropdown-hubspot_form',hsSelectedForm);
   resetSearchSelect('camp-search','camp-dropdown',campSelected);
   resetSearchSelect('form-search','form-dropdown',formSelected);
-  resetSearchSelect('slack-channel-search-instantly','slack-channel-dropdown-instantly',slackChannelSelectedInstantly);
-  resetSearchSelect('slack-channel-search-hubspot_form','slack-channel-dropdown-hubspot_form',slackChannelSelectedForm);
+  ['instantly','hubspot_form'].forEach(dt => {
+    const cb = document.getElementById(`slack-enabled-${dt}`);
+    if (cb) { cb.checked = false; toggleSlackSection(dt, false); }
+    resetSearchSelect(`slack-ch-search-${dt}`, `slack-ch-dropdown-${dt}`, dt === 'instantly' ? slackChSelectedInstantly : slackChSelectedForm);
+    const ta = document.getElementById(`slack-msg-${dt}`);
+    if (ta) ta.value = '';
+  });
   switchTab('instantly');
   showPage('add');
 }
 
 function toggleSlackSection(deliveryType, enabled) {
-  document.getElementById(`slack-section-${deliveryType}`).style.display = enabled ? 'block' : 'none';
+  document.getElementById(`slack-body-${deliveryType}`).style.display = enabled ? 'flex' : 'none';
 }
 
 function switchTab(tab) {
@@ -606,6 +625,8 @@ function renderAutomations() {
     return;
   }
 
+  const SLACK_SVG = `<svg width="10" height="10" viewBox="0 0 54 54" xmlns="http://www.w3.org/2000/svg"><path d="M19.7 32.2c0 2.9-2.4 5.3-5.3 5.3s-5.3-2.4-5.3-5.3 2.4-5.3 5.3-5.3H19.7v5.3z" fill="#E01E5A"/><path d="M22.3 32.2c0-2.9 2.4-5.3 5.3-5.3s5.3 2.4 5.3 5.3v13.3c0 2.9-2.4 5.3-5.3 5.3s-5.3-2.4-5.3-5.3V32.2z" fill="#E01E5A"/><path d="M27.6 19.7c-2.9 0-5.3-2.4-5.3-5.3s2.4-5.3 5.3-5.3 5.3 2.4 5.3 5.3V19.7H27.6z" fill="#36C5F0"/><path d="M27.6 22.3c2.9 0 5.3 2.4 5.3 5.3s-2.4 5.3-5.3 5.3H14.4c-2.9 0-5.3-2.4-5.3-5.3s2.4-5.3 5.3-5.3H27.6z" fill="#36C5F0"/><path d="M40.1 27.6c0-2.9 2.4-5.3 5.3-5.3s5.3 2.4 5.3 5.3-2.4 5.3-5.3 5.3H40.1V27.6z" fill="#2EB67D"/><path d="M37.4 27.6c0 2.9-2.4 5.3-5.3 5.3s-5.3-2.4-5.3-5.3V14.4c0-2.9 2.4-5.3 5.3-5.3s5.3 2.4 5.3 5.3V27.6z" fill="#2EB67D"/><path d="M32.1 40.1c2.9 0 5.3 2.4 5.3 5.3s-2.4 5.3-5.3 5.3-5.3-2.4-5.3-5.3V40.1h5.3z" fill="#ECB22E"/><path d="M32.1 37.4c-2.9 0-5.3-2.4-5.3-5.3s2.4-5.3 5.3-5.3h13.3c2.9 0 5.3 2.4 5.3 5.3s-2.4 5.3-5.3 5.3H32.1z" fill="#ECB22E"/></svg>`;
+
   list.innerHTML = filtered.map(a => {
     const isForm = a.delivery_type === 'hubspot_form';
     const deliveryChip = isForm
@@ -616,7 +637,7 @@ function renderAutomations() {
       ? `<span class="chip chip-hs">⏱ ${a.delay_hours >= 24 ? (a.delay_hours/24) + 'd delay' : a.delay_hours + 'h delay'}</span>`
       : '';
     const slackChip = a.slack_enabled
-      ? `<span class="chip chip-hs">💬 ${esc(a.slack_channel_name || 'Slack')}</span>`
+      ? `<span class="chip chip-hs" style="gap:4px;">${SLACK_SVG}${esc(a.slack_channel_name || 'Slack')}</span>`
       : '';
     const lastRunLabel = a.last_run
       ? `<span style="font-size:11px;color:var(--muted);">Last run: ${timeAgo(a.last_run)}</span>`
@@ -712,15 +733,12 @@ function resetSearchSelect(inputId, dropdownId, selectedObj) {
 
 async function loadDropdowns() {
   dropdownsLoaded = true;
-  const ids = ['hs-search-instantly','hs-search-hubspot_form','camp-search','form-search','slack-channel-search-instantly','slack-channel-search-hubspot_form'];
+  const ids = ['hs-search-instantly','hs-search-hubspot_form','camp-search','form-search'];
   ids.forEach(id => { const el=document.getElementById(id); if(el){el.disabled=true; el.placeholder='Loading…';} });
 
   try {
     const [l, c, f, s] = await Promise.all([
-      api('GET','/lists'),
-      api('GET','/campaigns'),
-      api('GET','/forms'),
-      api('GET','/slack/channels')
+      api('GET','/lists'), api('GET','/campaigns'), api('GET','/forms'), api('GET','/slack/channels')
     ]);
 
     if (l.ok && Array.isArray(l.data)) {
@@ -749,12 +767,8 @@ async function loadDropdowns() {
 
     if (s.ok && Array.isArray(s.data)) {
       slackChannels = s.data;
-      initSearchSelect('slack-channel-search-instantly',   'slack-channel-dropdown-instantly',   slackChannels, slackChannelSelectedInstantly, 'Search channels…');
-      initSearchSelect('slack-channel-search-hubspot_form','slack-channel-dropdown-hubspot_form',slackChannels, slackChannelSelectedForm,      'Search channels…');
-    } else {
-      ['slack-channel-search-instantly','slack-channel-search-hubspot_form'].forEach(id => {
-        const el=document.getElementById(id); if(el) el.placeholder='Slack not configured';
-      });
+      initSearchSelect('slack-ch-search-instantly',   'slack-ch-dropdown-instantly',   slackChannels, slackChSelectedInstantly, 'Search channels…');
+      initSearchSelect('slack-ch-search-hubspot_form','slack-ch-dropdown-hubspot_form', slackChannels, slackChSelectedForm,      'Search channels…');
     }
   } catch(e) {
     ids.forEach(id => { const el=document.getElementById(id); if(el) el.placeholder='Network error'; });
@@ -789,16 +803,16 @@ async function createAutomation(deliveryType) {
     payload.hubspot_form_name = formSelected.name;
   }
 
-  const slackEnabled = document.getElementById(`slack-enabled-${deliveryType}`).checked;
-  const slackSelected = deliveryType === 'instantly' ? slackChannelSelectedInstantly : slackChannelSelectedForm;
-  const slackMessage = document.getElementById(`slack-message-${deliveryType}`).value.trim();
+  const slackEnabled = document.getElementById(`slack-enabled-${deliveryType}`)?.checked;
   if (slackEnabled) {
-    if (!slackSelected.id) { errEl.textContent='Please select a Slack channel.'; errEl.style.display='block'; return; }
-    if (!slackMessage)     { errEl.textContent='Please enter a Slack message.';  errEl.style.display='block'; return; }
+    const slackChSelected = deliveryType === 'instantly' ? slackChSelectedInstantly : slackChSelectedForm;
+    const slackMsg = (document.getElementById(`slack-msg-${deliveryType}`)?.value || '').trim();
+    if (!slackChSelected.id) { errEl.textContent='Please select a Slack channel.'; errEl.style.display='block'; return; }
+    if (!slackMsg) { errEl.textContent='Please enter a Slack message template.'; errEl.style.display='block'; return; }
     payload.slack_enabled      = true;
-    payload.slack_channel      = slackSelected.id;
-    payload.slack_channel_name = slackSelected.name;
-    payload.slack_message      = slackMessage;
+    payload.slack_channel      = slackChSelected.id;
+    payload.slack_channel_name = slackChSelected.name;
+    payload.slack_message      = slackMsg;
   } else {
     payload.slack_enabled = false;
   }
@@ -871,8 +885,6 @@ async function editAutomation(id) {
   switchTab(isForm ? 'hubspot_form' : 'instantly');
   loadEditLogs(a.hubspot_list_id);
 
-  const dt = isForm ? 'hubspot_form' : 'instantly';
-
   if (isForm) {
     document.getElementById('auto-name-hubspot_form').value = a.name || '';
     hsSelectedForm = { id: a.hubspot_list_id || '', name: a.hubspot_list_name || '' };
@@ -901,24 +913,20 @@ async function editAutomation(id) {
     document.getElementById('create-btn-instantly').textContent = 'Save changes';
   }
 
-  const slackEnabledEl = document.getElementById(`slack-enabled-${dt}`);
-  const slackSectionEl = document.getElementById(`slack-section-${dt}`);
-  const slackMsgEl     = document.getElementById(`slack-message-${dt}`);
-  const slackSelected  = isForm ? slackChannelSelectedForm : slackChannelSelectedInstantly;
-
-  if (a.slack_enabled) {
-    slackEnabledEl.checked = true;
-    slackSectionEl.style.display = 'block';
-    slackMsgEl.value = a.slack_message || '';
-    if (a.slack_channel) {
-      slackSelected.id   = a.slack_channel;
-      slackSelected.name = a.slack_channel_name || '';
-      const searchEl = document.getElementById(`slack-channel-search-${dt}`);
-      if (searchEl) { searchEl.value = a.slack_channel_name || ''; searchEl.classList.toggle('has-value', true); }
+  const dt = isForm ? 'hubspot_form' : 'instantly';
+  const slackCb = document.getElementById(`slack-enabled-${dt}`);
+  if (slackCb) {
+    slackCb.checked = !!a.slack_enabled;
+    toggleSlackSection(dt, !!a.slack_enabled);
+    if (a.slack_enabled) {
+      const slackChSelected = isForm ? slackChSelectedForm : slackChSelectedInstantly;
+      slackChSelected.id   = a.slack_channel || '';
+      slackChSelected.name = a.slack_channel_name || '';
+      const sci = document.getElementById(`slack-ch-search-${dt}`);
+      if (sci) { sci.value = a.slack_channel_name || ''; sci.classList.toggle('has-value', !!a.slack_channel); }
+      const ta = document.getElementById(`slack-msg-${dt}`);
+      if (ta) ta.value = a.slack_message || '';
     }
-  } else {
-    slackEnabledEl.checked = false;
-    slackSectionEl.style.display = 'none';
   }
 }
 
