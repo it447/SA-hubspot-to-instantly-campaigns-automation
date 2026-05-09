@@ -86,13 +86,17 @@ def log_enrollment(auto_id, email, delivery_type, ts):
     with urlopen(trim_req, timeout=5) as r:
         r.read()
 
-def get_list_contacts(list_id):
+def get_list_contacts(list_id, extra_properties=None):
     headers = {"Authorization": f"Bearer {HUBSPOT_API_KEY}"}
     contacts = []
     vid_offset = None
 
+    base_props = ["email", "firstname", "lastname", "company"]
+    all_props = base_props + [p for p in (extra_properties or []) if p not in base_props]
+    prop_str = "&".join(f"property={p}" for p in all_props)
+
     while True:
-        url = f"https://api.hubapi.com/contacts/v1/lists/{list_id}/contacts/all?count=100&property=email&property=firstname&property=lastname&property=company"
+        url = f"https://api.hubapi.com/contacts/v1/lists/{list_id}/contacts/all?count=100&{prop_str}"
         if vid_offset:
             url += f"&vidOffset={vid_offset}"
         try:
@@ -107,12 +111,15 @@ def get_list_contacts(list_id):
             props = c.get("properties", {})
             email = props.get("email", {}).get("value", "").strip().lower()
             if email:
-                contacts.append({
-                    "email": email,
+                contact = {
+                    "email":     email,
                     "firstname": props.get("firstname", {}).get("value", ""),
                     "lastname":  props.get("lastname",  {}).get("value", ""),
                     "company":   props.get("company",   {}).get("value", ""),
-                })
+                }
+                for p in (extra_properties or []):
+                    contact[p] = props.get(p, {}).get("value", "")
+                contacts.append(contact)
 
         if not body.get("has-more", False):
             break
@@ -120,6 +127,31 @@ def get_list_contacts(list_id):
 
     _log(f"[sync] list {list_id} has {len(contacts)} contacts")
     return contacts
+
+def check_filters(contact, filters):
+    if not filters:
+        return True
+    for f in filters:
+        prop        = f.get("property", "")
+        operator    = f.get("operator", "equals")
+        value       = str(f.get("value", "")).strip().lower()
+        contact_val = str(contact.get(prop, "") or "").strip().lower()
+        if operator == "exists":
+            if not contact_val:
+                return False
+        elif operator == "equals":
+            if contact_val != value:
+                return False
+        elif operator == "not_equals":
+            if contact_val == value:
+                return False
+        elif operator == "contains":
+            if value not in contact_val:
+                return False
+        elif operator == "not_contains":
+            if value in contact_val:
+                return False
+    return True
 
 def add_to_instantly(email, first_name, last_name, company, campaign_id):
     headers = {
@@ -171,27 +203,35 @@ class handler(BaseHTTPRequestHandler):
         active = [a for a in all_automations if a.get("active")]
         _log(f"[sync] running for {len(active)} active automations")
 
-        total_processed = total_duplicates = total_errors = total_waiting = 0
+        total_processed = total_duplicates = total_errors = total_waiting = total_filtered = 0
 
         for automation in active:
             list_id       = automation["hubspot_list_id"]
             delivery_type = automation.get("delivery_type", "instantly")
             target_id     = automation.get("instantly_campaign_id") if delivery_type == "instantly" else automation.get("hubspot_form_id")
             delay_hours   = float(automation.get("delay_hours", 0))
+            filters       = automation.get("filters", [])
 
-            _log(f"[sync] automation list={list_id} delivery={delivery_type} target={target_id} delay={delay_hours}h")
+            _log(f"[sync] automation list={list_id} delivery={delivery_type} target={target_id} delay={delay_hours}h filters={len(filters)}")
 
             if not target_id:
                 _log(f"[sync] skip: no target_id for automation {automation.get('id')}")
                 continue
 
-            contacts = get_list_contacts(list_id)
+            extra_props = [f["property"] for f in filters if f.get("property")]
+            contacts = get_list_contacts(list_id, extra_properties=extra_props)
 
             for c in contacts:
                 email = c["email"]
                 try:
                     if already_sent(email, target_id):
                         total_duplicates += 1
+                        continue
+
+                    if not check_filters(c, filters):
+                        _log(f"[sync] filtered out {email}: failed conditions")
+                        mark_as_sent(email, target_id)
+                        total_filtered += 1
                         continue
 
                     if delivery_type == "instantly" and delay_hours > 0:
@@ -228,7 +268,6 @@ class handler(BaseHTTPRequestHandler):
                             msg = msg.replace("{{last_name}}",  c.get("lastname", ""))
                             msg = msg.replace("{{company}}",    c.get("company", ""))
                             send_slack_notification(automation["slack_channel"], msg)
-                            _log(f"[sync] Slack notification sent for {email}")
                         except Exception as slack_err:
                             _log(f"[sync] Slack notification failed for {email}: {slack_err}")
 
@@ -242,7 +281,7 @@ class handler(BaseHTTPRequestHandler):
 
         save_automations(all_automations)
 
-        result = {"processed": total_processed, "duplicates": total_duplicates, "waiting": total_waiting, "errors": total_errors}
+        result = {"processed": total_processed, "duplicates": total_duplicates, "waiting": total_waiting, "filtered": total_filtered, "errors": total_errors}
         _log(f"[sync] done: {result}")
         self._json(200, result)
 
