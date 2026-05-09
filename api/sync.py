@@ -228,12 +228,6 @@ class handler(BaseHTTPRequestHandler):
                         total_duplicates += 1
                         continue
 
-                    if not check_filters(c, filters):
-                        _log(f"[sync] filtered out {email}: failed conditions")
-                        mark_as_sent(email, target_id)
-                        total_filtered += 1
-                        continue
-
                     if delivery_type == "instantly" and delay_hours > 0:
                         first_seen = get_first_seen(email, target_id)
                         if first_seen is None:
@@ -247,6 +241,13 @@ class handler(BaseHTTPRequestHandler):
                             _log(f"[sync] delay: {email} waiting {remaining}h more")
                             total_waiting += 1
                             continue
+
+                    # Check filter conditions after delay — if failed, mark as sent so they're never retried
+                    if not check_filters(c, filters):
+                        _log(f"[sync] filtered out {email}: failed conditions")
+                        mark_as_sent(email, target_id)
+                        total_filtered += 1
+                        continue
 
                     if delivery_type == "hubspot_form":
                         submit_hs_form(email, c["firstname"], c["lastname"], c["company"], target_id)
