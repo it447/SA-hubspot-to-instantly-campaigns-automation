@@ -6,11 +6,12 @@ from urllib.request import urlopen, Request
 from urllib.error import HTTPError
 import requests
 
-UPSTASH_URL   = os.environ.get("UPSTASH_REDIS_REST_URL", "")
-UPSTASH_TOKEN = os.environ.get("UPSTASH_REDIS_REST_TOKEN", "")
+UPSTASH_URL        = os.environ.get("UPSTASH_REDIS_REST_URL", "")
+UPSTASH_TOKEN      = os.environ.get("UPSTASH_REDIS_REST_TOKEN", "")
 DASHBOARD_PASSWORD = os.environ.get("DASHBOARD_PASSWORD", "changeme")
 INSTANTLY_API_KEY  = os.environ.get("INSTANTLY_API_KEY", "")
 HUBSPOT_API_KEY    = os.environ.get("HUBSPOT_API_KEY", "")
+SLACK_BOT_TOKEN    = os.environ.get("SLACK_BOT_TOKEN", "")
 
 def _log(msg):
     print(msg, file=sys.stderr, flush=True)
@@ -70,7 +71,6 @@ def get_list_contacts(list_id):
 def get_hs_lists():
     headers = {"Authorization": f"Bearer {HUBSPOT_API_KEY}"}
     seen = {}
-
     offset = 0
     while True:
         url = f"https://api.hubapi.com/contacts/v1/lists?count=250&offset={offset}"
@@ -170,6 +170,33 @@ def get_instantly_campaigns():
     except Exception as e:
         raise Exception(f"Instantly request failed: {e}")
 
+def get_slack_channels():
+    if not SLACK_BOT_TOKEN:
+        return []
+    headers = {"Authorization": f"Bearer {SLACK_BOT_TOKEN}"}
+    channels = []
+    cursor = None
+    while True:
+        url = "https://slack.com/api/conversations.list?types=public_channel,private_channel&limit=200&exclude_archived=true"
+        if cursor:
+            url += f"&cursor={cursor}"
+        try:
+            resp = requests.get(url, headers=headers, timeout=10)
+            resp.raise_for_status()
+            data = resp.json()
+            if not data.get("ok"):
+                raise Exception(data.get("error", "Slack API error"))
+            for ch in data.get("channels", []):
+                if ch.get("is_member", False):
+                    channels.append({"id": ch["id"], "name": f"#{ch['name']}"})
+            cursor = data.get("response_metadata", {}).get("next_cursor")
+            if not cursor:
+                break
+        except Exception as e:
+            _log(f"[Slack] channels error: {e}")
+            break
+    return sorted(channels, key=lambda x: x["name"].lower())
+
 class handler(BaseHTTPRequestHandler):
 
     def _json(self, status, data):
@@ -217,6 +244,11 @@ class handler(BaseHTTPRequestHandler):
         elif path.endswith("/automations"):
             try:
                 self._json(200, get_automations())
+            except Exception as e:
+                self._json(500, {"error": str(e)})
+        elif path.endswith("/slack/channels"):
+            try:
+                self._json(200, get_slack_channels())
             except Exception as e:
                 self._json(500, {"error": str(e)})
         elif "/contacts/" in path:
@@ -304,6 +336,11 @@ class handler(BaseHTTPRequestHandler):
                 self._json(400, {"error": "Invalid delivery_type"})
                 return
 
+            new_auto["slack_enabled"]      = bool(body.get("slack_enabled", False))
+            new_auto["slack_channel"]      = body.get("slack_channel", "")
+            new_auto["slack_channel_name"] = body.get("slack_channel_name", "")
+            new_auto["slack_message"]      = body.get("slack_message", "")
+
             existing.append(new_auto)
             save_automations(existing)
             self._json(200, new_auto)
@@ -340,6 +377,13 @@ class handler(BaseHTTPRequestHandler):
                     a["hubspot_form_name"] = body.get("hubspot_form_name", "")
                 if "delay_hours" in body:
                     a["delay_hours"] = int(body["delay_hours"])
+                if "slack_enabled" in body:
+                    a["slack_enabled"] = bool(body["slack_enabled"])
+                if "slack_channel" in body:
+                    a["slack_channel"] = str(body["slack_channel"])
+                    a["slack_channel_name"] = body.get("slack_channel_name", "")
+                if "slack_message" in body:
+                    a["slack_message"] = str(body["slack_message"])
                 found = True
                 break
 
