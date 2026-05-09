@@ -11,6 +11,7 @@
     { "src": "/api/lists", "dest": "/api/automations.py" },
     { "src": "/api/campaigns", "dest": "/api/automations.py" },
     { "src": "/api/forms", "dest": "/api/automations.py" },
+    { "src": "/api/properties", "dest": "/api/automations.py" },
     { "src": "/api/contacts/(.*)", "dest": "/api/automations.py" },
     { "src": "/api/slack/channels", "dest": "/api/automations.py" },
     { "src": "/api/sync", "dest": "/api/sync.py" },
