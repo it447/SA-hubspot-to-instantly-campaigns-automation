@@ -14,7 +14,6 @@ INSTANTLY_API_KEY = os.environ.get("INSTANTLY_API_KEY", "")
 HUBSPOT_API_KEY   = os.environ.get("HUBSPOT_API_KEY", "")
 HUBSPOT_PORTAL_ID = os.environ.get("HUBSPOT_PORTAL_ID", "22650739")
 SYNC_SECRET       = os.environ.get("SYNC_SECRET", "")
-SLACK_BOT_TOKEN   = os.environ.get("SLACK_BOT_TOKEN", "")
 
 def _log(msg):
     print(msg, file=sys.stderr, flush=True)
@@ -132,9 +131,9 @@ def check_filters(contact, filters):
     if not filters:
         return True
     for f in filters:
-        prop        = f.get("property", "")
-        operator    = f.get("operator", "equals")
-        value       = str(f.get("value", "")).strip().lower()
+        prop     = f.get("property", "")
+        operator = f.get("operator", "equals")
+        value    = str(f.get("value", "")).strip().lower()
         contact_val = str(contact.get(prop, "") or "").strip().lower()
         if operator == "exists":
             if not contact_val:
@@ -177,17 +176,6 @@ def submit_hs_form(email, first_name, last_name, company, form_id):
     }, timeout=10)
     _log(f"[sync] HS form {form_id} submit {email} status={resp.status_code} body={resp.text[:300]}")
     resp.raise_for_status()
-
-def send_slack_notification(channel, message):
-    if not SLACK_BOT_TOKEN:
-        return
-    resp = requests.post("https://slack.com/api/chat.postMessage", headers={
-        "Authorization": f"Bearer {SLACK_BOT_TOKEN}",
-        "Content-Type": "application/json"
-    }, json={"channel": channel, "text": message}, timeout=10)
-    data = resp.json()
-    if not data.get("ok"):
-        raise Exception(f"Slack error: {data.get('error', 'unknown')}")
 
 class handler(BaseHTTPRequestHandler):
 
@@ -242,7 +230,6 @@ class handler(BaseHTTPRequestHandler):
                             total_waiting += 1
                             continue
 
-                    # Check filter conditions after delay — if failed, mark as sent so they're never retried
                     if not check_filters(c, filters):
                         _log(f"[sync] filtered out {email}: failed conditions")
                         mark_as_sent(email, target_id)
@@ -260,18 +247,6 @@ class handler(BaseHTTPRequestHandler):
                         log_enrollment(automation.get("id", target_id), email, delivery_type, ts)
                     except Exception:
                         pass
-
-                    if automation.get("slack_enabled") and automation.get("slack_channel") and automation.get("slack_message"):
-                        try:
-                            msg = automation["slack_message"]
-                            msg = msg.replace("{{email}}",      email)
-                            msg = msg.replace("{{first_name}}", c.get("firstname", ""))
-                            msg = msg.replace("{{last_name}}",  c.get("lastname", ""))
-                            msg = msg.replace("{{company}}",    c.get("company", ""))
-                            send_slack_notification(automation["slack_channel"], msg)
-                        except Exception as slack_err:
-                            _log(f"[sync] Slack notification failed for {email}: {slack_err}")
-
                     _log(f"[sync] added {email} -> {delivery_type} {target_id}")
                     total_processed += 1
                 except Exception as e:
