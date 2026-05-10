@@ -126,7 +126,7 @@ def get_hs_forms():
     forms = []
     after = None
     while True:
-        url = "https://api.hubapi.com/marketing/v3/forms?limit=100"
+        url = "https://api.hubspot.com/marketing/v3/forms?limit=100"
         if after:
             url += f"&after={after}"
         _log(f"[HubSpot forms] GET after={after}")
@@ -292,6 +292,11 @@ class handler(BaseHTTPRequestHandler):
                 self._json(200, get_list_contacts(list_id))
             except Exception as e:
                 self._json(500, {"error": str(e)})
+        elif path.endswith("/slack/channels"):
+            try:
+                self._json(200, get_slack_channels())
+            except Exception as e:
+                self._json(500, {"error": str(e)})
         else:
             self._json(404, {"error": "Not found"})
 
@@ -334,6 +339,9 @@ class handler(BaseHTTPRequestHandler):
                     if a.get("hubspot_list_id") == list_id and a.get("instantly_campaign_id") == camp_id:
                         self._json(409, {"error": "Automation already exists"})
                         return
+                action = body.get("action", "enroll")
+                if action not in ("enroll", "unenroll"):
+                    action = "enroll"
                 delay_hours = int(body.get("delay_hours", 0))
                 filters = [f for f in body.get("filters", []) if isinstance(f, dict) and f.get("property")]
                 new_auto = {
@@ -344,6 +352,7 @@ class handler(BaseHTTPRequestHandler):
                     "hubspot_list_name": list_name,
                     "instantly_campaign_id": camp_id,
                     "instantly_campaign_name": camp_name,
+                    "action": action,
                     "delay_hours": delay_hours,
                     "filters": filters,
                     "active": True,
@@ -374,6 +383,15 @@ class handler(BaseHTTPRequestHandler):
             else:
                 self._json(400, {"error": "Invalid delivery_type"})
                 return
+
+            slack_enabled = bool(body.get("slack_enabled", False))
+            if slack_enabled:
+                new_auto["slack_enabled"]      = True
+                new_auto["slack_channel"]      = body.get("slack_channel", "")
+                new_auto["slack_channel_name"] = body.get("slack_channel_name", "")
+                new_auto["slack_message"]      = body.get("slack_message", "")
+            else:
+                new_auto["slack_enabled"] = False
 
             existing.append(new_auto)
             save_automations(existing)
@@ -406,6 +424,8 @@ class handler(BaseHTTPRequestHandler):
                 if "instantly_campaign_id" in body:
                     a["instantly_campaign_id"] = str(body["instantly_campaign_id"]).strip()
                     a["instantly_campaign_name"] = body.get("instantly_campaign_name", "")
+                if "action" in body and body["action"] in ("enroll", "unenroll"):
+                    a["action"] = body["action"]
                 if "hubspot_form_id" in body:
                     a["hubspot_form_id"] = str(body["hubspot_form_id"]).strip()
                     a["hubspot_form_name"] = body.get("hubspot_form_name", "")
@@ -413,30 +433,7 @@ class handler(BaseHTTPRequestHandler):
                     a["delay_hours"] = int(body["delay_hours"])
                 if "filters" in body:
                     a["filters"] = [f for f in body["filters"] if isinstance(f, dict) and f.get("property")]
-                found = True
-                break
-
-        if not found:
-            self._json(404, {"error": "Not found"})
-            return
-        save_automations(existing)
-        self._json(200, {"ok": True})
-
-    def do_DELETE(self):
-        token = self.headers.get("X-Auth-Token", "")
-        if token != DASHBOARD_PASSWORD:
-            self._json(401, {"error": "Unauthorized"})
-            return
-
-        parts = self.path.strip("/").split("/")
-        auto_id = parts[-1] if parts else ""
-        existing = get_automations()
-        updated = [a for a in existing if a.get("id") != auto_id]
-        if len(updated) == len(existing):
-            self._json(404, {"error": "Not found"})
-            return
-        save_automations(updated)
-        self._json(200, {"ok": True})
-
-    def log_message(self, *args):
-        pass
+                if "slack_enabled" in body:
+                    a["slack_enabled"] = bool(body["slack_enabled"])
+                    if body["slack_enabled"]:
+                        a["slack_channel"]      = body.get
