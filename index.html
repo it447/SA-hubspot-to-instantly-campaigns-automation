@@ -47,6 +47,8 @@
   body.light-mode textarea:focus { border-color: var(--orange); background: rgba(255,100,50,0.04); }
   body.light-mode .search-select input {
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23162b3e' opacity='0.4' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 14px center;
   }
   /* Sidebar always stays dark */
   body.light-mode .sidebar { background: #0f1f2e !important; border-right-color: rgba(254,242,222,0.1) !important; }
@@ -56,38 +58,27 @@
   body.light-mode .sidebar-footer { border-top-color: rgba(254,242,222,0.1); }
   body.light-mode .sidebar .brand-name { color: #fef2de; }
   body.light-mode .sidebar .brand-s { color: #fef2de; }
-  /* Tab bar */
   body.light-mode .tab-bar { background: rgba(22,43,62,0.05); border-color: rgba(22,43,62,0.12); }
-  /* Toggle slider */
   body.light-mode .toggle-slider { background: rgba(22,43,62,0.15); }
   body.light-mode .toggle-slider::before { background: rgba(22,43,62,0.45); }
   body.light-mode .toggle input:checked + .toggle-slider { background: var(--orange); }
   body.light-mode .toggle input:checked + .toggle-slider::before { background: #fff; }
-  /* Chips */
   body.light-mode .chip-hs { color: #1e3a50; border-color: rgba(22,43,62,0.2); background: rgba(22,43,62,0.06); }
   body.light-mode .chip-inactive { border-color: rgba(22,43,62,0.12); background: rgba(22,43,62,0.04); }
-  /* Search dropdown */
   body.light-mode .search-dropdown { background: #fff; box-shadow: 0 8px 24px rgba(22,43,62,0.15); }
   body.light-mode .search-option { color: #162b3e; border-bottom-color: rgba(22,43,62,0.06); }
   body.light-mode .search-option:hover { background: rgba(255,100,50,0.08); }
   body.light-mode .search-option.selected { background: rgba(255,100,50,0.12); color: var(--orange); }
   body.light-mode .search-option-empty { color: rgba(22,43,62,0.4); }
-  /* Search bar */
   body.light-mode .search-bar input { background: rgba(22,43,62,0.05); border-color: rgba(22,43,62,0.12); }
-  /* Modal */
   body.light-mode .modal-overlay { background: rgba(22,43,62,0.55); }
-  /* Toast */
   body.light-mode .toast { border-color: rgba(22,43,62,0.2); }
-  /* Login card decorations */
   body.light-mode #login-screen::before { background: rgba(255,100,50,0.09); }
   body.light-mode #login-screen::after  { background: rgba(22,43,62,0.04); }
-  /* Btn icon */
   body.light-mode .btn-icon { color: #162b3e; border-color: rgba(22,43,62,0.2); }
   body.light-mode .btn-icon:hover { background: rgba(22,43,62,0.07); }
-  /* Trash */
   body.light-mode .btn-trash { color: rgba(22,43,62,0.35); border-color: rgba(22,43,62,0.15); }
   body.light-mode .btn-trash:hover { border-color: var(--orange); color: var(--orange); background: rgba(255,100,50,0.08); }
-  /* Schedule buttons */
   body.light-mode .sched-btn { background: rgba(22,43,62,0.05); border-color: rgba(22,43,62,0.18); color: rgba(22,43,62,0.5); }
   body.light-mode .sched-btn.active { background: var(--orange); color: #fff; border-color: var(--orange); }
   body.light-mode .sched-btn:not(.active):hover { background: rgba(22,43,62,0.09); color: #162b3e; }
@@ -130,13 +121,11 @@
   .btn-danger { background:transparent; color:var(--orange); border:1px solid rgba(255,100,50,0.3); font-size:13px; padding:8px 14px; }
   .btn-danger:hover { background:rgba(255,100,50,0.1); }
 
-  /* Icon-only button (logs clock) */
   .btn-icon { display:inline-flex; align-items:center; justify-content:center; width:36px; height:36px; background:transparent; border:1px solid var(--border2); border-radius:var(--radius-sm); color:var(--cream); cursor:pointer; transition:all 0.15s; flex-shrink:0; position:relative; }
   .btn-icon:hover { background:rgba(254,242,222,0.07); border-color:var(--cream-dim); }
   .btn-icon .tooltip { position:absolute; bottom:calc(100% + 6px); left:50%; transform:translateX(-50%); background:var(--navy-deep); border:1px solid var(--border2); color:var(--cream); font-size:11px; font-weight:500; white-space:nowrap; padding:4px 9px; border-radius:6px; opacity:0; pointer-events:none; transition:opacity 0.15s; }
   .btn-icon:hover .tooltip { opacity:1; }
 
-  /* Trash button */
   .btn-trash { display:inline-flex; align-items:center; justify-content:center; width:30px; height:30px; background:transparent; border:1px solid rgba(255,100,50,0.2); border-radius:var(--radius-sm); color:var(--muted); cursor:pointer; transition:all 0.15s; flex-shrink:0; }
   .btn-trash:hover { border-color:var(--orange); color:var(--orange); background:rgba(255,100,50,0.08); }
 
@@ -265,7 +254,6 @@
   .edit-grid > :first-child { flex-shrink:0; }
   #right-column { flex:1; min-width:0; display:flex; flex-direction:column; gap:1.5rem; }
 
-  /* Action selector */
   .action-select-row { display:flex; gap:0.75rem; }
   .action-option { flex:1; border:1px solid var(--border2); border-radius:var(--radius-sm); padding:12px 14px; cursor:pointer; transition:all 0.15s; display:flex; align-items:center; gap:10px; }
   .action-option:hover { border-color:rgba(254,242,222,0.35); background:rgba(254,242,222,0.03); }
@@ -273,11 +261,9 @@
   .action-dot { width:14px; height:14px; border-radius:50%; border:2px solid var(--border2); flex-shrink:0; transition:all 0.15s; }
   .action-option.selected .action-dot { border-color:var(--orange); background:var(--orange); }
 
-  /* Alert panel */
   .alert-body-inner { display:flex; flex-direction:column; gap:0.9rem; padding:1.25rem 1.5rem; }
   .alert-time-grid { display:grid; grid-template-columns:1fr 1fr; gap:0.75rem; }
 
-  /* Schedule toggle buttons */
   .sched-toggle { display:flex; }
   .sched-btn { flex:1; padding:9px 16px; border:1px solid var(--border2); background:rgba(254,242,222,0.04); color:var(--muted); font-family:'DM Sans',sans-serif; font-size:14px; font-weight:500; cursor:pointer; transition:all 0.15s; }
   .sched-btn:first-child { border-radius:var(--radius-sm) 0 0 var(--radius-sm); border-right:none; }
@@ -285,7 +271,6 @@
   .sched-btn.active { background:var(--orange); color:#fef2de; border-color:var(--orange); }
   .sched-btn:not(.active):hover { background:rgba(254,242,222,0.08); color:var(--cream); }
 
-  /* Delete confirm modal */
   .delete-modal-inner { max-width:420px; }
   .delete-modal-body { padding:1.5rem; }
   .delete-modal-body p { font-size:14px; color:var(--muted); line-height:1.6; margin-bottom:1.5rem; }
@@ -335,7 +320,6 @@
     <div class="sidebar-footer">
       <button class="nav-item" id="theme-toggle-btn" onclick="toggleTheme()">
         <span class="nav-icon" id="theme-icon">
-          <!-- sun icon (shown in dark mode → click for light) -->
           <svg width="15" height="15" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg">
             <circle cx="7.5" cy="7.5" r="2.5" stroke="currentColor" stroke-width="1.3"/>
             <path d="M7.5 1.5V3M7.5 12V13.5M1.5 7.5H3M12 7.5H13.5M3.4 3.4l1.06 1.06M10.54 10.54l1.06 1.06M10.54 4.46l1.06-1.06M3.4 11.6l1.06-1.06" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
@@ -595,7 +579,7 @@
 
       </div><!-- close form col -->
 
-      <!-- Right column: alert panel only -->
+      <!-- Right column -->
       <div id="right-column">
         <div class="card" id="alert-panel">
           <div class="card-header">
@@ -734,7 +718,6 @@ function toggleTheme() {
   localStorage.setItem('sa-theme', isLight ? 'light' : 'dark');
   applyTheme(isLight);
 }
-// Init theme from storage
 applyTheme(localStorage.getItem('sa-theme') === 'light');
 
 // ── Toast ────────────────────────────────────────────────────
@@ -1061,7 +1044,6 @@ function renderAutomations() {
         <div class="auto-meta">
           <span class="chip chip-hs">HubSpot · ${esc(a.hubspot_list_name || a.hubspot_list_id)}</span>
           ${deliveryChip}${actionChip}${delayLabel}${slackChip}${alertChip}
-          <span class="chip ${active ? 'chip-active' : 'chip-inactive'}">${active ? '● Active' : '○ Paused'}</span>
         </div>
       </div>
       <div class="auto-actions" style="display:flex;align-items:center;gap:10px;" onclick="event.stopPropagation()">
