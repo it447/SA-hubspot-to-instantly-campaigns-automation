@@ -49,6 +49,7 @@
   textarea { resize:vertical; min-height:80px; line-height:1.5; }
   input::placeholder, textarea::placeholder { color:var(--muted); }
   input:focus, textarea:focus { border-color:var(--orange); background:rgba(255,100,50,0.06); }
+  input[type=time]::-webkit-calendar-picker-indicator { filter:invert(0.5); cursor:pointer; }
 
   .btn { display:inline-flex; align-items:center; justify-content:center; gap:8px; padding:11px 20px; border-radius:var(--radius-sm); border:none; font-family:'DM Sans',sans-serif; font-size:15px; font-weight:500; cursor:pointer; transition:all 0.15s; letter-spacing:-0.01em; }
   .btn-primary { background:var(--orange); color:var(--cream); width:100%; padding:13px; }
@@ -107,6 +108,7 @@
   .chip-active { color:#86efac; border-color:rgba(134,239,172,0.25); background:rgba(134,239,172,0.08); }
   .chip-inactive { color:var(--muted); border-color:rgba(254,242,222,0.1); background:rgba(254,242,222,0.03); }
   .chip-unenroll { color:#f9a8d4; border-color:rgba(249,168,212,0.3); background:rgba(249,168,212,0.08); }
+  .chip-alert { color:#fcd34d; border-color:rgba(252,211,77,0.3); background:rgba(252,211,77,0.08); }
 
   .search-bar { padding:1rem 1.5rem; border-bottom:1px solid var(--border); }
   .search-bar input { background:rgba(254,242,222,0.05); border:1px solid var(--border); border-radius:var(--radius-sm); color:var(--cream); font-family:'DM Sans',sans-serif; font-size:14px; padding:9px 14px; width:100%; max-width:360px; outline:none; transition:border-color 0.15s; }
@@ -182,9 +184,9 @@
 
   .edit-grid { display:flex; gap:2rem; align-items:start; }
   .edit-grid > :first-child { flex-shrink:0; }
-  #edit-logs-panel { flex:1; min-width:0; }
+  #right-column { flex:1; min-width:0; display:flex; flex-direction:column; gap:1.5rem; }
   #edit-logs-panel .card-header { padding:1rem 1.25rem; }
-  #edit-log-body { max-height:520px; overflow-y:auto; }
+  #edit-log-body { max-height:400px; overflow-y:auto; }
   #edit-log-body::-webkit-scrollbar { width:4px; }
   #edit-log-body::-webkit-scrollbar-thumb { background:rgba(254,242,222,0.15); border-radius:2px; }
 
@@ -198,6 +200,12 @@
   .action-label { font-size:13px; font-weight:500; color:var(--muted); }
   .action-option.selected .action-label { color:var(--cream); }
   .action-sublabel { font-size:11px; color:var(--muted); margin-top:2px; }
+
+  #alert-config-panel .card-header { border-bottom:none; }
+  #alert-config-panel .card-header.has-body { border-bottom:1px solid var(--border); }
+  .alert-body-inner { padding:1.25rem; display:flex; flex-direction:column; gap:1rem; }
+  .alert-body-inner .form-row { margin-bottom:0; }
+  .alert-time-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
 </style>
 </head>
 <body>
@@ -282,7 +290,7 @@
       </div>
     </div>
 
-    <!-- ADD -->
+    <!-- ADD / EDIT -->
     <div class="page" id="page-add">
       <div class="page-header">
         <div>
@@ -299,208 +307,273 @@
       </div>
 
       <div class="edit-grid">
-      <div>
 
-      <!-- Tab: Instantly -->
-      <div class="tab-panel active" id="tab-instantly">
-        <div class="form-card">
-          <h3>Instantly Automation</h3>
-          <p class="form-desc">Contacts added to the HubSpot list will be enrolled in or unenrolled from your Instantly email campaign automatically.</p>
-          <div class="form-row">
-            <label>Automation name</label>
-            <input type="text" id="auto-name-instantly" placeholder="e.g. Cold UK Leads → Q1 Outreach">
-          </div>
-          <div class="form-row">
-            <label>HubSpot list</label>
-            <div class="search-select">
-              <input type="text" id="hs-search-instantly" placeholder="Search HubSpot lists…" autocomplete="off">
-              <div class="search-dropdown" id="hs-dropdown-instantly"></div>
-            </div>
-          </div>
-          <div class="form-row">
-            <label>Instantly campaign</label>
-            <div class="search-select">
-              <input type="text" id="camp-search" placeholder="Search Instantly campaigns…" autocomplete="off">
-              <div class="search-dropdown" id="camp-dropdown"></div>
-            </div>
-          </div>
-          <div class="form-row">
-            <label>Action</label>
-            <div class="action-select-row">
-              <div class="action-option selected" id="action-option-enroll" onclick="selectAction('enroll')">
-                <input type="radio" name="instantly-action" value="enroll" checked>
-                <div class="action-dot"></div>
-                <div>
-                  <div class="action-label">Enroll</div>
-                  <div class="action-sublabel">Add contacts to campaign</div>
+        <!-- LEFT: form -->
+        <div>
+
+          <!-- Tab: Instantly -->
+          <div class="tab-panel active" id="tab-instantly">
+            <div class="form-card">
+              <h3>Instantly Automation</h3>
+              <p class="form-desc">Contacts added to the HubSpot list will be enrolled in or unenrolled from your Instantly email campaign automatically.</p>
+              <div class="form-row">
+                <label>Automation name</label>
+                <input type="text" id="auto-name-instantly" placeholder="e.g. Cold UK Leads → Q1 Outreach">
+              </div>
+              <div class="form-row">
+                <label>HubSpot list</label>
+                <div class="search-select">
+                  <input type="text" id="hs-search-instantly" placeholder="Search HubSpot lists…" autocomplete="off">
+                  <div class="search-dropdown" id="hs-dropdown-instantly"></div>
                 </div>
               </div>
-              <div class="action-option" id="action-option-unenroll" onclick="selectAction('unenroll')">
-                <input type="radio" name="instantly-action" value="unenroll">
-                <div class="action-dot"></div>
+              <div class="form-row">
+                <label>Instantly campaign</label>
+                <div class="search-select">
+                  <input type="text" id="camp-search" placeholder="Search Instantly campaigns…" autocomplete="off">
+                  <div class="search-dropdown" id="camp-dropdown"></div>
+                </div>
+              </div>
+              <div class="form-row">
+                <label>Action</label>
+                <div class="action-select-row">
+                  <div class="action-option selected" id="action-option-enroll" onclick="selectAction('enroll')">
+                    <input type="radio" name="instantly-action" value="enroll" checked>
+                    <div class="action-dot"></div>
+                    <div>
+                      <div class="action-label">Enroll</div>
+                      <div class="action-sublabel">Add contacts to campaign</div>
+                    </div>
+                  </div>
+                  <div class="action-option" id="action-option-unenroll" onclick="selectAction('unenroll')">
+                    <input type="radio" name="instantly-action" value="unenroll">
+                    <div class="action-dot"></div>
+                    <div>
+                      <div class="action-label">Unenroll</div>
+                      <div class="action-sublabel">Remove contacts from campaign</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="form-row">
+                <label>Delay before sending <span style="font-size:11px;opacity:0.6;">(0 = send immediately)</span></label>
+                <div style="display:flex;gap:8px;">
+                  <input type="number" id="delay-amount" min="0" value="0" placeholder="0" style="width:100px;flex-shrink:0;">
+                  <select id="delay-unit" style="flex:1;">
+                    <option value="hours">Hours</option>
+                    <option value="days">Days</option>
+                  </select>
+                </div>
+              </div>
+              <hr class="slack-divider">
+              <div class="form-row">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.75rem;">
+                  <label style="margin-bottom:0;">Filter conditions <span style="font-size:11px;opacity:0.6;">(optional)</span></label>
+                  <button type="button" class="btn btn-cream" onclick="addFilter('instantly')" style="font-size:12px;padding:5px 10px;">+ Add condition</button>
+                </div>
+                <div id="filters-instantly"><div style="font-size:13px;color:var(--muted);padding:6px 0;">No conditions — all contacts will be processed.</div></div>
+                <div class="token-hint" style="margin-top:8px;">Properties are loaded from your HubSpot account. Enumeration fields show a value picker automatically.</div>
+              </div>
+              <hr class="slack-divider">
+              <div class="slack-toggle-row">
+                <span class="slack-toggle-label">
+                  <span class="slack-icon">
+                    <svg width="16" height="16" viewBox="0 0 54 54" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M19.7 32.2c0 2.9-2.4 5.3-5.3 5.3s-5.3-2.4-5.3-5.3 2.4-5.3 5.3-5.3H19.7v5.3z" fill="#E01E5A"/>
+                      <path d="M22.3 32.2c0-2.9 2.4-5.3 5.3-5.3s5.3 2.4 5.3 5.3v13.3c0 2.9-2.4 5.3-5.3 5.3s-5.3-2.4-5.3-5.3V32.2z" fill="#E01E5A"/>
+                      <path d="M27.6 19.7c-2.9 0-5.3-2.4-5.3-5.3s2.4-5.3 5.3-5.3 5.3 2.4 5.3 5.3V19.7H27.6z" fill="#36C5F0"/>
+                      <path d="M27.6 22.3c2.9 0 5.3 2.4 5.3 5.3s-2.4 5.3-5.3 5.3H14.4c-2.9 0-5.3-2.4-5.3-5.3s2.4-5.3 5.3-5.3H27.6z" fill="#36C5F0"/>
+                      <path d="M40.1 27.6c0-2.9 2.4-5.3 5.3-5.3s5.3 2.4 5.3 5.3-2.4 5.3-5.3 5.3H40.1V27.6z" fill="#2EB67D"/>
+                      <path d="M37.4 27.6c0 2.9-2.4 5.3-5.3 5.3s-5.3-2.4-5.3-5.3V14.4c0-2.9 2.4-5.3 5.3-5.3s5.3 2.4 5.3 5.3V27.6z" fill="#2EB67D"/>
+                      <path d="M32.1 40.1c2.9 0 5.3 2.4 5.3 5.3s-2.4 5.3-5.3 5.3-5.3-2.4-5.3-5.3V40.1h5.3z" fill="#ECB22E"/>
+                      <path d="M32.1 37.4c-2.9 0-5.3-2.4-5.3-5.3s2.4-5.3 5.3-5.3h13.3c2.9 0 5.3 2.4 5.3 5.3s-2.4 5.3-5.3 5.3H32.1z" fill="#ECB22E"/>
+                    </svg>
+                  </span>
+                  Slack notification
+                </span>
+                <label class="toggle">
+                  <input type="checkbox" id="slack-enabled-instantly" onchange="toggleSlackSection('instantly', this.checked)">
+                  <span class="toggle-slider"></span>
+                </label>
+              </div>
+              <div id="slack-body-instantly" class="slack-body" style="display:none;">
                 <div>
-                  <div class="action-label">Unenroll</div>
-                  <div class="action-sublabel">Remove contacts from campaign</div>
+                  <label>Channel</label>
+                  <div class="search-select">
+                    <input type="text" id="slack-ch-search-instantly" placeholder="Search channels…" autocomplete="off">
+                    <div class="search-dropdown" id="slack-ch-dropdown-instantly"></div>
+                  </div>
+                </div>
+                <div>
+                  <label>Message template</label>
+                  <textarea id="slack-msg-instantly" rows="3" placeholder="e.g. New lead enrolled: {{first_name}} {{last_name}} ({{email}})"></textarea>
+                  <div class="token-hint">Available tokens: {{first_name}} {{last_name}} {{email}} {{company}}</div>
+                </div>
+              </div>
+              <div class="form-footer">
+                <button class="btn btn-cream" onclick="cancelEdit()">Cancel</button>
+                <button class="btn btn-primary" onclick="createAutomation('instantly')" id="create-btn-instantly">Create automation</button>
+              </div>
+              <div class="error-msg" id="form-error-instantly"></div>
+            </div>
+          </div>
+
+          <!-- Tab: HS Form Fill -->
+          <div class="tab-panel" id="tab-hubspot_form">
+            <div class="form-card">
+              <h3>HS Form Fill Sequence</h3>
+              <p class="form-desc">Contacts added to the HubSpot list will have a form submitted on their behalf, triggering any HubSpot sequence attached to that form.</p>
+              <div class="form-row">
+                <label>Automation name</label>
+                <input type="text" id="auto-name-hubspot_form" placeholder="e.g. New Leads → Nurture Sequence">
+              </div>
+              <div class="form-row">
+                <label>HubSpot list</label>
+                <div class="search-select">
+                  <input type="text" id="hs-search-hubspot_form" placeholder="Search HubSpot lists…" autocomplete="off">
+                  <div class="search-dropdown" id="hs-dropdown-hubspot_form"></div>
+                </div>
+              </div>
+              <div class="form-row">
+                <label>HubSpot form</label>
+                <div class="search-select">
+                  <input type="text" id="form-search" placeholder="Search HubSpot forms…" autocomplete="off">
+                  <div class="search-dropdown" id="form-dropdown"></div>
+                </div>
+              </div>
+              <hr class="slack-divider">
+              <div class="form-row">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.75rem;">
+                  <label style="margin-bottom:0;">Filter conditions <span style="font-size:11px;opacity:0.6;">(optional)</span></label>
+                  <button type="button" class="btn btn-cream" onclick="addFilter('hubspot_form')" style="font-size:12px;padding:5px 10px;">+ Add condition</button>
+                </div>
+                <div id="filters-hubspot_form"><div style="font-size:13px;color:var(--muted);padding:6px 0;">No conditions — all contacts will be enrolled.</div></div>
+                <div class="token-hint" style="margin-top:8px;">Properties are loaded from your HubSpot account. Enumeration fields show a value picker automatically.</div>
+              </div>
+              <hr class="slack-divider">
+              <div class="slack-toggle-row">
+                <span class="slack-toggle-label">
+                  <span class="slack-icon">
+                    <svg width="16" height="16" viewBox="0 0 54 54" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M19.7 32.2c0 2.9-2.4 5.3-5.3 5.3s-5.3-2.4-5.3-5.3 2.4-5.3 5.3-5.3H19.7v5.3z" fill="#E01E5A"/>
+                      <path d="M22.3 32.2c0-2.9 2.4-5.3 5.3-5.3s5.3 2.4 5.3 5.3v13.3c0 2.9-2.4 5.3-5.3 5.3s-5.3-2.4-5.3-5.3V32.2z" fill="#E01E5A"/>
+                      <path d="M27.6 19.7c-2.9 0-5.3-2.4-5.3-5.3s2.4-5.3 5.3-5.3 5.3 2.4 5.3 5.3V19.7H27.6z" fill="#36C5F0"/>
+                      <path d="M27.6 22.3c2.9 0 5.3 2.4 5.3 5.3s-2.4 5.3-5.3 5.3H14.4c-2.9 0-5.3-2.4-5.3-5.3s2.4-5.3 5.3-5.3H27.6z" fill="#36C5F0"/>
+                      <path d="M40.1 27.6c0-2.9 2.4-5.3 5.3-5.3s5.3 2.4 5.3 5.3-2.4 5.3-5.3 5.3H40.1V27.6z" fill="#2EB67D"/>
+                      <path d="M37.4 27.6c0 2.9-2.4 5.3-5.3 5.3s-5.3-2.4-5.3-5.3V14.4c0-2.9 2.4-5.3 5.3-5.3s5.3 2.4 5.3 5.3V27.6z" fill="#2EB67D"/>
+                      <path d="M32.1 40.1c2.9 0 5.3 2.4 5.3 5.3s-2.4 5.3-5.3 5.3-5.3-2.4-5.3-5.3V40.1h5.3z" fill="#ECB22E"/>
+                      <path d="M32.1 37.4c-2.9 0-5.3-2.4-5.3-5.3s2.4-5.3 5.3-5.3h13.3c2.9 0 5.3 2.4 5.3 5.3s-2.4 5.3-5.3 5.3H32.1z" fill="#ECB22E"/>
+                    </svg>
+                  </span>
+                  Slack notification
+                </span>
+                <label class="toggle">
+                  <input type="checkbox" id="slack-enabled-hubspot_form" onchange="toggleSlackSection('hubspot_form', this.checked)">
+                  <span class="toggle-slider"></span>
+                </label>
+              </div>
+              <div id="slack-body-hubspot_form" class="slack-body" style="display:none;">
+                <div>
+                  <label>Channel</label>
+                  <div class="search-select">
+                    <input type="text" id="slack-ch-search-hubspot_form" placeholder="Search channels…" autocomplete="off">
+                    <div class="search-dropdown" id="slack-ch-dropdown-hubspot_form"></div>
+                  </div>
+                </div>
+                <div>
+                  <label>Message template</label>
+                  <textarea id="slack-msg-hubspot_form" rows="3" placeholder="e.g. New lead enrolled: {{first_name}} {{last_name}} ({{email}})"></textarea>
+                  <div class="token-hint">Available tokens: {{first_name}} {{last_name}} {{email}} {{company}}</div>
+                </div>
+              </div>
+              <div class="form-footer">
+                <button class="btn btn-cream" onclick="cancelEdit()">Cancel</button>
+                <button class="btn btn-primary" onclick="createAutomation('hubspot_form')" id="create-btn-hubspot_form">Create automation</button>
+              </div>
+              <div class="error-msg" id="form-error-hubspot_form"></div>
+            </div>
+          </div>
+
+        </div><!-- close left form col -->
+
+        <!-- RIGHT: alert config + logs -->
+        <div id="right-column">
+
+          <!-- Low Enrollment Alert Panel -->
+          <div id="alert-config-panel" class="card">
+            <div class="card-header" id="alert-card-header">
+              <div>
+                <h3>🔔 Low enrollment alert</h3>
+                <p style="font-size:12px;color:var(--muted);margin-top:3px;font-weight:400;text-transform:none;letter-spacing:0;">Get notified on Slack when enrollments drop below your threshold</p>
+              </div>
+              <label class="toggle" style="margin-left:16px;flex-shrink:0;">
+                <input type="checkbox" id="alert-enabled" onchange="toggleAlertConfig(this.checked)">
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+            <div id="alert-body" style="display:none;">
+              <div class="alert-body-inner">
+                <div class="form-row">
+                  <label>Threshold <span style="font-size:11px;opacity:0.6;">(alert if enrollments fall below)</span></label>
+                  <input type="number" id="alert-threshold" min="1" placeholder="e.g. 20">
+                </div>
+                <div class="form-row">
+                  <label>Slack channel</label>
+                  <div class="search-select">
+                    <input type="text" id="alert-slack-search" placeholder="Search channels…" autocomplete="off">
+                    <div class="search-dropdown" id="alert-slack-dropdown"></div>
+                  </div>
+                </div>
+                <div class="form-row">
+                  <label>Alert message</label>
+                  <textarea id="alert-message" rows="3" placeholder="🚨 {{automation_name}}: only {{count}} leads enrolled. Expected at least {{threshold}}."></textarea>
+                  <div class="token-hint">Tokens: {{count}} {{automation_name}} {{threshold}} {{date}}</div>
+                </div>
+                <div class="alert-time-grid">
+                  <div class="form-row">
+                    <label>Schedule</label>
+                    <select id="alert-schedule" onchange="toggleAlertDayRow(this.value)">
+                      <option value="daily">Daily</option>
+                      <option value="weekly">Weekly</option>
+                    </select>
+                  </div>
+                  <div class="form-row">
+                    <label>Alert time (EST)</label>
+                    <input type="time" id="alert-time" value="08:00">
+                  </div>
+                </div>
+                <div class="form-row" id="alert-day-row" style="display:none;">
+                  <label>Day of week</label>
+                  <select id="alert-day">
+                    <option value="0">Monday</option>
+                    <option value="1">Tuesday</option>
+                    <option value="2">Wednesday</option>
+                    <option value="3">Thursday</option>
+                    <option value="4">Friday</option>
+                    <option value="5">Saturday</option>
+                    <option value="6">Sunday</option>
+                  </select>
                 </div>
               </div>
             </div>
           </div>
-          <div class="form-row" id="delay-row">
-            <label>Delay before sending <span style="font-size:11px;opacity:0.6;">(0 = send immediately)</span></label>
-            <div style="display:flex;gap:8px;">
-              <input type="number" id="delay-amount" min="0" value="0" placeholder="0" style="width:100px;flex-shrink:0;">
-              <select id="delay-unit" style="flex:1;">
-                <option value="hours">Hours</option>
-                <option value="days">Days</option>
-              </select>
-            </div>
-          </div>
-          <hr class="slack-divider">
-          <div class="form-row">
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.75rem;">
-              <label style="margin-bottom:0;">Filter conditions <span style="font-size:11px;opacity:0.6;">(optional)</span></label>
-              <button type="button" class="btn btn-cream" onclick="addFilter('instantly')" style="font-size:12px;padding:5px 10px;">+ Add condition</button>
-            </div>
-            <div id="filters-instantly"><div style="font-size:13px;color:var(--muted);padding:6px 0;">No conditions — all contacts will be processed.</div></div>
-            <div class="token-hint" style="margin-top:8px;">Properties are loaded from your HubSpot account. Enumeration fields show a value picker automatically.</div>
-          </div>
-          <hr class="slack-divider">
-          <div class="slack-toggle-row">
-            <span class="slack-toggle-label">
-              <span class="slack-icon">
-                <svg width="16" height="16" viewBox="0 0 54 54" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M19.7 32.2c0 2.9-2.4 5.3-5.3 5.3s-5.3-2.4-5.3-5.3 2.4-5.3 5.3-5.3H19.7v5.3z" fill="#E01E5A"/>
-                  <path d="M22.3 32.2c0-2.9 2.4-5.3 5.3-5.3s5.3 2.4 5.3 5.3v13.3c0 2.9-2.4 5.3-5.3 5.3s-5.3-2.4-5.3-5.3V32.2z" fill="#E01E5A"/>
-                  <path d="M27.6 19.7c-2.9 0-5.3-2.4-5.3-5.3s2.4-5.3 5.3-5.3 5.3 2.4 5.3 5.3V19.7H27.6z" fill="#36C5F0"/>
-                  <path d="M27.6 22.3c2.9 0 5.3 2.4 5.3 5.3s-2.4 5.3-5.3 5.3H14.4c-2.9 0-5.3-2.4-5.3-5.3s2.4-5.3 5.3-5.3H27.6z" fill="#36C5F0"/>
-                  <path d="M40.1 27.6c0-2.9 2.4-5.3 5.3-5.3s5.3 2.4 5.3 5.3-2.4 5.3-5.3 5.3H40.1V27.6z" fill="#2EB67D"/>
-                  <path d="M37.4 27.6c0 2.9-2.4 5.3-5.3 5.3s-5.3-2.4-5.3-5.3V14.4c0-2.9 2.4-5.3 5.3-5.3s5.3 2.4 5.3 5.3V27.6z" fill="#2EB67D"/>
-                  <path d="M32.1 40.1c2.9 0 5.3 2.4 5.3 5.3s-2.4 5.3-5.3 5.3-5.3-2.4-5.3-5.3V40.1h5.3z" fill="#ECB22E"/>
-                  <path d="M32.1 37.4c-2.9 0-5.3-2.4-5.3-5.3s2.4-5.3 5.3-5.3h13.3c2.9 0 5.3 2.4 5.3 5.3s-2.4 5.3-5.3 5.3H32.1z" fill="#ECB22E"/>
-                </svg>
-              </span>
-              Slack notification
-            </span>
-            <label class="toggle">
-              <input type="checkbox" id="slack-enabled-instantly" onchange="toggleSlackSection('instantly', this.checked)">
-              <span class="toggle-slider"></span>
-            </label>
-          </div>
-          <div id="slack-body-instantly" class="slack-body" style="display:none;">
-            <div>
-              <label>Channel</label>
-              <div class="search-select">
-                <input type="text" id="slack-ch-search-instantly" placeholder="Search channels…" autocomplete="off">
-                <div class="search-dropdown" id="slack-ch-dropdown-instantly"></div>
+
+          <!-- Edit logs panel -->
+          <div id="edit-logs-panel" style="display:none;">
+            <div class="card">
+              <div class="card-header">
+                <h3>List contacts</h3>
+                <span class="badge-count" id="edit-log-count">0</span>
+              </div>
+              <div id="edit-log-body">
+                <div class="empty-state"><p>Loading…</p></div>
               </div>
             </div>
-            <div>
-              <label>Message template</label>
-              <textarea id="slack-msg-instantly" rows="3" placeholder="e.g. New lead enrolled: {{first_name}} {{last_name}} ({{email}})"></textarea>
-              <div class="token-hint">Available tokens: {{first_name}} {{last_name}} {{email}} {{company}}</div>
-            </div>
           </div>
-          <div class="form-footer">
-            <button class="btn btn-cream" onclick="cancelEdit()">Cancel</button>
-            <button class="btn btn-primary" onclick="createAutomation('instantly')" id="create-btn-instantly">Create automation</button>
-          </div>
-          <div class="error-msg" id="form-error-instantly"></div>
-        </div>
-      </div>
 
-      <!-- Tab: HS Form Fill -->
-      <div class="tab-panel" id="tab-hubspot_form">
-        <div class="form-card">
-          <h3>HS Form Fill Sequence</h3>
-          <p class="form-desc">Contacts added to the HubSpot list will have a form submitted on their behalf, triggering any HubSpot sequence attached to that form.</p>
-          <div class="form-row">
-            <label>Automation name</label>
-            <input type="text" id="auto-name-hubspot_form" placeholder="e.g. New Leads → Nurture Sequence">
-          </div>
-          <div class="form-row">
-            <label>HubSpot list</label>
-            <div class="search-select">
-              <input type="text" id="hs-search-hubspot_form" placeholder="Search HubSpot lists…" autocomplete="off">
-              <div class="search-dropdown" id="hs-dropdown-hubspot_form"></div>
-            </div>
-          </div>
-          <div class="form-row">
-            <label>HubSpot form</label>
-            <div class="search-select">
-              <input type="text" id="form-search" placeholder="Search HubSpot forms…" autocomplete="off">
-              <div class="search-dropdown" id="form-dropdown"></div>
-            </div>
-          </div>
-          <hr class="slack-divider">
-          <div class="form-row">
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.75rem;">
-              <label style="margin-bottom:0;">Filter conditions <span style="font-size:11px;opacity:0.6;">(optional)</span></label>
-              <button type="button" class="btn btn-cream" onclick="addFilter('hubspot_form')" style="font-size:12px;padding:5px 10px;">+ Add condition</button>
-            </div>
-            <div id="filters-hubspot_form"><div style="font-size:13px;color:var(--muted);padding:6px 0;">No conditions — all contacts will be enrolled.</div></div>
-            <div class="token-hint" style="margin-top:8px;">Properties are loaded from your HubSpot account. Enumeration fields show a value picker automatically.</div>
-          </div>
-          <hr class="slack-divider">
-          <div class="slack-toggle-row">
-            <span class="slack-toggle-label">
-              <span class="slack-icon">
-                <svg width="16" height="16" viewBox="0 0 54 54" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M19.7 32.2c0 2.9-2.4 5.3-5.3 5.3s-5.3-2.4-5.3-5.3 2.4-5.3 5.3-5.3H19.7v5.3z" fill="#E01E5A"/>
-                  <path d="M22.3 32.2c0-2.9 2.4-5.3 5.3-5.3s5.3 2.4 5.3 5.3v13.3c0 2.9-2.4 5.3-5.3 5.3s-5.3-2.4-5.3-5.3V32.2z" fill="#E01E5A"/>
-                  <path d="M27.6 19.7c-2.9 0-5.3-2.4-5.3-5.3s2.4-5.3 5.3-5.3 5.3 2.4 5.3 5.3V19.7H27.6z" fill="#36C5F0"/>
-                  <path d="M27.6 22.3c2.9 0 5.3 2.4 5.3 5.3s-2.4 5.3-5.3 5.3H14.4c-2.9 0-5.3-2.4-5.3-5.3s2.4-5.3 5.3-5.3H27.6z" fill="#36C5F0"/>
-                  <path d="M40.1 27.6c0-2.9 2.4-5.3 5.3-5.3s5.3 2.4 5.3 5.3-2.4 5.3-5.3 5.3H40.1V27.6z" fill="#2EB67D"/>
-                  <path d="M37.4 27.6c0 2.9-2.4 5.3-5.3 5.3s-5.3-2.4-5.3-5.3V14.4c0-2.9 2.4-5.3 5.3-5.3s5.3 2.4 5.3 5.3V27.6z" fill="#2EB67D"/>
-                  <path d="M32.1 40.1c2.9 0 5.3 2.4 5.3 5.3s-2.4 5.3-5.3 5.3-5.3-2.4-5.3-5.3V40.1h5.3z" fill="#ECB22E"/>
-                  <path d="M32.1 37.4c-2.9 0-5.3-2.4-5.3-5.3s2.4-5.3 5.3-5.3h13.3c2.9 0 5.3 2.4 5.3 5.3s-2.4 5.3-5.3 5.3H32.1z" fill="#ECB22E"/>
-                </svg>
-              </span>
-              Slack notification
-            </span>
-            <label class="toggle">
-              <input type="checkbox" id="slack-enabled-hubspot_form" onchange="toggleSlackSection('hubspot_form', this.checked)">
-              <span class="toggle-slider"></span>
-            </label>
-          </div>
-          <div id="slack-body-hubspot_form" class="slack-body" style="display:none;">
-            <div>
-              <label>Channel</label>
-              <div class="search-select">
-                <input type="text" id="slack-ch-search-hubspot_form" placeholder="Search channels…" autocomplete="off">
-                <div class="search-dropdown" id="slack-ch-dropdown-hubspot_form"></div>
-              </div>
-            </div>
-            <div>
-              <label>Message template</label>
-              <textarea id="slack-msg-hubspot_form" rows="3" placeholder="e.g. New lead enrolled: {{first_name}} {{last_name}} ({{email}})"></textarea>
-              <div class="token-hint">Available tokens: {{first_name}} {{last_name}} {{email}} {{company}}</div>
-            </div>
-          </div>
-          <div class="form-footer">
-            <button class="btn btn-cream" onclick="cancelEdit()">Cancel</button>
-            <button class="btn btn-primary" onclick="createAutomation('hubspot_form')" id="create-btn-hubspot_form">Create automation</button>
-          </div>
-          <div class="error-msg" id="form-error-hubspot_form"></div>
-        </div>
-      </div>
-
-      </div><!-- close form col -->
-
-      <!-- Edit: inline logs sidebar -->
-      <div id="edit-logs-panel" style="display:none;">
-        <div class="card">
-          <div class="card-header">
-            <h3>List contacts</h3>
-            <span class="badge-count" id="edit-log-count">0</span>
-          </div>
-          <div id="edit-log-body">
-            <div class="empty-state"><p>Loading…</p></div>
-          </div>
-        </div>
-      </div>
+        </div><!-- close right-column -->
 
       </div><!-- close edit-grid -->
-
     </div>
   </main>
 </div>
@@ -532,6 +605,7 @@ let campSelected              = { id:'', name:'' };
 let formSelected              = { id:'', name:'' };
 let slackChSelectedInstantly  = { id:'', name:'' };
 let slackChSelectedForm       = { id:'', name:'' };
+let alertSlackChSelected      = { id:'', name:'' };
 let filtersInstantly = [];
 let filtersForm      = [];
 let dropdownsLoaded = false;
@@ -551,648 +625,28 @@ function selectAction(action) {
   currentAction = action;
   document.getElementById('action-option-enroll').classList.toggle('selected', action === 'enroll');
   document.getElementById('action-option-unenroll').classList.toggle('selected', action === 'unenroll');
+  updateAlertPanelVisibility();
+}
+
+function toggleAlertConfig(enabled) {
+  const body = document.getElementById('alert-body');
+  const header = document.getElementById('alert-card-header');
+  body.style.display = enabled ? 'block' : 'none';
+  header.classList.toggle('has-body', enabled);
+}
+
+function toggleAlertDayRow(schedule) {
+  document.getElementById('alert-day-row').style.display = schedule === 'weekly' ? 'block' : 'none';
+}
+
+function updateAlertPanelVisibility() {
+  const isHubspotTab = document.getElementById('tab-hubspot_form').classList.contains('active');
+  const show = isHubspotTab || currentAction === 'enroll';
+  document.getElementById('alert-config-panel').style.display = show ? 'block' : 'none';
 }
 
 async function login() {
   const pw = document.getElementById('pw-input').value;
   const btn = document.getElementById('login-btn');
   const err = document.getElementById('login-error');
-  btn.disabled = true; btn.textContent = 'Signing in…'; err.style.display = 'none';
-  try {
-    const res = await fetch(`${BASE}/login`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({password:pw}) });
-    const data = await res.json();
-    if (res.ok) {
-      TOKEN = data.token;
-      document.getElementById('login-screen').style.display = 'none';
-      document.getElementById('app').style.display = 'block';
-      loadAutomations();
-    } else { err.style.display = 'block'; }
-  } catch(e) { err.style.display = 'block'; err.textContent = 'Connection error.'; }
-  btn.disabled = false; btn.textContent = 'Sign in';
-}
-
-function logout() {
-  TOKEN = '';
-  document.getElementById('login-screen').style.display = 'flex';
-  document.getElementById('app').style.display = 'none';
-  document.getElementById('pw-input').value = '';
-}
-
-function showPage(page) {
-  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-  document.getElementById(`page-${page}`).classList.add('active');
-  document.getElementById(`nav-${page}`)?.classList.add('active');
-  if (page === 'add' && !dropdownsLoaded) loadDropdowns();
-  if (page === 'dashboard') setFilter(currentFilter);
-}
-
-function newAutomation() {
-  editingId = null;
-  currentAction = 'enroll';
-  selectAction('enroll');
-  document.getElementById('add-page-title').textContent = 'New automation';
-  document.querySelector('.tab-bar').style.display = '';
-  document.getElementById('edit-logs-panel').style.display = 'none';
-  document.getElementById('create-btn-instantly').textContent = 'Create automation';
-  document.getElementById('create-btn-hubspot_form').textContent = 'Create automation';
-  document.getElementById('auto-name-instantly').value = '';
-  document.getElementById('auto-name-hubspot_form').value = '';
-  document.getElementById('form-error-instantly').style.display = 'none';
-  document.getElementById('form-error-hubspot_form').style.display = 'none';
-  resetSearchSelect('hs-search-instantly','hs-dropdown-instantly',hsSelectedInstantly);
-  resetSearchSelect('hs-search-hubspot_form','hs-dropdown-hubspot_form',hsSelectedForm);
-  resetSearchSelect('camp-search','camp-dropdown',campSelected);
-  resetSearchSelect('form-search','form-dropdown',formSelected);
-  filtersInstantly = []; filtersForm = [];
-  renderFilters('instantly'); renderFilters('hubspot_form');
-  ['instantly','hubspot_form'].forEach(dt => {
-    const cb = document.getElementById(`slack-enabled-${dt}`);
-    if (cb) { cb.checked = false; toggleSlackSection(dt, false); }
-    resetSearchSelect(`slack-ch-search-${dt}`, `slack-ch-dropdown-${dt}`, dt === 'instantly' ? slackChSelectedInstantly : slackChSelectedForm);
-    const ta = document.getElementById(`slack-msg-${dt}`);
-    if (ta) ta.value = '';
-  });
-  switchTab('instantly');
-  showPage('add');
-}
-
-function addFilter(deliveryType) {
-  const arr = deliveryType === 'instantly' ? filtersInstantly : filtersForm;
-  arr.push({ property: '', operator: 'equals', value: '' });
-  renderFilters(deliveryType);
-}
-
-function removeFilter(deliveryType, index) {
-  const arr = deliveryType === 'instantly' ? filtersInstantly : filtersForm;
-  arr.splice(index, 1);
-  renderFilters(deliveryType);
-}
-
-function updateFilter(deliveryType, index, field, value) {
-  const arr = deliveryType === 'instantly' ? filtersInstantly : filtersForm;
-  arr[index][field] = value;
-  if (field === 'property') arr[index].value = '';
-  if (field === 'operator' || field === 'property') renderFilters(deliveryType);
-}
-
-function renderFilters(deliveryType) {
-  const arr = deliveryType === 'instantly' ? filtersInstantly : filtersForm;
-  const container = document.getElementById(`filters-${deliveryType}`);
-  if (!container) return;
-  if (!arr.length) {
-    container.innerHTML = '<div style="font-size:13px;color:var(--muted);padding:6px 0;">No conditions — all contacts will be processed.</div>';
-    return;
-  }
-
-  container.innerHTML = arr.map((f, i) => {
-    const propMeta = hsPropList.find(p => p.name === f.property);
-    const isEnum = propMeta && (propMeta.type === 'enumeration' || ['select','radio','checkbox','booleancheckbox'].includes(propMeta.fieldType)) && propMeta.options.length;
-
-    let valueField = `<div style="flex:2;min-width:0;"></div>`;
-    if (f.operator !== 'exists') {
-      if (isEnum) {
-        valueField = `<select onchange="updateFilter('${deliveryType}',${i},'value',this.value)"
-            style="flex:2;font-size:13px;padding:8px 10px;min-width:0;">
-            <option value="" disabled ${!f.value?'selected':''}>Select value…</option>
-            ${propMeta.options.map(o => `<option value="${esc(o.value)}" ${f.value===o.value?'selected':''}>${esc(o.label)}</option>`).join('')}
-          </select>`;
-      } else {
-        valueField = `<input type="text" placeholder="Value" value="${esc(f.value)}"
-            oninput="updateFilter('${deliveryType}',${i},'value',this.value)"
-            style="flex:2;font-size:13px;padding:8px 10px;min-width:0;">`;
-      }
-    }
-
-    return `<div style="display:flex;gap:8px;margin-bottom:8px;align-items:center;">
-      <div class="search-select" style="flex:2;min-width:0;">
-        <input type="text" id="prop-search-${deliveryType}-${i}" placeholder="Search properties…" autocomplete="off"
-          style="font-size:13px;padding:8px 10px;">
-        <div class="search-dropdown" id="prop-dropdown-${deliveryType}-${i}"></div>
-      </div>
-      <select onchange="updateFilter('${deliveryType}',${i},'operator',this.value)"
-        style="flex:1;font-size:13px;padding:8px 10px;min-width:0;">
-        <option value="equals"       ${f.operator==='equals'       ?'selected':''}>equals</option>
-        <option value="not_equals"   ${f.operator==='not_equals'   ?'selected':''}>not equals</option>
-        <option value="contains"     ${f.operator==='contains'     ?'selected':''}>contains</option>
-        <option value="not_contains" ${f.operator==='not_contains' ?'selected':''}>not contains</option>
-        <option value="exists"       ${f.operator==='exists'       ?'selected':''}>exists</option>
-      </select>
-      ${valueField}
-      <button type="button" onclick="removeFilter('${deliveryType}',${i})"
-        style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:18px;line-height:1;flex-shrink:0;padding:0 2px;">×</button>
-    </div>`;
-  }).join('');
-
-  arr.forEach((f, i) => initFilterPropSearch(deliveryType, i, f.property));
-}
-
-function initFilterPropSearch(deliveryType, index, currentPropName) {
-  const input    = document.getElementById(`prop-search-${deliveryType}-${index}`);
-  const dropdown = document.getElementById(`prop-dropdown-${deliveryType}-${index}`);
-  if (!input || !dropdown) return;
-
-  const currentProp = hsPropList.find(p => p.name === currentPropName);
-  if (currentProp) { input.value = currentProp.label; input.classList.add('has-value'); }
-
-  function renderOptions(query) {
-    const q = query.trim().toLowerCase();
-    const matches = q
-      ? hsPropList.filter(p => p.label.toLowerCase().includes(q) || p.name.toLowerCase().includes(q))
-      : hsPropList;
-    if (!matches.length) {
-      dropdown.innerHTML = `<div class="search-option-empty">No properties found</div>`;
-    } else {
-      dropdown.innerHTML = matches.map(p =>
-        `<div class="search-option${currentPropName===p.name?' selected':''}" data-name="${esc(p.name)}" data-label="${esc(p.label)}">${esc(p.label)}<span style="font-size:10px;opacity:0.45;margin-left:6px;">${esc(p.name)}</span></div>`
-      ).join('');
-      dropdown.querySelectorAll('.search-option').forEach(el => {
-        el.addEventListener('mousedown', e => {
-          e.preventDefault();
-          updateFilter(deliveryType, index, 'property', el.dataset.name);
-        });
-      });
-    }
-    dropdown.classList.add('open');
-  }
-
-  input.addEventListener('focus', () => renderOptions(''));
-  input.addEventListener('input', () => { input.classList.remove('has-value'); renderOptions(input.value); });
-  input.addEventListener('blur', () => {
-    setTimeout(() => dropdown.classList.remove('open'), 150);
-    const arr2 = deliveryType === 'instantly' ? filtersInstantly : filtersForm;
-    const meta = hsPropList.find(p => p.name === arr2[index]?.property);
-    if (meta) { input.value = meta.label; input.classList.add('has-value'); }
-    else { input.value = ''; input.classList.remove('has-value'); }
-  });
-}
-
-function toggleSlackSection(deliveryType, enabled) {
-  document.getElementById(`slack-body-${deliveryType}`).style.display = enabled ? 'flex' : 'none';
-}
-
-function switchTab(tab) {
-  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
-  document.getElementById(`tab-btn-${tab}`).classList.add('active');
-  document.getElementById(`tab-${tab}`).classList.add('active');
-}
-
-async function api(method, path, body) {
-  const opts = { method, headers:{'Content-Type':'application/json','X-Auth-Token':TOKEN} };
-  if (body) opts.body = JSON.stringify(body);
-  const res = await fetch(`${BASE}${path}`, opts);
-  return { ok:res.ok, status:res.status, data:await res.json() };
-}
-
-async function loadAutomations() {
-  const list = document.getElementById('automations-list');
-  list.innerHTML = '<div class="empty-state"><p>Loading…</p></div>';
-  try {
-    const { data } = await api('GET', '/automations');
-    automations = Array.isArray(data) ? data : [];
-    renderAutomations();
-  } catch(e) {
-    list.innerHTML = '<div class="empty-state"><p>Failed to load. Check your deployment.</p></div>';
-  }
-}
-
-function setFilter(filter) {
-  currentFilter = filter;
-  document.getElementById('nav-dashboard').classList.toggle('active', filter === 'all');
-  document.getElementById('nav-filter-instantly').classList.toggle('active', filter === 'instantly');
-  document.getElementById('nav-filter-hubspot_form').classList.toggle('active', filter === 'hubspot_form');
-  renderAutomations();
-}
-
-function onSearch(val) {
-  searchQuery = val.trim().toLowerCase();
-  renderAutomations();
-}
-
-function renderAutomations() {
-  const list = document.getElementById('automations-list');
-  const count = automations.length;
-  const instantlyCount = automations.filter(a => a.delivery_type !== 'hubspot_form').length;
-  const formCount = automations.filter(a => a.delivery_type === 'hubspot_form').length;
-
-  document.getElementById('stat-total').textContent = count || '0';
-  document.getElementById('stat-instantly').textContent = instantlyCount || '0';
-  document.getElementById('stat-forms').textContent = formCount || '0';
-
-  let filtered = automations;
-  if (currentFilter === 'instantly')    filtered = filtered.filter(a => a.delivery_type !== 'hubspot_form');
-  if (currentFilter === 'hubspot_form') filtered = filtered.filter(a => a.delivery_type === 'hubspot_form');
-  if (searchQuery) filtered = filtered.filter(a =>
-    (a.name||'').toLowerCase().includes(searchQuery) ||
-    (a.hubspot_list_name||'').toLowerCase().includes(searchQuery) ||
-    (a.instantly_campaign_name||'').toLowerCase().includes(searchQuery) ||
-    (a.hubspot_form_name||'').toLowerCase().includes(searchQuery)
-  );
-
-  document.getElementById('auto-count').textContent = filtered.length;
-
-  if (!filtered.length) {
-    list.innerHTML = count
-      ? `<div class="empty-state"><div class="empty-icon">🔍</div><p>No automations match your filter.</p></div>`
-      : `<div class="empty-state"><div class="empty-icon">⚡</div><p>No automations yet.<br>Create your first one to get started.</p></div>`;
-    return;
-  }
-
-  list.innerHTML = filtered.map(a => {
-    const isForm = a.delivery_type === 'hubspot_form';
-    const isUnenroll = !isForm && a.action === 'unenroll';
-    const deliveryChip = isForm
-      ? `<span class="chip chip-form">HS Form · ${esc(a.hubspot_form_name || a.hubspot_form_id)}</span>`
-      : `<span class="chip chip-in">Instantly · ${esc(a.instantly_campaign_name || a.instantly_campaign_id)}</span>`;
-    const actionChip = !isForm
-      ? (isUnenroll
-          ? `<span class="chip chip-unenroll">⊖ Unenroll</span>`
-          : `<span class="chip chip-hs">⊕ Enroll</span>`)
-      : '';
-    const active = a.active !== false;
-    const delayLabel = (!isForm && a.delay_hours > 0)
-      ? `<span class="chip chip-hs">⏱ ${a.delay_hours >= 24 ? (a.delay_hours/24) + 'd delay' : a.delay_hours + 'h delay'}</span>`
-      : '';
-    const slackChip = a.slack_enabled
-      ? `<span class="chip chip-hs" style="gap:4px;"><svg width="10" height="10" viewBox="0 0 54 54" xmlns="http://www.w3.org/2000/svg"><path d="M19.7 32.2c0 2.9-2.4 5.3-5.3 5.3s-5.3-2.4-5.3-5.3 2.4-5.3 5.3-5.3H19.7v5.3z" fill="#E01E5A"/><path d="M22.3 32.2c0-2.9 2.4-5.3 5.3-5.3s5.3 2.4 5.3 5.3v13.3c0 2.9-2.4 5.3-5.3 5.3s-5.3-2.4-5.3-5.3V32.2z" fill="#E01E5A"/><path d="M27.6 19.7c-2.9 0-5.3-2.4-5.3-5.3s2.4-5.3 5.3-5.3 5.3 2.4 5.3 5.3V19.7H27.6z" fill="#36C5F0"/><path d="M27.6 22.3c2.9 0 5.3 2.4 5.3 5.3s-2.4 5.3-5.3 5.3H14.4c-2.9 0-5.3-2.4-5.3-5.3s2.4-5.3 5.3-5.3H27.6z" fill="#36C5F0"/><path d="M40.1 27.6c0-2.9 2.4-5.3 5.3-5.3s5.3 2.4 5.3 5.3-2.4 5.3-5.3 5.3H40.1V27.6z" fill="#2EB67D"/><path d="M37.4 27.6c0 2.9-2.4 5.3-5.3 5.3s-5.3-2.4-5.3-5.3V14.4c0-2.9 2.4-5.3 5.3-5.3s5.3 2.4 5.3 5.3V27.6z" fill="#2EB67D"/><path d="M32.1 40.1c2.9 0 5.3 2.4 5.3 5.3s-2.4 5.3-5.3 5.3-5.3-2.4-5.3-5.3V40.1h5.3z" fill="#ECB22E"/><path d="M32.1 37.4c-2.9 0-5.3-2.4-5.3-5.3s2.4-5.3 5.3-5.3h13.3c2.9 0 5.3 2.4 5.3 5.3s-2.4 5.3-5.3 5.3H32.1z" fill="#ECB22E"/></svg>${esc(a.slack_channel_name || 'Slack')}</span>`
-      : '';
-    const lastRunLabel = a.last_run
-      ? `<span style="font-size:11px;color:var(--muted);">Last run: ${timeAgo(a.last_run)}</span>`
-      : `<span style="font-size:11px;color:var(--muted);">Never run</span>`;
-    return `<div class="automation-row" id="row-${esc(a.id)}">
-      <div style="flex:1;min-width:0;">
-        <div class="auto-name">${esc(a.name)}</div>
-        <div class="auto-meta">
-          <span class="chip chip-hs">HubSpot · ${esc(a.hubspot_list_name || a.hubspot_list_id)}</span>
-          ${deliveryChip}
-          ${actionChip}
-          ${delayLabel}
-          ${slackChip}
-          <span class="chip ${active ? 'chip-active' : 'chip-inactive'}">${active ? '● Active' : '○ Paused'}</span>
-        </div>
-      </div>
-      <div class="auto-actions" style="display:flex;align-items:center;gap:12px;">
-        ${lastRunLabel}
-        <label class="toggle" title="${active ? 'Pause' : 'Activate'}">
-          <input type="checkbox" ${active ? 'checked' : ''} onchange="toggleAutomation('${esc(a.id)}', this.checked)">
-          <span class="toggle-slider"></span>
-        </label>
-        <button class="btn btn-cream" onclick="viewLogs('${esc(a.id)}')">Logs</button>
-        <button class="btn btn-cream" onclick="editAutomation('${esc(a.id)}')">Edit</button>
-        <button class="btn btn-danger" onclick="deleteAutomation('${esc(a.id)}')">Remove</button>
-      </div>
-    </div>`;
-  }).join('');
-}
-
-async function toggleAutomation(id, active) {
-  try {
-    const { ok } = await api('PATCH', `/automations/${id}`, { active });
-    if (ok) {
-      automations = automations.map(a => a.id === id ? {...a, active} : a);
-      renderAutomations();
-      showToast(active ? 'Automation activated' : 'Automation paused');
-    } else {
-      showToast('Failed to update', 'error');
-      renderAutomations();
-    }
-  } catch(e) {
-    showToast('Network error', 'error');
-    renderAutomations();
-  }
-}
-
-function initSearchSelect(inputId, dropdownId, items, selectedObj, placeholder) {
-  const input = document.getElementById(inputId);
-  const dropdown = document.getElementById(dropdownId);
-  if (!input || !dropdown) return;
-
-  function renderOptions(filter) {
-    const q = filter.trim().toLowerCase();
-    const filtered = q ? items.filter(x => x.name.toLowerCase().includes(q)) : items;
-    if (!filtered.length) {
-      dropdown.innerHTML = `<div class="search-option-empty">No results for "${esc(filter)}"</div>`;
-    } else {
-      dropdown.innerHTML = filtered.map(x =>
-        `<div class="search-option${selectedObj.id===x.id?' selected':''}" data-id="${esc(x.id)}" data-name="${esc(x.name)}">${esc(x.name)}</div>`
-      ).join('');
-      dropdown.querySelectorAll('.search-option').forEach(el => {
-        el.addEventListener('mousedown', e => {
-          e.preventDefault();
-          selectedObj.id = el.dataset.id; selectedObj.name = el.dataset.name;
-          input.value = el.dataset.name; input.classList.add('has-value');
-          dropdown.classList.remove('open');
-        });
-      });
-    }
-    dropdown.classList.add('open');
-  }
-
-  input.addEventListener('focus', () => renderOptions(input.value));
-  input.addEventListener('input', () => {
-    selectedObj.id=''; selectedObj.name='';
-    input.classList.remove('has-value');
-    renderOptions(input.value);
-  });
-  input.addEventListener('blur', () => {
-    setTimeout(() => dropdown.classList.remove('open'), 150);
-    if (!selectedObj.id) { input.value=''; input.classList.remove('has-value'); }
-  });
-  input.placeholder = placeholder;
-}
-
-function resetSearchSelect(inputId, dropdownId, selectedObj) {
-  selectedObj.id=''; selectedObj.name='';
-  const input = document.getElementById(inputId);
-  if (input) { input.value=''; input.classList.remove('has-value'); }
-  const dd = document.getElementById(dropdownId);
-  if (dd) dd.classList.remove('open');
-}
-
-async function loadDropdowns() {
-  dropdownsLoaded = true;
-  const ids = ['hs-search-instantly','hs-search-hubspot_form','camp-search','form-search'];
-  ids.forEach(id => { const el=document.getElementById(id); if(el){el.disabled=true; el.placeholder='Loading…';} });
-
-  try {
-    const [l, c, f, s, pr] = await Promise.all([
-      api('GET','/lists'), api('GET','/campaigns'), api('GET','/forms'), api('GET','/slack/channels'), api('GET','/properties')
-    ]);
-
-    if (l.ok && Array.isArray(l.data)) {
-      hsList = l.data;
-      initSearchSelect('hs-search-instantly',   'hs-dropdown-instantly',   hsList, hsSelectedInstantly, 'Search HubSpot lists…');
-      initSearchSelect('hs-search-hubspot_form','hs-dropdown-hubspot_form',hsList, hsSelectedForm,      'Search HubSpot lists…');
-    } else {
-      ['hs-search-instantly','hs-search-hubspot_form'].forEach(id => {
-        const el=document.getElementById(id); if(el) el.placeholder=`Error: ${(l.data&&l.data.error)||'failed'}`;
-      });
-    }
-
-    if (c.ok && Array.isArray(c.data)) {
-      campList = c.data;
-      initSearchSelect('camp-search','camp-dropdown',campList,campSelected,'Search Instantly campaigns…');
-    } else {
-      const el=document.getElementById('camp-search'); if(el) el.placeholder=`Error: ${(c.data&&c.data.error)||'failed'}`;
-    }
-
-    if (f.ok && Array.isArray(f.data)) {
-      formList = f.data;
-      initSearchSelect('form-search','form-dropdown',formList,formSelected,'Search HubSpot forms…');
-    } else {
-      const el=document.getElementById('form-search'); if(el) el.placeholder=`Error: ${(f.data&&f.data.error)||'failed'}`;
-    }
-
-    if (s.ok && Array.isArray(s.data)) {
-      slackChannels = s.data;
-      initSearchSelect('slack-ch-search-instantly',   'slack-ch-dropdown-instantly',   slackChannels, slackChSelectedInstantly, 'Search channels…');
-      initSearchSelect('slack-ch-search-hubspot_form','slack-ch-dropdown-hubspot_form', slackChannels, slackChSelectedForm,      'Search channels…');
-    }
-
-    if (pr.ok && Array.isArray(pr.data)) {
-      hsPropList = pr.data;
-    }
-  } catch(e) {
-    ids.forEach(id => { const el=document.getElementById(id); if(el) el.placeholder='Network error'; });
-  }
-
-  ids.forEach(id => { const el=document.getElementById(id); if(el) el.disabled=false; });
-}
-
-async function createAutomation(deliveryType) {
-  const nameEl = document.getElementById(`auto-name-${deliveryType}`);
-  const errEl  = document.getElementById(`form-error-${deliveryType}`);
-  const btn    = document.getElementById(`create-btn-${deliveryType}`);
-  const name   = nameEl.value.trim();
-  const hsSelected = deliveryType === 'instantly' ? hsSelectedInstantly : hsSelectedForm;
-
-  errEl.style.display = 'none';
-  if (!name)          { errEl.textContent='Please enter an automation name.'; errEl.style.display='block'; return; }
-  if (!hsSelected.id) { errEl.textContent='Please select a HubSpot list.';   errEl.style.display='block'; return; }
-
-  let payload = { name, delivery_type:deliveryType, hubspot_list_id:hsSelected.id, hubspot_list_name:hsSelected.name };
-
-  if (deliveryType === 'instantly') {
-    if (!campSelected.id) { errEl.textContent='Please select an Instantly campaign.'; errEl.style.display='block'; return; }
-    payload.instantly_campaign_id   = campSelected.id;
-    payload.instantly_campaign_name = campSelected.name;
-    payload.action = currentAction;
-    const delayAmount = parseInt(document.getElementById('delay-amount').value) || 0;
-    const delayUnit   = document.getElementById('delay-unit').value;
-    payload.delay_hours = delayUnit === 'days' ? delayAmount * 24 : delayAmount;
-  } else {
-    if (!formSelected.id) { errEl.textContent='Please select a HubSpot form.'; errEl.style.display='block'; return; }
-    payload.hubspot_form_id   = formSelected.id;
-    payload.hubspot_form_name = formSelected.name;
-  }
-
-  const filtersArr = (deliveryType === 'instantly' ? filtersInstantly : filtersForm)
-    .filter(f => f.property.trim());
-  payload.filters = filtersArr;
-
-  const slackEnabled = document.getElementById(`slack-enabled-${deliveryType}`)?.checked;
-  if (slackEnabled) {
-    const slackChSelected = deliveryType === 'instantly' ? slackChSelectedInstantly : slackChSelectedForm;
-    const slackMsg = (document.getElementById(`slack-msg-${deliveryType}`)?.value || '').trim();
-    if (!slackChSelected.id) { errEl.textContent='Please select a Slack channel.'; errEl.style.display='block'; return; }
-    if (!slackMsg) { errEl.textContent='Please enter a Slack message template.'; errEl.style.display='block'; return; }
-    payload.slack_enabled      = true;
-    payload.slack_channel      = slackChSelected.id;
-    payload.slack_channel_name = slackChSelected.name;
-    payload.slack_message      = slackMsg;
-  } else {
-    payload.slack_enabled = false;
-  }
-
-  btn.disabled=true; btn.textContent = editingId ? 'Saving…' : 'Creating…';
-  try {
-    const { ok, data } = editingId
-      ? await api('PATCH', `/automations/${editingId}`, payload)
-      : await api('POST', '/automations', payload);
-    if (ok) {
-      const wasEditing = !!editingId;
-      editingId = null;
-      document.getElementById('create-btn-instantly').textContent = 'Create automation';
-      document.getElementById('create-btn-hubspot_form').textContent = 'Create automation';
-      document.getElementById('add-page-title').textContent = 'New automation';
-      document.querySelector('.tab-bar').style.display = '';
-      document.getElementById('edit-logs-panel').style.display = 'none';
-      nameEl.value = '';
-      resetSearchSelect(`hs-search-${deliveryType}`,`hs-dropdown-${deliveryType}`,hsSelected);
-      if (deliveryType==='instantly') resetSearchSelect('camp-search','camp-dropdown',campSelected);
-      else resetSearchSelect('form-search','form-dropdown',formSelected);
-      showToast(wasEditing ? 'Automation updated' : 'Automation created');
-      showPage('dashboard');
-      loadAutomations();
-    } else {
-      errEl.textContent = data.error || 'Something went wrong.';
-      errEl.style.display = 'block';
-    }
-  } catch(e) {
-    errEl.textContent='Network error. Try again.'; errEl.style.display='block';
-  }
-  btn.disabled=false; btn.textContent = editingId ? 'Save changes' : 'Create automation';
-}
-
-async function deleteAutomation(id) {
-  if (!confirm('Remove this automation? Leads already sent won\'t be affected.')) return;
-  try {
-    const { ok } = await api('DELETE', `/automations/${id}`);
-    if (ok) { automations=automations.filter(a=>a.id!==id); renderAutomations(); showToast('Automation removed'); }
-    else showToast('Failed to remove','error');
-  } catch(e) { showToast('Network error','error'); }
-}
-
-function cancelEdit() {
-  editingId = null;
-  document.getElementById('create-btn-instantly').textContent = 'Create automation';
-  document.getElementById('create-btn-hubspot_form').textContent = 'Create automation';
-  document.getElementById('add-page-title').textContent = 'New automation';
-  document.querySelector('.tab-bar').style.display = '';
-  document.getElementById('edit-logs-panel').style.display = 'none';
-  showPage('dashboard');
-}
-
-async function refreshDropdowns() {
-  dropdownsLoaded = false;
-  await loadDropdowns();
-  showToast('Lists refreshed');
-}
-
-async function editAutomation(id) {
-  const a = automations.find(x => x.id === id);
-  if (!a) return;
-  editingId = id;
-  if (!dropdownsLoaded) await loadDropdowns();
-  const isForm = a.delivery_type === 'hubspot_form';
-  document.getElementById('add-page-title').textContent = 'Edit automation';
-  document.querySelector('.tab-bar').style.display = 'none';
-  document.getElementById('edit-logs-panel').style.display = 'block';
-  showPage('add');
-  switchTab(isForm ? 'hubspot_form' : 'instantly');
-  loadEditLogs(a.hubspot_list_id);
-
-  if (isForm) {
-    document.getElementById('auto-name-hubspot_form').value = a.name || '';
-    hsSelectedForm = { id: a.hubspot_list_id || '', name: a.hubspot_list_name || '' };
-    const hi = document.getElementById('hs-search-hubspot_form');
-    if (hi) { hi.value = a.hubspot_list_name || ''; hi.classList.toggle('has-value', !!a.hubspot_list_id); }
-    formSelected = { id: a.hubspot_form_id || '', name: a.hubspot_form_name || '' };
-    const fi = document.getElementById('form-search');
-    if (fi) { fi.value = a.hubspot_form_name || ''; fi.classList.toggle('has-value', !!a.hubspot_form_id); }
-    document.getElementById('create-btn-hubspot_form').textContent = 'Save changes';
-  } else {
-    document.getElementById('auto-name-instantly').value = a.name || '';
-    hsSelectedInstantly = { id: a.hubspot_list_id || '', name: a.hubspot_list_name || '' };
-    const hi = document.getElementById('hs-search-instantly');
-    if (hi) { hi.value = a.hubspot_list_name || ''; hi.classList.toggle('has-value', !!a.hubspot_list_id); }
-    campSelected = { id: a.instantly_campaign_id || '', name: a.instantly_campaign_name || '' };
-    const ci = document.getElementById('camp-search');
-    if (ci) { ci.value = a.instantly_campaign_name || ''; ci.classList.toggle('has-value', !!a.instantly_campaign_id); }
-    const delayHours = a.delay_hours || 0;
-    if (delayHours > 0 && delayHours % 24 === 0) {
-      document.getElementById('delay-amount').value = delayHours / 24;
-      document.getElementById('delay-unit').value = 'days';
-    } else {
-      document.getElementById('delay-amount').value = delayHours;
-      document.getElementById('delay-unit').value = 'hours';
-    }
-    currentAction = a.action || 'enroll';
-    selectAction(currentAction);
-    document.getElementById('create-btn-instantly').textContent = 'Save changes';
-  }
-
-  const dt = isForm ? 'hubspot_form' : 'instantly';
-  if (isForm) { filtersForm      = JSON.parse(JSON.stringify(a.filters || [])); renderFilters('hubspot_form'); }
-  else        { filtersInstantly = JSON.parse(JSON.stringify(a.filters || [])); renderFilters('instantly'); }
-
-  const slackCb = document.getElementById(`slack-enabled-${dt}`);
-  if (slackCb) {
-    slackCb.checked = !!a.slack_enabled;
-    toggleSlackSection(dt, !!a.slack_enabled);
-    if (a.slack_enabled) {
-      const slackChSelected = isForm ? slackChSelectedForm : slackChSelectedInstantly;
-      slackChSelected.id   = a.slack_channel || '';
-      slackChSelected.name = a.slack_channel_name || '';
-      const sci = document.getElementById(`slack-ch-search-${dt}`);
-      if (sci) { sci.value = a.slack_channel_name || ''; sci.classList.toggle('has-value', !!a.slack_channel); }
-      const ta = document.getElementById(`slack-msg-${dt}`);
-      if (ta) ta.value = a.slack_message || '';
-    }
-  }
-}
-
-async function loadEditLogs(listId) {
-  const logBody = document.getElementById('edit-log-body');
-  const countEl = document.getElementById('edit-log-count');
-  logBody.innerHTML = '<div class="empty-state" style="padding:2rem;"><p>Loading…</p></div>';
-  try {
-    const { ok, data } = await api('GET', `/contacts/${listId}`);
-    if (ok && Array.isArray(data) && data.length) {
-      countEl.textContent = data.length;
-      logBody.innerHTML = data.map(e =>
-        `<div class="log-row">
-          <span class="log-email">${esc(e.email)}</span>
-          <span class="log-meta">${esc(e.name)}</span>
-        </div>`
-      ).join('');
-    } else if (ok) {
-      countEl.textContent = '0';
-      logBody.innerHTML = '<div class="empty-state" style="padding:2rem;"><p>No contacts in this list yet.</p></div>';
-    }
-  } catch(e) {
-    logBody.innerHTML = '<div class="empty-state" style="padding:2rem;"><p>Failed to load.</p></div>';
-  }
-}
-
-async function viewLogs(id) {
-  const a = automations.find(x => x.id === id);
-  if (!a) return;
-  const modal = document.getElementById('logs-modal');
-  const countEl = document.getElementById('logs-modal-count');
-  document.getElementById('logs-modal-title').textContent = `List contacts · ${a.name}`;
-  countEl.style.display = 'none';
-  document.getElementById('logs-body').innerHTML = '<div class="empty-state"><p>Loading…</p></div>';
-  modal.style.display = 'flex';
-  try {
-    const { ok, data } = await api('GET', `/contacts/${a.hubspot_list_id}`);
-    if (ok && Array.isArray(data) && data.length) {
-      countEl.textContent = data.length;
-      countEl.style.display = '';
-      document.getElementById('logs-body').innerHTML = data.map(e =>
-        `<div class="log-row">
-          <span class="log-email">${esc(e.email)}</span>
-          <span class="log-meta">${esc(e.name)}</span>
-        </div>`
-      ).join('');
-    } else if (ok) {
-      countEl.textContent = '0';
-      countEl.style.display = '';
-      document.getElementById('logs-body').innerHTML = '<div class="empty-state"><div class="empty-icon">📋</div><p>No contacts in this list yet.</p></div>';
-    } else {
-      document.getElementById('logs-body').innerHTML = `<div class="empty-state"><p>Error: ${esc((data&&data.error)||'Failed to load contacts.')}</p></div>`;
-    }
-  } catch(e) {
-    document.getElementById('logs-body').innerHTML = '<div class="empty-state"><p>Network error.</p></div>';
-  }
-}
-
-function closeLogs() {
-  document.getElementById('logs-modal').style.display = 'none';
-}
-
-function timeAgo(isoStr) {
-  const diff = Math.floor((Date.now() - new Date(isoStr)) / 1000);
-  if (diff < 60)   return 'just now';
-  if (diff < 3600) return Math.floor(diff/60) + 'm ago';
-  if (diff < 86400) return Math.floor(diff/3600) + 'h ago';
-  return Math.floor(diff/86400) + 'd ago';
-}
-
-function esc(str) {
-  return String(str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-}
-</script>
-</body>
-</html>
+  btn.disabled = true; btn.textContent = 'Signing in…'; err.style.
