@@ -14,6 +14,9 @@ INSTANTLY_API_KEY = os.environ.get("INSTANTLY_API_KEY", "")
 HUBSPOT_API_KEY   = os.environ.get("HUBSPOT_API_KEY", "")
 HUBSPOT_PORTAL_ID = os.environ.get("HUBSPOT_PORTAL_ID", "22650739")
 SYNC_SECRET       = os.environ.get("SYNC_SECRET", "")
+SLACK_BOT_TOKEN   = os.environ.get("SLACK_BOT_TOKEN", "")
+
+EST = datetime.timezone(datetime.timedelta(hours=-5))
 
 INSTANTLY_TERMINAL_STATUSES = {"completed", "unsubscribed", "bounced", "finished", "out_of_sequence"}
 
@@ -43,6 +46,27 @@ def _redis_set_json(key, value):
     }, method="POST")
     with urlopen(req, timeout=5) as r:
         r.read()
+
+def _redis_incr(key):
+    url = f"{UPSTASH_URL}/incr/{key}"
+    req = Request(url, data=b'', headers={"Authorization": f"Bearer {UPSTASH_TOKEN}"}, method="POST")
+    with urlopen(req, timeout=5) as r:
+        data = json.loads(r.read())
+    return data.get("result", 0)
+
+def _redis_expire(key, seconds):
+    url = f"{UPSTASH_URL}/expire/{key}/{seconds}"
+    req = Request(url, data=b'', headers={"Authorization": f"Bearer {UPSTASH_TOKEN}"}, method="POST")
+    with urlopen(req, timeout=5) as r:
+        r.read()
+
+def _redis_get_int(key):
+    url = f"{UPSTASH_URL}/get/{key}"
+    req = Request(url, headers={"Authorization": f"Bearer {UPSTASH_TOKEN}"})
+    with urlopen(req, timeout=5) as r:
+        data = json.loads(r.read())
+    val = data.get("result")
+    return int(val) if val else 0
 
 def get_automations():
     data = _redis_get("automations_config")
@@ -86,6 +110,140 @@ def log_enrollment(auto_id, email, delivery_type, ts):
                        headers={"Authorization": f"Bearer {UPSTASH_TOKEN}"}, method="POST")
     with urlopen(trim_req, timeout=5) as r:
         r.read()
+
+def increment_enroll_count(auto_id, est_date):
+    key = f"enroll_count:{auto_id}:{est_date}"
+    count = _redis_incr(key)
+    if count == 1:
+        _redis_expire(key, 30 * 86400)
+    return count
+
+def get_enroll_count(auto_id, est_date):
+    key = f"enroll_count:{auto_id}:{est_date}"
+    return _redis_get_int(key)
+
+def get_weekly_enroll_count(auto_id, est_now):
+    total = 0
+    for i in range(7):
+        day = est_now.date() - datetime.timedelta(days=i)
+        total += get_enroll_count(auto_id, day.isoformat())
+    return total
+
+def alert_already_sent_today(auto_id, est_date):
+    key = f"alert_sent:{auto_id}:{est_date}"
+    url = f"{UPSTASH_URL}/get/{key}"
+    req = Request(url, headers={"Authorization": f"Bearer {UPSTASH_TOKEN}"})
+    with urlopen(req, timeout=5) as r:
+        data = json.loads(r.read())
+    return data.get("result") is not None
+
+def mark_alert_sent_today(auto_id, est_date):
+    key = f"alert_sent:{auto_id}:{est_date}"
+    _redis_set_raw(key, 1)
+    _redis_expire(key, 2 * 86400)
+
+def alert_already_sent_week(auto_id, iso_week):
+    key = f"alert_sent_week:{auto_id}:{iso_week}"
+    url = f"{UPSTASH_URL}/get/{key}"
+    req = Request(url, headers={"Authorization": f"Bearer {UPSTASH_TOKEN}"})
+    with urlopen(req, timeout=5) as r:
+        data = json.loads(r.read())
+    return data.get("result") is not None
+
+def mark_alert_sent_week(auto_id, iso_week):
+    key = f"alert_sent_week:{auto_id}:{iso_week}"
+    _redis_set_raw(key, 1)
+    _redis_expire(key, 8 * 86400)
+
+def send_slack_message(channel_id, text):
+    if not SLACK_BOT_TOKEN or not channel_id:
+        return
+    payload = json.dumps({"channel": channel_id, "text": text}).encode()
+    req = Request(
+        "https://slack.com/api/chat.postMessage",
+        data=payload,
+        headers={
+            "Authorization": f"Bearer {SLACK_BOT_TOKEN}",
+            "Content-Type": "application/json"
+        },
+        method="POST"
+    )
+    try:
+        with urlopen(req, timeout=10) as r:
+            result = json.loads(r.read())
+        if not result.get("ok"):
+            _log(f"[slack] error: {result.get('error')}")
+    except Exception as e:
+        _log(f"[slack] send error: {e}")
+
+def send_enrollment_notification(automation, email, first_name, last_name, company):
+    if not automation.get("slack_enabled"):
+        return
+    channel_id = automation.get("slack_channel", "")
+    message_tpl = automation.get("slack_message", "")
+    if not channel_id or not message_tpl:
+        return
+    msg = message_tpl
+    msg = msg.replace("{{email}}", email)
+    msg = msg.replace("{{first_name}}", first_name)
+    msg = msg.replace("{{last_name}}", last_name)
+    msg = msg.replace("{{company}}", company)
+    try:
+        send_slack_message(channel_id, msg)
+    except Exception as e:
+        _log(f"[slack] enrollment notification error: {e}")
+
+def check_and_send_alert(automation, auto_id, est_now, est_date):
+    if not automation.get("alert_enabled"):
+        return
+    threshold   = int(automation.get("alert_threshold", 0))
+    schedule    = automation.get("alert_schedule", "daily")
+    alert_time  = automation.get("alert_time", "08:00")
+    channel_id  = automation.get("alert_slack_channel", "")
+    message_tpl = automation.get("alert_message", "")
+
+    if not channel_id or not message_tpl:
+        return
+
+    try:
+        alert_hour, alert_min = [int(x) for x in alert_time.split(":")]
+    except Exception:
+        alert_hour, alert_min = 8, 0
+
+    if (est_now.hour, est_now.minute) < (alert_hour, alert_min):
+        return
+
+    if schedule == "daily":
+        if alert_already_sent_today(auto_id, est_date):
+            return
+        count = get_enroll_count(auto_id, est_date)
+        if count < threshold:
+            msg = message_tpl
+            msg = msg.replace("{{count}}", str(count))
+            msg = msg.replace("{{automation_name}}", automation.get("name", auto_id))
+            msg = msg.replace("{{threshold}}", str(threshold))
+            msg = msg.replace("{{date}}", est_date)
+            send_slack_message(channel_id, msg)
+            mark_alert_sent_today(auto_id, est_date)
+            _log(f"[alert] daily alert sent for {auto_id}: {count} < {threshold}")
+
+    elif schedule == "weekly":
+        alert_day = int(automation.get("alert_day", 0))
+        if est_now.weekday() != alert_day:
+            return
+        iso_week = est_now.strftime("%Y-W%W")
+        if alert_already_sent_week(auto_id, iso_week):
+            return
+        count = get_weekly_enroll_count(auto_id, est_now)
+        if count < threshold:
+            msg = message_tpl
+            msg = msg.replace("{{count}}", str(count))
+            msg = msg.replace("{{automation_name}}", automation.get("name", auto_id))
+            msg = msg.replace("{{threshold}}", str(threshold))
+            msg = msg.replace("{{date}}", est_date)
+            send_slack_message(channel_id, msg)
+            mark_alert_sent_week(auto_id, iso_week)
+            _log(f"[alert] weekly alert sent for {auto_id}: {count} < {threshold}")
 
 def get_list_contacts(list_id, extra_properties=None):
     headers = {"Authorization": f"Bearer {HUBSPOT_API_KEY}"}
@@ -133,9 +291,9 @@ def check_filters(contact, filters):
     if not filters:
         return True
     for f in filters:
-        prop        = f.get("property", "")
-        operator    = f.get("operator", "equals")
-        value       = str(f.get("value", "")).strip().lower()
+        prop     = f.get("property", "")
+        operator = f.get("operator", "equals")
+        value    = str(f.get("value", "")).strip().lower()
         contact_val = str(contact.get(prop, "") or "").strip().lower()
         if operator == "exists":
             if not contact_val:
@@ -163,31 +321,30 @@ def add_to_instantly(email, first_name, last_name, company, campaign_id):
         "campaign_id": campaign_id,
         "leads": [{"email": email, "first_name": first_name, "last_name": last_name, "company_name": company}],
     }, timeout=10)
-    _log(f"[sync] Instantly enroll {email} status={resp.status_code} body={resp.text[:300]}")
+    _log(f"[sync] Instantly add {email} status={resp.status_code} body={resp.text[:300]}")
     resp.raise_for_status()
 
 def get_instantly_lead(email, campaign_id):
+    url = f"https://api.instantly.ai/api/v2/leads?campaign_id={campaign_id}&email={email}&limit=1"
     headers = {"Authorization": f"Bearer {INSTANTLY_API_KEY}"}
-    url = f"https://api.instantly.ai/api/v2/leads?campaign_id={campaign_id}&email={quote(email, safe='')}&limit=1"
     try:
         resp = requests.get(url, headers=headers, timeout=10)
         resp.raise_for_status()
         data = resp.json()
-        items = data if isinstance(data, list) else data.get("items", [])
-        if items:
-            return items[0]
+        items = data if isinstance(data, list) else data.get("items", data.get("leads", []))
+        for lead in items:
+            if lead.get("email", "").lower() == email.lower():
+                return lead
+        return None
     except Exception as e:
-        _log(f"[sync] get_instantly_lead {email} error: {e}")
-    return None
+        _log(f"[sync] get_instantly_lead error for {email}: {e}")
+        return None
 
-def unenroll_from_instantly(email, lead_id):
+def unenroll_from_instantly(lead_id):
+    url = f"https://api.instantly.ai/api/v2/leads/{lead_id}"
     headers = {"Authorization": f"Bearer {INSTANTLY_API_KEY}"}
-    resp = requests.delete(
-        f"https://api.instantly.ai/api/v2/leads/{lead_id}",
-        headers=headers,
-        timeout=10
-    )
-    _log(f"[sync] Instantly unenroll {email} status={resp.status_code} body={resp.text[:300]}")
+    resp = requests.delete(url, headers=headers, timeout=10)
+    _log(f"[sync] unenroll lead {lead_id} status={resp.status_code}")
     resp.raise_for_status()
 
 def submit_hs_form(email, first_name, last_name, company, form_id):
@@ -219,18 +376,22 @@ class handler(BaseHTTPRequestHandler):
 
         total_processed = total_duplicates = total_errors = total_waiting = total_filtered = 0
 
+        est_now  = datetime.datetime.now(EST)
+        est_date = est_now.date().isoformat()
+
         for automation in active:
+            auto_id       = automation.get("id", "")
             list_id       = automation["hubspot_list_id"]
             delivery_type = automation.get("delivery_type", "instantly")
             target_id     = automation.get("instantly_campaign_id") if delivery_type == "instantly" else automation.get("hubspot_form_id")
+            action        = automation.get("action", "enroll")
             delay_hours   = float(automation.get("delay_hours", 0))
             filters       = automation.get("filters", [])
-            action        = automation.get("action", "enroll")
 
-            _log(f"[sync] automation list={list_id} delivery={delivery_type} target={target_id} action={action} delay={delay_hours}h filters={len(filters)}")
+            _log(f"[sync] automation={auto_id} list={list_id} delivery={delivery_type} target={target_id} action={action} delay={delay_hours}h filters={len(filters)}")
 
             if not target_id:
-                _log(f"[sync] skip: no target_id for automation {automation.get('id')}")
+                _log(f"[sync] skip: no target_id for automation {auto_id}")
                 continue
 
             extra_props = [f["property"] for f in filters if f.get("property")]
@@ -238,6 +399,9 @@ class handler(BaseHTTPRequestHandler):
 
             for c in contacts:
                 email = c["email"]
+                first_name = c.get("firstname", "")
+                last_name  = c.get("lastname", "")
+                company    = c.get("company", "")
                 try:
                     if already_sent(email, target_id):
                         total_duplicates += 1
@@ -263,44 +427,63 @@ class handler(BaseHTTPRequestHandler):
                         total_filtered += 1
                         continue
 
-                    if delivery_type == "hubspot_form":
-                        submit_hs_form(email, c["firstname"], c["lastname"], c["company"], target_id)
-
-                    elif action == "unenroll":
-                        lead = get_instantly_lead(email, target_id)
-                        if lead is None:
-                            _log(f"[sync] unenroll: {email} not found in campaign {target_id}, skipping")
-                            mark_as_sent(email, target_id)
-                            total_filtered += 1
-                            continue
-                        status = str(lead.get("status", "")).lower()
-                        if status in INSTANTLY_TERMINAL_STATUSES:
-                            _log(f"[sync] unenroll: {email} already in terminal state '{status}', skipping")
-                            mark_as_sent(email, target_id)
-                            total_filtered += 1
-                            continue
-                        lead_id = lead.get("id")
-                        if not lead_id:
-                            _log(f"[sync] unenroll: {email} lead has no id, skipping")
-                            total_errors += 1
-                            continue
-                        unenroll_from_instantly(email, lead_id)
-
+                    if delivery_type == "instantly":
+                        if action == "unenroll":
+                            lead = get_instantly_lead(email, target_id)
+                            if lead is None:
+                                _log(f"[sync] unenroll: {email} not in campaign, skip")
+                                mark_as_sent(email, target_id)
+                                total_duplicates += 1
+                                continue
+                            lead_status = lead.get("status", "")
+                            if lead_status in INSTANTLY_TERMINAL_STATUSES:
+                                _log(f"[sync] unenroll: {email} already terminal ({lead_status}), skip")
+                                mark_as_sent(email, target_id)
+                                total_duplicates += 1
+                                continue
+                            lead_id = lead.get("id", "")
+                            if not lead_id:
+                                _log(f"[sync] unenroll: no lead_id for {email}, skip")
+                                continue
+                            unenroll_from_instantly(lead_id)
+                        else:
+                            add_to_instantly(email, first_name, last_name, company, target_id)
+                            try:
+                                increment_enroll_count(auto_id, est_date)
+                            except Exception:
+                                pass
+                            try:
+                                send_enrollment_notification(automation, email, first_name, last_name, company)
+                            except Exception:
+                                pass
                     else:
-                        add_to_instantly(email, c["firstname"], c["lastname"], c["company"], target_id)
+                        submit_hs_form(email, first_name, last_name, company, target_id)
+                        try:
+                            increment_enroll_count(auto_id, est_date)
+                        except Exception:
+                            pass
+                        try:
+                            send_enrollment_notification(automation, email, first_name, last_name, company)
+                        except Exception:
+                            pass
 
                     mark_as_sent(email, target_id)
                     ts = datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
                     try:
-                        log_enrollment(automation.get("id", target_id), email, delivery_type, ts)
+                        log_enrollment(auto_id, email, f"{delivery_type}_{action}" if delivery_type == "instantly" else delivery_type, ts)
                     except Exception:
                         pass
-                    _log(f"[sync] {action} {email} -> {delivery_type} {target_id}")
+                    _log(f"[sync] processed {email} -> {delivery_type} {action} {target_id}")
                     total_processed += 1
 
                 except Exception as e:
                     _log(f"[sync] error for {email}: {e}")
                     total_errors += 1
+
+            try:
+                check_and_send_alert(automation, auto_id, est_now, est_date)
+            except Exception as e:
+                _log(f"[sync] alert check error for {auto_id}: {e}")
 
             automation["last_run"] = datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
 
