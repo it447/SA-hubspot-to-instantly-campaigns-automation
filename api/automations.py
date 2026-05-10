@@ -232,6 +232,38 @@ def get_instantly_campaigns():
     except Exception as e:
         raise Exception(f"Instantly request failed: {e}")
 
+def _apply_slack_fields(target, body):
+    slack_enabled = bool(body.get("slack_enabled", False))
+    target["slack_enabled"] = slack_enabled
+    if slack_enabled:
+        target["slack_channel"]      = body.get("slack_channel", "")
+        target["slack_channel_name"] = body.get("slack_channel_name", "")
+        target["slack_message"]      = body.get("slack_message", "")
+    else:
+        target["slack_channel"]      = ""
+        target["slack_channel_name"] = ""
+        target["slack_message"]      = ""
+
+def _apply_alert_fields(target, body):
+    alert_enabled = bool(body.get("alert_enabled", False))
+    target["alert_enabled"] = alert_enabled
+    if alert_enabled:
+        target["alert_threshold"]        = int(body.get("alert_threshold", 0))
+        target["alert_schedule"]         = body.get("alert_schedule", "daily")
+        target["alert_day"]              = int(body.get("alert_day", 0))
+        target["alert_time"]             = body.get("alert_time", "08:00")
+        target["alert_slack_channel"]    = body.get("alert_slack_channel", "")
+        target["alert_slack_channel_name"] = body.get("alert_slack_channel_name", "")
+        target["alert_message"]          = body.get("alert_message", "")
+    else:
+        target["alert_threshold"]        = 0
+        target["alert_schedule"]         = "daily"
+        target["alert_day"]              = 0
+        target["alert_time"]             = "08:00"
+        target["alert_slack_channel"]    = ""
+        target["alert_slack_channel_name"] = ""
+        target["alert_message"]          = ""
+
 class handler(BaseHTTPRequestHandler):
 
     def _json(self, status, data):
@@ -281,6 +313,11 @@ class handler(BaseHTTPRequestHandler):
                 self._json(200, get_hs_contact_properties())
             except Exception as e:
                 self._json(500, {"error": str(e)})
+        elif path.endswith("/slack/channels"):
+            try:
+                self._json(200, get_slack_channels())
+            except Exception as e:
+                self._json(500, {"error": str(e)})
         elif path.endswith("/automations"):
             try:
                 self._json(200, get_automations())
@@ -290,11 +327,6 @@ class handler(BaseHTTPRequestHandler):
             list_id = path.split("/contacts/")[-1].strip("/")
             try:
                 self._json(200, get_list_contacts(list_id))
-            except Exception as e:
-                self._json(500, {"error": str(e)})
-        elif path.endswith("/slack/channels"):
-            try:
-                self._json(200, get_slack_channels())
             except Exception as e:
                 self._json(500, {"error": str(e)})
         else:
@@ -384,14 +416,8 @@ class handler(BaseHTTPRequestHandler):
                 self._json(400, {"error": "Invalid delivery_type"})
                 return
 
-            slack_enabled = bool(body.get("slack_enabled", False))
-            if slack_enabled:
-                new_auto["slack_enabled"]      = True
-                new_auto["slack_channel"]      = body.get("slack_channel", "")
-                new_auto["slack_channel_name"] = body.get("slack_channel_name", "")
-                new_auto["slack_message"]      = body.get("slack_message", "")
-            else:
-                new_auto["slack_enabled"] = False
+            _apply_slack_fields(new_auto, body)
+            _apply_alert_fields(new_auto, body)
 
             existing.append(new_auto)
             save_automations(existing)
@@ -424,21 +450,20 @@ class handler(BaseHTTPRequestHandler):
                 if "instantly_campaign_id" in body:
                     a["instantly_campaign_id"] = str(body["instantly_campaign_id"]).strip()
                     a["instantly_campaign_name"] = body.get("instantly_campaign_name", "")
-                if "action" in body and body["action"] in ("enroll", "unenroll"):
-                    a["action"] = body["action"]
                 if "hubspot_form_id" in body:
                     a["hubspot_form_id"] = str(body["hubspot_form_id"]).strip()
                     a["hubspot_form_name"] = body.get("hubspot_form_name", "")
+                if "action" in body:
+                    action = body["action"]
+                    a["action"] = action if action in ("enroll", "unenroll") else "enroll"
                 if "delay_hours" in body:
                     a["delay_hours"] = int(body["delay_hours"])
                 if "filters" in body:
                     a["filters"] = [f for f in body["filters"] if isinstance(f, dict) and f.get("property")]
                 if "slack_enabled" in body:
-                    a["slack_enabled"] = bool(body["slack_enabled"])
-                    if body["slack_enabled"]:
-                        a["slack_channel"]      = body.get("slack_channel", "")
-                        a["slack_channel_name"] = body.get("slack_channel_name", "")
-                        a["slack_message"]      = body.get("slack_message", "")
+                    _apply_slack_fields(a, body)
+                if "alert_enabled" in body:
+                    _apply_alert_fields(a, body)
                 found = True
                 break
 
