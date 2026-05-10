@@ -15,6 +15,8 @@ HUBSPOT_API_KEY   = os.environ.get("HUBSPOT_API_KEY", "")
 HUBSPOT_PORTAL_ID = os.environ.get("HUBSPOT_PORTAL_ID", "22650739")
 SYNC_SECRET       = os.environ.get("SYNC_SECRET", "")
 
+INSTANTLY_TERMINAL_STATUSES = {"completed", "unsubscribed", "bounced", "finished", "out_of_sequence"}
+
 def _log(msg):
     print(msg, file=sys.stderr, flush=True)
 
@@ -131,9 +133,9 @@ def check_filters(contact, filters):
     if not filters:
         return True
     for f in filters:
-        prop     = f.get("property", "")
-        operator = f.get("operator", "equals")
-        value    = str(f.get("value", "")).strip().lower()
+        prop        = f.get("property", "")
+        operator    = f.get("operator", "equals")
+        value       = str(f.get("value", "")).strip().lower()
         contact_val = str(contact.get(prop, "") or "").strip().lower()
         if operator == "exists":
             if not contact_val:
@@ -161,7 +163,31 @@ def add_to_instantly(email, first_name, last_name, company, campaign_id):
         "campaign_id": campaign_id,
         "leads": [{"email": email, "first_name": first_name, "last_name": last_name, "company_name": company}],
     }, timeout=10)
-    _log(f"[sync] Instantly add {email} status={resp.status_code} body={resp.text[:300]}")
+    _log(f"[sync] Instantly enroll {email} status={resp.status_code} body={resp.text[:300]}")
+    resp.raise_for_status()
+
+def get_instantly_lead(email, campaign_id):
+    headers = {"Authorization": f"Bearer {INSTANTLY_API_KEY}"}
+    url = f"https://api.instantly.ai/api/v2/leads?campaign_id={campaign_id}&email={quote(email, safe='')}&limit=1"
+    try:
+        resp = requests.get(url, headers=headers, timeout=10)
+        resp.raise_for_status()
+        data = resp.json()
+        items = data if isinstance(data, list) else data.get("items", [])
+        if items:
+            return items[0]
+    except Exception as e:
+        _log(f"[sync] get_instantly_lead {email} error: {e}")
+    return None
+
+def unenroll_from_instantly(email, lead_id):
+    headers = {"Authorization": f"Bearer {INSTANTLY_API_KEY}"}
+    resp = requests.delete(
+        f"https://api.instantly.ai/api/v2/leads/{lead_id}",
+        headers=headers,
+        timeout=10
+    )
+    _log(f"[sync] Instantly unenroll {email} status={resp.status_code} body={resp.text[:300]}")
     resp.raise_for_status()
 
 def submit_hs_form(email, first_name, last_name, company, form_id):
@@ -199,8 +225,9 @@ class handler(BaseHTTPRequestHandler):
             target_id     = automation.get("instantly_campaign_id") if delivery_type == "instantly" else automation.get("hubspot_form_id")
             delay_hours   = float(automation.get("delay_hours", 0))
             filters       = automation.get("filters", [])
+            action        = automation.get("action", "enroll")
 
-            _log(f"[sync] automation list={list_id} delivery={delivery_type} target={target_id} delay={delay_hours}h filters={len(filters)}")
+            _log(f"[sync] automation list={list_id} delivery={delivery_type} target={target_id} action={action} delay={delay_hours}h filters={len(filters)}")
 
             if not target_id:
                 _log(f"[sync] skip: no target_id for automation {automation.get('id')}")
@@ -238,6 +265,27 @@ class handler(BaseHTTPRequestHandler):
 
                     if delivery_type == "hubspot_form":
                         submit_hs_form(email, c["firstname"], c["lastname"], c["company"], target_id)
+
+                    elif action == "unenroll":
+                        lead = get_instantly_lead(email, target_id)
+                        if lead is None:
+                            _log(f"[sync] unenroll: {email} not found in campaign {target_id}, skipping")
+                            mark_as_sent(email, target_id)
+                            total_filtered += 1
+                            continue
+                        status = str(lead.get("status", "")).lower()
+                        if status in INSTANTLY_TERMINAL_STATUSES:
+                            _log(f"[sync] unenroll: {email} already in terminal state '{status}', skipping")
+                            mark_as_sent(email, target_id)
+                            total_filtered += 1
+                            continue
+                        lead_id = lead.get("id")
+                        if not lead_id:
+                            _log(f"[sync] unenroll: {email} lead has no id, skipping")
+                            total_errors += 1
+                            continue
+                        unenroll_from_instantly(email, lead_id)
+
                     else:
                         add_to_instantly(email, c["firstname"], c["lastname"], c["company"], target_id)
 
@@ -247,8 +295,9 @@ class handler(BaseHTTPRequestHandler):
                         log_enrollment(automation.get("id", target_id), email, delivery_type, ts)
                     except Exception:
                         pass
-                    _log(f"[sync] added {email} -> {delivery_type} {target_id}")
+                    _log(f"[sync] {action} {email} -> {delivery_type} {target_id}")
                     total_processed += 1
+
                 except Exception as e:
                     _log(f"[sync] error for {email}: {e}")
                     total_errors += 1
