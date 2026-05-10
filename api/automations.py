@@ -437,3 +437,34 @@ class handler(BaseHTTPRequestHandler):
                     a["slack_enabled"] = bool(body["slack_enabled"])
                     if body["slack_enabled"]:
                         a["slack_channel"]      = body.get
+                                            if body["slack_enabled"]:
+                        a["slack_channel"]      = body.get("slack_channel", "")
+                        a["slack_channel_name"] = body.get("slack_channel_name", "")
+                        a["slack_message"]      = body.get("slack_message", "")
+                found = True
+                break
+
+        if not found:
+            self._json(404, {"error": "Not found"})
+            return
+        save_automations(existing)
+        self._json(200, {"ok": True})
+
+    def do_DELETE(self):
+        token = self.headers.get("X-Auth-Token", "")
+        if token != DASHBOARD_PASSWORD:
+            self._json(401, {"error": "Unauthorized"})
+            return
+
+        parts = self.path.strip("/").split("/")
+        auto_id = parts[-1] if parts else ""
+        existing = get_automations()
+        updated = [a for a in existing if a.get("id") != auto_id]
+        if len(updated) == len(existing):
+            self._json(404, {"error": "Not found"})
+            return
+        save_automations(updated)
+        self._json(200, {"ok": True})
+
+    def log_message(self, *args):
+        pass
