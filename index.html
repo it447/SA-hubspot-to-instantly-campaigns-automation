@@ -106,6 +106,7 @@
   .chip-form { color:var(--teal);      border-color:rgba(45,212,191,0.3);  background:rgba(45,212,191,0.08); }
   .chip-active { color:#86efac; border-color:rgba(134,239,172,0.25); background:rgba(134,239,172,0.08); }
   .chip-inactive { color:var(--muted); border-color:rgba(254,242,222,0.1); background:rgba(254,242,222,0.03); }
+  .chip-unenroll { color:#f9a8d4; border-color:rgba(249,168,212,0.3); background:rgba(249,168,212,0.08); }
 
   .search-bar { padding:1rem 1.5rem; border-bottom:1px solid var(--border); }
   .search-bar input { background:rgba(254,242,222,0.05); border:1px solid var(--border); border-radius:var(--radius-sm); color:var(--cream); font-family:'DM Sans',sans-serif; font-size:14px; padding:9px 14px; width:100%; max-width:360px; outline:none; transition:border-color 0.15s; }
@@ -186,6 +187,17 @@
   #edit-log-body { max-height:520px; overflow-y:auto; }
   #edit-log-body::-webkit-scrollbar { width:4px; }
   #edit-log-body::-webkit-scrollbar-thumb { background:rgba(254,242,222,0.15); border-radius:2px; }
+
+  .action-select-row { display:flex; gap:10px; }
+  .action-option { flex:1; border:1px solid var(--border2); border-radius:var(--radius-sm); padding:12px 14px; cursor:pointer; transition:all 0.15s; display:flex; align-items:center; gap:10px; background:rgba(254,242,222,0.03); }
+  .action-option:hover { background:rgba(254,242,222,0.06); }
+  .action-option.selected { border-color:var(--orange); background:rgba(255,100,50,0.08); }
+  .action-option input[type=radio] { display:none; }
+  .action-dot { width:14px; height:14px; border-radius:50%; border:2px solid var(--muted); flex-shrink:0; transition:all 0.15s; }
+  .action-option.selected .action-dot { border-color:var(--orange); background:var(--orange); }
+  .action-label { font-size:13px; font-weight:500; color:var(--muted); }
+  .action-option.selected .action-label { color:var(--cream); }
+  .action-sublabel { font-size:11px; color:var(--muted); margin-top:2px; }
 </style>
 </head>
 <body>
@@ -293,7 +305,7 @@
       <div class="tab-panel active" id="tab-instantly">
         <div class="form-card">
           <h3>Instantly Automation</h3>
-          <p class="form-desc">Contacts added to the HubSpot list will be enrolled in your Instantly email campaign automatically, with duplicate protection.</p>
+          <p class="form-desc">Contacts added to the HubSpot list will be enrolled in or unenrolled from your Instantly email campaign automatically.</p>
           <div class="form-row">
             <label>Automation name</label>
             <input type="text" id="auto-name-instantly" placeholder="e.g. Cold UK Leads → Q1 Outreach">
@@ -313,6 +325,27 @@
             </div>
           </div>
           <div class="form-row">
+            <label>Action</label>
+            <div class="action-select-row">
+              <div class="action-option selected" id="action-option-enroll" onclick="selectAction('enroll')">
+                <input type="radio" name="instantly-action" value="enroll" checked>
+                <div class="action-dot"></div>
+                <div>
+                  <div class="action-label">Enroll</div>
+                  <div class="action-sublabel">Add contacts to campaign</div>
+                </div>
+              </div>
+              <div class="action-option" id="action-option-unenroll" onclick="selectAction('unenroll')">
+                <input type="radio" name="instantly-action" value="unenroll">
+                <div class="action-dot"></div>
+                <div>
+                  <div class="action-label">Unenroll</div>
+                  <div class="action-sublabel">Remove contacts from campaign</div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="form-row" id="delay-row">
             <label>Delay before sending <span style="font-size:11px;opacity:0.6;">(0 = send immediately)</span></label>
             <div style="display:flex;gap:8px;">
               <input type="number" id="delay-amount" min="0" value="0" placeholder="0" style="width:100px;flex-shrink:0;">
@@ -328,7 +361,7 @@
               <label style="margin-bottom:0;">Filter conditions <span style="font-size:11px;opacity:0.6;">(optional)</span></label>
               <button type="button" class="btn btn-cream" onclick="addFilter('instantly')" style="font-size:12px;padding:5px 10px;">+ Add condition</button>
             </div>
-            <div id="filters-instantly"><div style="font-size:13px;color:var(--muted);padding:6px 0;">No conditions — all contacts will be enrolled.</div></div>
+            <div id="filters-instantly"><div style="font-size:13px;color:var(--muted);padding:6px 0;">No conditions — all contacts will be processed.</div></div>
             <div class="token-hint" style="margin-top:8px;">Properties are loaded from your HubSpot account. Enumeration fields show a value picker automatically.</div>
           </div>
           <hr class="slack-divider">
@@ -505,12 +538,19 @@ let dropdownsLoaded = false;
 let currentFilter = 'all';
 let searchQuery = '';
 let editingId = null;
+let currentAction = 'enroll';
 
 function showToast(msg, type='success') {
   const t = document.getElementById('toast');
   t.textContent = msg;
   t.className = `toast show ${type}`;
   setTimeout(() => t.className = 'toast', 2800);
+}
+
+function selectAction(action) {
+  currentAction = action;
+  document.getElementById('action-option-enroll').classList.toggle('selected', action === 'enroll');
+  document.getElementById('action-option-unenroll').classList.toggle('selected', action === 'unenroll');
 }
 
 async function login() {
@@ -549,6 +589,8 @@ function showPage(page) {
 
 function newAutomation() {
   editingId = null;
+  currentAction = 'enroll';
+  selectAction('enroll');
   document.getElementById('add-page-title').textContent = 'New automation';
   document.querySelector('.tab-bar').style.display = '';
   document.getElementById('edit-logs-panel').style.display = 'none';
@@ -599,7 +641,7 @@ function renderFilters(deliveryType) {
   const container = document.getElementById(`filters-${deliveryType}`);
   if (!container) return;
   if (!arr.length) {
-    container.innerHTML = '<div style="font-size:13px;color:var(--muted);padding:6px 0;">No conditions — all contacts will be enrolled.</div>';
+    container.innerHTML = '<div style="font-size:13px;color:var(--muted);padding:6px 0;">No conditions — all contacts will be processed.</div>';
     return;
   }
 
@@ -759,9 +801,15 @@ function renderAutomations() {
 
   list.innerHTML = filtered.map(a => {
     const isForm = a.delivery_type === 'hubspot_form';
+    const isUnenroll = !isForm && a.action === 'unenroll';
     const deliveryChip = isForm
       ? `<span class="chip chip-form">HS Form · ${esc(a.hubspot_form_name || a.hubspot_form_id)}</span>`
       : `<span class="chip chip-in">Instantly · ${esc(a.instantly_campaign_name || a.instantly_campaign_id)}</span>`;
+    const actionChip = !isForm
+      ? (isUnenroll
+          ? `<span class="chip chip-unenroll">⊖ Unenroll</span>`
+          : `<span class="chip chip-hs">⊕ Enroll</span>`)
+      : '';
     const active = a.active !== false;
     const delayLabel = (!isForm && a.delay_hours > 0)
       ? `<span class="chip chip-hs">⏱ ${a.delay_hours >= 24 ? (a.delay_hours/24) + 'd delay' : a.delay_hours + 'h delay'}</span>`
@@ -778,6 +826,7 @@ function renderAutomations() {
         <div class="auto-meta">
           <span class="chip chip-hs">HubSpot · ${esc(a.hubspot_list_name || a.hubspot_list_id)}</span>
           ${deliveryChip}
+          ${actionChip}
           ${delayLabel}
           ${slackChip}
           <span class="chip ${active ? 'chip-active' : 'chip-inactive'}">${active ? '● Active' : '○ Paused'}</span>
@@ -928,6 +977,7 @@ async function createAutomation(deliveryType) {
     if (!campSelected.id) { errEl.textContent='Please select an Instantly campaign.'; errEl.style.display='block'; return; }
     payload.instantly_campaign_id   = campSelected.id;
     payload.instantly_campaign_name = campSelected.name;
+    payload.action = currentAction;
     const delayAmount = parseInt(document.getElementById('delay-amount').value) || 0;
     const delayUnit   = document.getElementById('delay-unit').value;
     payload.delay_hours = delayUnit === 'days' ? delayAmount * 24 : delayAmount;
@@ -1048,6 +1098,8 @@ async function editAutomation(id) {
       document.getElementById('delay-amount').value = delayHours;
       document.getElementById('delay-unit').value = 'hours';
     }
+    currentAction = a.action || 'enroll';
+    selectAction(currentAction);
     document.getElementById('create-btn-instantly').textContent = 'Save changes';
   }
 
