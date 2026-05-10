@@ -126,7 +126,7 @@ def get_hs_forms():
     forms = []
     after = None
     while True:
-        url = "https://api.hubspot.com/marketing/v3/forms?limit=100"
+        url = "https://api.hubapi.com/marketing/v3/forms?limit=100"
         if after:
             url += f"&after={after}"
         _log(f"[HubSpot forms] GET after={after}")
@@ -436,8 +436,6 @@ class handler(BaseHTTPRequestHandler):
                 if "slack_enabled" in body:
                     a["slack_enabled"] = bool(body["slack_enabled"])
                     if body["slack_enabled"]:
-                        a["slack_channel"]      = body.get
-                                            if body["slack_enabled"]:
                         a["slack_channel"]      = body.get("slack_channel", "")
                         a["slack_channel_name"] = body.get("slack_channel_name", "")
                         a["slack_message"]      = body.get("slack_message", "")
