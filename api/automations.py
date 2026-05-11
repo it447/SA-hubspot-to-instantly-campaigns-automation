@@ -1,13 +1,14 @@
 import json
 import os
 import sys
+import re
 from http.server import BaseHTTPRequestHandler
 from urllib.request import urlopen, Request
 from urllib.error import HTTPError
 import requests
 
-UPSTASH_URL   = os.environ.get("UPSTASH_REDIS_REST_URL", "")
-UPSTASH_TOKEN = os.environ.get("UPSTASH_REDIS_REST_TOKEN", "")
+UPSTASH_URL        = os.environ.get("UPSTASH_REDIS_REST_URL", "")
+UPSTASH_TOKEN      = os.environ.get("UPSTASH_REDIS_REST_TOKEN", "")
 DASHBOARD_PASSWORD = os.environ.get("DASHBOARD_PASSWORD", "changeme")
 INSTANTLY_API_KEY  = os.environ.get("INSTANTLY_API_KEY", "")
 HUBSPOT_API_KEY    = os.environ.get("HUBSPOT_API_KEY", "")
@@ -232,6 +233,18 @@ def get_instantly_campaigns():
     except Exception as e:
         raise Exception(f"Instantly request failed: {e}")
 
+def get_service_account_email():
+    """Extract client_email from GOOGLE_SERVICE_ACCOUNT_JSON env var."""
+    sa_json = os.environ.get("GOOGLE_SERVICE_ACCOUNT_JSON", "")
+    if not sa_json:
+        return None
+    try:
+        return json.loads(sa_json).get("client_email")
+    except Exception:
+        return None
+
+# ── Field helpers ─────────────────────────────────────────────
+
 def _apply_slack_fields(target, body):
     slack_enabled = bool(body.get("slack_enabled", False))
     target["slack_enabled"] = slack_enabled
@@ -248,21 +261,42 @@ def _apply_alert_fields(target, body):
     alert_enabled = bool(body.get("alert_enabled", False))
     target["alert_enabled"] = alert_enabled
     if alert_enabled:
-        target["alert_threshold"]        = int(body.get("alert_threshold", 0))
-        target["alert_schedule"]         = body.get("alert_schedule", "daily")
-        target["alert_day"]              = int(body.get("alert_day", 0))
-        target["alert_time"]             = body.get("alert_time", "08:00")
-        target["alert_slack_channel"]    = body.get("alert_slack_channel", "")
+        target["alert_threshold"]          = int(body.get("alert_threshold", 0))
+        target["alert_schedule"]           = body.get("alert_schedule", "daily")
+        target["alert_day"]                = int(body.get("alert_day", 0))
+        target["alert_time"]               = body.get("alert_time", "08:00")
+        target["alert_slack_channel"]      = body.get("alert_slack_channel", "")
         target["alert_slack_channel_name"] = body.get("alert_slack_channel_name", "")
-        target["alert_message"]          = body.get("alert_message", "")
+        target["alert_message"]            = body.get("alert_message", "")
     else:
-        target["alert_threshold"]        = 0
-        target["alert_schedule"]         = "daily"
-        target["alert_day"]              = 0
-        target["alert_time"]             = "08:00"
-        target["alert_slack_channel"]    = ""
+        target["alert_threshold"]          = 0
+        target["alert_schedule"]           = "daily"
+        target["alert_day"]                = 0
+        target["alert_time"]               = "08:00"
+        target["alert_slack_channel"]      = ""
         target["alert_slack_channel_name"] = ""
-        target["alert_message"]          = ""
+        target["alert_message"]            = ""
+
+def _apply_gsheet_fields(target, body):
+    """Copy all GSheet-specific fields from request body onto the automation record."""
+    target["sheet_url"]          = body.get("sheet_url", "").strip()
+    target["sheet_tab"]          = body.get("sheet_tab", "").strip()
+    target["object_type"]        = body.get("object_type", "contact")
+    target["primary_key_column"] = body.get("primary_key_column", "").strip()
+    target["primary_key_type"]   = body.get("primary_key_type", "email")
+    target["column_mappings"]    = [
+        m for m in body.get("column_mappings", [])
+        if isinstance(m, dict) and m.get("column") and m.get("property")
+    ]
+    # Schedule
+    target["gsheet_schedule_type"]    = body.get("gsheet_schedule_type", "interval")
+    target["gsheet_interval_minutes"] = int(body.get("gsheet_interval_minutes", 60))
+    target["gsheet_run_time"]         = body.get("gsheet_run_time", "08:00")
+    target["gsheet_run_day"]          = int(body.get("gsheet_run_day", 0))
+    # Deal-specific defaults
+    target["default_pipeline"] = body.get("default_pipeline", "").strip()
+    target["default_stage"]    = body.get("default_stage", "").strip()
+
 
 class handler(BaseHTTPRequestHandler):
 
@@ -323,6 +357,12 @@ class handler(BaseHTTPRequestHandler):
                 self._json(200, get_automations())
             except Exception as e:
                 self._json(500, {"error": str(e)})
+        elif path.endswith("/google/service-account-email"):
+            email = get_service_account_email()
+            if email:
+                self._json(200, {"email": email})
+            else:
+                self._json(404, {"error": "GOOGLE_SERVICE_ACCOUNT_JSON not configured"})
         elif "/contacts/" in path:
             list_id = path.split("/contacts/")[-1].strip("/")
             try:
@@ -349,81 +389,135 @@ class handler(BaseHTTPRequestHandler):
             self._json(401, {"error": "Unauthorized"})
             return
 
-        if path.endswith("/automations"):
-            name          = body.get("name", "").strip()
-            list_id       = str(body.get("hubspot_list_id", "")).strip()
-            list_name     = body.get("hubspot_list_name", "").strip()
-            delivery_type = body.get("delivery_type", "instantly")
+        if not path.endswith("/automations"):
+            self._json(404, {"error": "Not found"})
+            return
 
-            if not all([name, list_id, delivery_type]):
-                self._json(400, {"error": "Missing fields"})
+        name          = body.get("name", "").strip()
+        delivery_type = body.get("delivery_type", "instantly")
+
+        if not name or not delivery_type:
+            self._json(400, {"error": "Missing fields"})
+            return
+
+        existing = get_automations()
+
+        # ── GSheet → HubSpot sync ─────────────────────────────
+        if delivery_type == "gsheet_sync":
+            sheet_url       = body.get("sheet_url", "").strip()
+            object_type     = body.get("object_type", "contact")
+            pk_column       = body.get("primary_key_column", "").strip()
+            column_mappings = [
+                m for m in body.get("column_mappings", [])
+                if isinstance(m, dict) and m.get("column") and m.get("property")
+            ]
+
+            if not sheet_url:
+                self._json(400, {"error": "Missing Google Sheet URL"})
+                return
+            if not pk_column:
+                self._json(400, {"error": "Missing primary key column"})
+                return
+            if not column_mappings:
+                self._json(400, {"error": "At least one column mapping is required"})
                 return
 
-            existing = get_automations()
-
-            if delivery_type == "instantly":
-                camp_id   = str(body.get("instantly_campaign_id", "")).strip()
-                camp_name = body.get("instantly_campaign_name", "").strip()
-                if not camp_id:
-                    self._json(400, {"error": "Missing Instantly campaign"})
-                    return
-                for a in existing:
-                    if a.get("hubspot_list_id") == list_id and a.get("instantly_campaign_id") == camp_id:
-                        self._json(409, {"error": "Automation already exists"})
-                        return
-                action = body.get("action", "enroll")
-                if action not in ("enroll", "unenroll"):
-                    action = "enroll"
-                delay_hours = int(body.get("delay_hours", 0))
-                filters = [f for f in body.get("filters", []) if isinstance(f, dict) and f.get("property")]
-                new_auto = {
-                    "id": f"{list_id}_{camp_id}",
-                    "name": name,
-                    "delivery_type": "instantly",
-                    "hubspot_list_id": list_id,
-                    "hubspot_list_name": list_name,
-                    "instantly_campaign_id": camp_id,
-                    "instantly_campaign_name": camp_name,
-                    "action": action,
-                    "delay_hours": delay_hours,
-                    "filters": filters,
-                    "active": True,
-                }
-
-            elif delivery_type == "hubspot_form":
-                form_id   = str(body.get("hubspot_form_id", "")).strip()
-                form_name = body.get("hubspot_form_name", "").strip()
-                if not form_id:
-                    self._json(400, {"error": "Missing HubSpot form"})
-                    return
-                for a in existing:
-                    if a.get("hubspot_list_id") == list_id and a.get("hubspot_form_id") == form_id:
-                        self._json(409, {"error": "Automation already exists"})
-                        return
-                filters = [f for f in body.get("filters", []) if isinstance(f, dict) and f.get("property")]
-                new_auto = {
-                    "id": f"{list_id}_form_{form_id}",
-                    "name": name,
-                    "delivery_type": "hubspot_form",
-                    "hubspot_list_id": list_id,
-                    "hubspot_list_name": list_name,
-                    "hubspot_form_id": form_id,
-                    "hubspot_form_name": form_name,
-                    "filters": filters,
-                    "active": True,
-                }
-            else:
-                self._json(400, {"error": "Invalid delivery_type"})
+            match = re.search(r'/spreadsheets/d/([a-zA-Z0-9-_]+)', sheet_url)
+            if not match:
+                self._json(400, {"error": "Invalid Google Sheet URL"})
                 return
+            sheet_id = match.group(1)
 
+            # Duplicate check: same sheet URL + object type
+            for a in existing:
+                if a.get("delivery_type") == "gsheet_sync" and \
+                   a.get("sheet_url") == sheet_url and \
+                   a.get("object_type") == object_type:
+                    self._json(409, {"error": "A GSheet sync for this sheet and object type already exists"})
+                    return
+
+            new_auto = {
+                "id":            f"gs_{sheet_id}_{object_type}",
+                "name":          name,
+                "delivery_type": "gsheet_sync",
+                "active":        True,
+            }
+            _apply_gsheet_fields(new_auto, body)
             _apply_slack_fields(new_auto, body)
-            _apply_alert_fields(new_auto, body)
-
+            # GSheet syncs don't use the enrollment alert
             existing.append(new_auto)
             save_automations(existing)
             self._json(200, new_auto)
+            return
+
+        # ── Instantly + HS Form: both require a HubSpot list ─
+        list_id   = str(body.get("hubspot_list_id", "")).strip()
+        list_name = body.get("hubspot_list_name", "").strip()
+
+        if not list_id:
+            self._json(400, {"error": "Missing HubSpot list"})
+            return
+
+        if delivery_type == "instantly":
+            camp_id   = str(body.get("instantly_campaign_id", "")).strip()
+            camp_name = body.get("instantly_campaign_name", "").strip()
+            if not camp_id:
+                self._json(400, {"error": "Missing Instantly campaign"})
+                return
+            for a in existing:
+                if a.get("hubspot_list_id") == list_id and a.get("instantly_campaign_id") == camp_id:
+                    self._json(409, {"error": "Automation already exists"})
+                    return
+            action = body.get("action", "enroll")
+            if action not in ("enroll", "unenroll"):
+                action = "enroll"
+            delay_hours = int(body.get("delay_hours", 0))
+            filters = [f for f in body.get("filters", []) if isinstance(f, dict) and f.get("property")]
+            new_auto = {
+                "id":                      f"{list_id}_{camp_id}",
+                "name":                    name,
+                "delivery_type":           "instantly",
+                "hubspot_list_id":         list_id,
+                "hubspot_list_name":       list_name,
+                "instantly_campaign_id":   camp_id,
+                "instantly_campaign_name": camp_name,
+                "action":                  action,
+                "delay_hours":             delay_hours,
+                "filters":                 filters,
+                "active":                  True,
+            }
+
+        elif delivery_type == "hubspot_form":
+            form_id   = str(body.get("hubspot_form_id", "")).strip()
+            form_name = body.get("hubspot_form_name", "").strip()
+            if not form_id:
+                self._json(400, {"error": "Missing HubSpot form"})
+                return
+            for a in existing:
+                if a.get("hubspot_list_id") == list_id and a.get("hubspot_form_id") == form_id:
+                    self._json(409, {"error": "Automation already exists"})
+                    return
+            filters = [f for f in body.get("filters", []) if isinstance(f, dict) and f.get("property")]
+            new_auto = {
+                "id":                f"{list_id}_form_{form_id}",
+                "name":              name,
+                "delivery_type":     "hubspot_form",
+                "hubspot_list_id":   list_id,
+                "hubspot_list_name": list_name,
+                "hubspot_form_id":   form_id,
+                "hubspot_form_name": form_name,
+                "filters":           filters,
+                "active":            True,
+            }
         else:
-            self._json(404, {"error": "Not found"})
+            self._json(400, {"error": "Invalid delivery_type"})
+            return
+
+        _apply_slack_fields(new_auto, body)
+        _apply_alert_fields(new_auto, body)
+        existing.append(new_auto)
+        save_automations(existing)
+        self._json(200, new_auto)
 
     def do_PATCH(self):
         token = self.headers.get("X-Auth-Token", "")
@@ -440,30 +534,47 @@ class handler(BaseHTTPRequestHandler):
         found = False
         for a in existing:
             if a.get("id") == auto_id:
+                # Fields common to all types
                 if "active" in body:
                     a["active"] = bool(body["active"])
                 if "name" in body:
                     a["name"] = str(body["name"]).strip()
-                if "hubspot_list_id" in body:
-                    a["hubspot_list_id"] = str(body["hubspot_list_id"]).strip()
-                    a["hubspot_list_name"] = body.get("hubspot_list_name", "")
-                if "instantly_campaign_id" in body:
-                    a["instantly_campaign_id"] = str(body["instantly_campaign_id"]).strip()
-                    a["instantly_campaign_name"] = body.get("instantly_campaign_name", "")
-                if "hubspot_form_id" in body:
-                    a["hubspot_form_id"] = str(body["hubspot_form_id"]).strip()
-                    a["hubspot_form_name"] = body.get("hubspot_form_name", "")
-                if "action" in body:
-                    action = body["action"]
-                    a["action"] = action if action in ("enroll", "unenroll") else "enroll"
-                if "delay_hours" in body:
-                    a["delay_hours"] = int(body["delay_hours"])
-                if "filters" in body:
-                    a["filters"] = [f for f in body["filters"] if isinstance(f, dict) and f.get("property")]
-                if "slack_enabled" in body:
-                    _apply_slack_fields(a, body)
-                if "alert_enabled" in body:
-                    _apply_alert_fields(a, body)
+
+                if a.get("delivery_type") == "gsheet_sync":
+                    # Re-apply all gsheet fields if any gsheet key is present
+                    gsheet_keys = {
+                        "sheet_url", "sheet_tab", "object_type", "primary_key_column",
+                        "primary_key_type", "column_mappings", "gsheet_schedule_type",
+                        "gsheet_interval_minutes", "gsheet_run_time", "gsheet_run_day",
+                        "default_pipeline", "default_stage"
+                    }
+                    if gsheet_keys & body.keys():
+                        _apply_gsheet_fields(a, body)
+                    if "slack_enabled" in body:
+                        _apply_slack_fields(a, body)
+
+                else:
+                    if "hubspot_list_id" in body:
+                        a["hubspot_list_id"]   = str(body["hubspot_list_id"]).strip()
+                        a["hubspot_list_name"] = body.get("hubspot_list_name", "")
+                    if "instantly_campaign_id" in body:
+                        a["instantly_campaign_id"]   = str(body["instantly_campaign_id"]).strip()
+                        a["instantly_campaign_name"] = body.get("instantly_campaign_name", "")
+                    if "hubspot_form_id" in body:
+                        a["hubspot_form_id"]   = str(body["hubspot_form_id"]).strip()
+                        a["hubspot_form_name"] = body.get("hubspot_form_name", "")
+                    if "action" in body:
+                        action = body["action"]
+                        a["action"] = action if action in ("enroll", "unenroll") else "enroll"
+                    if "delay_hours" in body:
+                        a["delay_hours"] = int(body["delay_hours"])
+                    if "filters" in body:
+                        a["filters"] = [f for f in body["filters"] if isinstance(f, dict) and f.get("property")]
+                    if "slack_enabled" in body:
+                        _apply_slack_fields(a, body)
+                    if "alert_enabled" in body:
+                        _apply_alert_fields(a, body)
+
                 found = True
                 break
 
