@@ -369,8 +369,8 @@ def extract_sheet_id(url):
     return match.group(1)
 
 def get_sheet_data(sheet_id, tab_name, token):
-    from urllib.parse import quote as _quote
-    range_name = _quote(f"'{tab_name}'", safe='')
+    from urllib.parse import quote
+    range_name = quote(f"'{tab_name}'", safe='')
     url = f"https://sheets.googleapis.com/v4/spreadsheets/{sheet_id}/values/{range_name}"
     resp = requests.get(url, headers={"Authorization": f"Bearer {token}"}, timeout=30)
     resp.raise_for_status()
@@ -482,19 +482,20 @@ def should_run_gsheet(automation):
     return True
 
 def run_gsheet_sync(automation):
-    auto_name        = automation.get("name", "?")
-    sheet_url        = automation.get("sheet_url", "")
-    sheet_tab        = automation.get("sheet_tab", "")
-    object_type      = automation.get("object_type", "contact")
-    pk_column        = automation.get("primary_key_column", "")
-    pk_type          = automation.get("primary_key_type", "email")
-    column_mappings  = automation.get("column_mappings", [])
-    slack_channel    = automation.get("slack_channel", "")
+    auto_name       = automation.get("name", "?")
+    sheet_url       = automation.get("sheet_url", "")
+    sheet_tab       = automation.get("sheet_tab", "")
+    object_type     = automation.get("object_type", "contact")
+    pk_column       = automation.get("primary_key_column", "")
+    pk_type         = automation.get("primary_key_type", "email")
+    column_mappings = automation.get("column_mappings", [])
+    slack_channel   = automation.get("slack_channel", "")
     default_pipeline = automation.get("default_pipeline", "")
     default_stage    = automation.get("default_stage", "")
 
     hs_object = {"contact": "contacts", "company": "companies", "deal": "deals"}.get(object_type, "contacts")
 
+    # Read Google Sheet
     try:
         gtoken   = get_google_token()
         sheet_id = extract_sheet_id(sheet_url)
@@ -529,6 +530,7 @@ def run_gsheet_sync(automation):
         row_padded = list(row) + [''] * max(0, len(headers) - len(row))
         pk_value   = row_padded[pk_idx].strip() if pk_idx < len(row_padded) else ''
 
+        # Build property dict from column mappings
         properties = {}
         for mapping in column_mappings:
             col  = mapping.get("column", "")
@@ -543,6 +545,7 @@ def run_gsheet_sync(automation):
         if not properties:
             continue
 
+        # Deals with no ID → create
         if object_type == "deal" and not pk_value:
             props = dict(properties)
             if "pipeline" not in props and default_pipeline:
@@ -555,11 +558,12 @@ def run_gsheet_sync(automation):
         if not pk_value:
             continue
 
-        if pk_type == "email":
+        if pk_type in ("email",):
             upsert_inputs.append({"id": pk_value, "idProperty": "email", "properties": properties})
         elif pk_type == "domain":
             upsert_inputs.append({"id": pk_value, "idProperty": "domain", "properties": properties})
         else:
+            # contact_id, company_id, deal_id — update by HS object ID
             upsert_inputs.append({"id": pk_value, "properties": properties})
 
     _log(f"[gsheet] {auto_name}: {len(upsert_inputs)} upserts, {len(create_inputs)} creates for {hs_object}")
