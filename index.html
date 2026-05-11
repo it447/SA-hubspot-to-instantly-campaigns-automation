@@ -50,6 +50,7 @@
     background-repeat: no-repeat;
     background-position: right 14px center;
   }
+  /* Sidebar always stays dark */
   body.light-mode .sidebar { background: #0f1f2e !important; border-right-color: rgba(254,242,222,0.1) !important; }
   body.light-mode .sidebar .nav-item { color: rgba(254,242,222,0.5); }
   body.light-mode .sidebar .nav-item:hover { background: rgba(254,242,222,0.05); color: #fef2de; }
@@ -81,15 +82,7 @@
   body.light-mode .sched-btn { background: rgba(22,43,62,0.05); border-color: rgba(22,43,62,0.18); color: rgba(22,43,62,0.5); }
   body.light-mode .sched-btn.active { background: var(--orange); color: #fff; border-color: var(--orange); }
   body.light-mode .sched-btn:not(.active):hover { background: rgba(22,43,62,0.09); color: #162b3e; }
-
-  /* Google Sheet toggles */
-  .gs-type-toggle, .gs-sched-toggle { display:flex; gap:6px; }
-  .gs-type-toggle button, .gs-sched-toggle button { flex:1; padding:9px 14px; border-radius:var(--radius-sm); border:1px solid var(--border2); background:rgba(254,242,222,0.04); color:var(--muted); font-family:'DM Sans',sans-serif; font-size:13px; font-weight:500; cursor:pointer; transition:all 0.15s; }
-  .gs-type-toggle button.active, .gs-sched-toggle button.active { background:var(--orange); color:#fef2de; border-color:var(--orange); }
-  .gs-type-toggle button:not(.active):hover, .gs-sched-toggle button:not(.active):hover { background:rgba(254,242,222,0.08); color:var(--cream); }
-  body.light-mode .gs-type-toggle button, body.light-mode .gs-sched-toggle button { background:rgba(22,43,62,0.05); border-color:rgba(22,43,62,0.18); color:rgba(22,43,62,0.5); }
-  body.light-mode .gs-type-toggle button.active, body.light-mode .gs-sched-toggle button.active { background:var(--orange); color:#fff; border-color:var(--orange); }
-  body.light-mode .gs-type-toggle button:not(.active):hover, body.light-mode .gs-sched-toggle button:not(.active):hover { background:rgba(22,43,62,0.09); color:#162b3e; }
+  /* ────────────────────────────────────────────────────────── */
 
   body { font-family: 'DM Sans', sans-serif; background: var(--navy); color: var(--cream); min-height: 100vh; font-size: 15px; line-height: 1.6; transition: background 0.2s, color 0.2s; }
 
@@ -201,7 +194,7 @@
   .empty-icon { font-size:28px; margin-bottom:0.75rem; }
   .empty-state p { font-size:14px; }
 
-  .tab-bar { display:flex; gap:4px; background:rgba(254,242,222,0.04); border:1px solid var(--border); border-radius:var(--radius-sm); padding:4px; margin-bottom:1.75rem; max-width:740px; }
+  .tab-bar { display:flex; gap:4px; background:rgba(254,242,222,0.04); border:1px solid var(--border); border-radius:var(--radius-sm); padding:4px; margin-bottom:1.75rem; max-width:560px; }
   .tab-btn { flex:1; padding:9px 16px; border-radius:7px; border:none; background:transparent; color:var(--muted); font-family:'DM Sans',sans-serif; font-size:13px; font-weight:500; cursor:pointer; transition:all 0.15s; }
   .tab-btn:hover { color:var(--cream); background:rgba(254,242,222,0.06); }
   .tab-btn.active { background:var(--navy-soft); color:var(--cream); border:1px solid var(--border2); }
@@ -321,9 +314,6 @@
     <button class="nav-item" id="nav-filter-hubspot_form" onclick="showPage('dashboard');setFilter('hubspot_form')" style="padding-left:28px;font-size:13px;">
       <span class="nav-icon" style="font-size:12px;">◈</span> HS Form
     </button>
-    <button class="nav-item" id="nav-filter-gsheet_sync" onclick="showPage('dashboard');setFilter('gsheet_sync')" style="padding-left:28px;font-size:13px;">
-      <span class="nav-icon" style="font-size:12px;">📊</span> Sheet Sync
-    </button>
     <button class="nav-item" onclick="newAutomation()" id="nav-add" style="margin-top:4px;">
       <span class="nav-icon">+</span> New automation
     </button>
@@ -398,10 +388,9 @@
         </div>
       </div>
 
-      <div class="tab-bar" style="max-width:740px;">
+      <div class="tab-bar">
         <button class="tab-btn active" id="tab-btn-instantly" onclick="switchTab('instantly')">Instantly Automation</button>
         <button class="tab-btn teal" id="tab-btn-hubspot_form" onclick="switchTab('hubspot_form')">HS Form Fill Sequence</button>
-        <button class="tab-btn" id="tab-btn-gsheet_sync" onclick="switchTab('gsheet_sync')">Google Sheet Sync</button>
       </div>
 
       <div class="edit-grid">
@@ -588,189 +577,9 @@
         </div>
       </div>
 
-      <!-- Tab: Google Sheet Sync -->
-      <div class="tab-panel" id="tab-gsheet_sync">
-        <div class="form-card" style="max-width:660px;">
-          <h3>Google Sheet → HubSpot Sync</h3>
-          <p class="form-desc">Sync records from a Google Sheet into HubSpot contacts, companies, or deals. Existing records are upserted; missing ones are created automatically.</p>
-
-          <div style="background:rgba(45,212,191,0.08);border:1px solid rgba(45,212,191,0.25);border-radius:var(--radius-sm);padding:14px 16px;margin-bottom:1.75rem;">
-            <div style="font-size:11px;font-weight:600;color:var(--teal);text-transform:uppercase;letter-spacing:0.09em;margin-bottom:6px;">Step 1 — Share your Google Sheet</div>
-            <div style="font-size:13px;color:var(--muted);margin-bottom:10px;">Grant Viewer access to this service account once per spreadsheet.</div>
-            <div style="display:flex;align-items:center;gap:8px;">
-              <code id="gs-email-display" style="flex:1;font-size:12px;background:rgba(45,212,191,0.07);border:1px solid rgba(45,212,191,0.15);border-radius:6px;padding:8px 12px;color:var(--cream);font-family:monospace;word-break:break-all;line-height:1.5;">scalearmy-sheets-sync@core-sprite-496011-q2.iam.gserviceaccount.com</code>
-              <button type="button" class="btn btn-cream" onclick="copyGsEmail()" style="font-size:12px;padding:8px 14px;white-space:nowrap;flex-shrink:0;">Copy</button>
-            </div>
-          </div>
-
-          <div class="form-row">
-            <label>Automation name</label>
-            <input type="text" id="gs-name" placeholder="e.g. CRM Sheet → HubSpot Contacts">
-          </div>
-
-          <div class="form-row">
-            <label>Google Sheet URL <span style="font-size:11px;font-weight:400;opacity:0.55;">— Step 2</span></label>
-            <div style="display:flex;gap:8px;">
-              <input type="url" id="gs-sheet-url" placeholder="Paste the full Google Sheet URL…" style="flex:1;min-width:0;">
-              <button type="button" class="btn btn-cream" id="gs-load-tabs-btn" onclick="loadGsheetTabs()" style="white-space:nowrap;flex-shrink:0;">Load tabs</button>
-            </div>
-          </div>
-
-          <div class="form-row" id="gs-tab-row" style="display:none;">
-            <label>Sheet tab</label>
-            <select id="gs-tab-select" onchange="onGsTabSelected(this.value)">
-              <option value="">Select a tab…</option>
-            </select>
-          </div>
-
-          <div class="form-row">
-            <label>HubSpot object type <span style="font-size:11px;font-weight:400;opacity:0.55;">— Step 3</span></label>
-            <div class="gs-type-toggle">
-              <button type="button" class="active" id="gs-obj-contact" onclick="selectGsObjectType('contact')">Contact</button>
-              <button type="button" id="gs-obj-company" onclick="selectGsObjectType('company')">Company</button>
-              <button type="button" id="gs-obj-deal" onclick="selectGsObjectType('deal')">Deal</button>
-            </div>
-          </div>
-
-          <div id="gs-mapping-section" style="display:none;">
-
-            <div style="background:rgba(254,242,222,0.03);border:1px solid var(--border);border-radius:var(--radius-sm);padding:1rem 1.25rem;margin-bottom:1.25rem;">
-              <div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.09em;margin-bottom:0.85rem;">Primary key — identify existing records</div>
-              <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;">
-                <div>
-                  <label>Sheet column</label>
-                  <select id="gs-pk-column" onchange="gsState.primaryKeyColumn=this.value">
-                    <option value="">Select column…</option>
-                  </select>
-                </div>
-                <div>
-                  <label>Matches HubSpot</label>
-                  <select id="gs-pk-type" onchange="gsState.primaryKeyType=this.value">
-                    <option value="email">Email</option>
-                    <option value="contact_id">Contact ID (HS)</option>
-                  </select>
-                </div>
-              </div>
-            </div>
-
-            <div class="form-row">
-              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.75rem;">
-                <label style="margin-bottom:0;">Column → Property mappings <span style="font-size:11px;font-weight:400;opacity:0.55;">— Step 4</span></label>
-                <button type="button" class="btn btn-cream" onclick="addGsMapping()" style="font-size:12px;padding:5px 10px;">+ Add mapping</button>
-              </div>
-              <div id="gs-mappings-container">
-                <div style="font-size:13px;color:var(--muted);padding:6px 0;">No mappings yet — add a sheet column → HubSpot property pair.</div>
-              </div>
-            </div>
-
-            <div id="gs-deal-defaults" style="display:none;">
-              <hr class="slack-divider">
-              <div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.09em;margin-bottom:0.6rem;">Deal defaults</div>
-              <p style="font-size:13px;color:var(--muted);margin-bottom:1rem;line-height:1.5;">Used when creating new deals if pipeline/stage aren't in the mapped columns.</p>
-              <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;margin-bottom:0.5rem;">
-                <div>
-                  <label>Default pipeline</label>
-                  <select id="gs-pipeline-select" onchange="onGsPipelineChange(this.value)">
-                    <option value="">None</option>
-                  </select>
-                </div>
-                <div>
-                  <label>Default stage</label>
-                  <select id="gs-stage-select">
-                    <option value="">None</option>
-                  </select>
-                </div>
-              </div>
-            </div>
-
-            <hr class="slack-divider">
-            <div class="form-row">
-              <label>Sync schedule</label>
-              <div class="gs-sched-toggle" style="max-width:320px;">
-                <button type="button" class="active" id="gs-sched-btn-interval" onclick="selectGsSchedule('interval')">Interval</button>
-                <button type="button" id="gs-sched-btn-daily" onclick="selectGsSchedule('daily')">Daily</button>
-                <button type="button" id="gs-sched-btn-weekly" onclick="selectGsSchedule('weekly')">Weekly</button>
-              </div>
-            </div>
-            <div id="gs-sched-interval-row">
-              <div class="form-row">
-                <label>Run every</label>
-                <div style="display:flex;gap:8px;align-items:center;max-width:260px;">
-                  <input type="number" id="gs-interval-value" min="1" value="1" style="width:90px;flex-shrink:0;">
-                  <select id="gs-interval-unit" style="flex:1;">
-                    <option value="1">Minutes</option>
-                    <option value="60" selected>Hours</option>
-                  </select>
-                </div>
-              </div>
-            </div>
-            <div id="gs-sched-time-row" style="display:none;">
-              <div class="form-row">
-                <label>Run at (EST)</label>
-                <input type="time" id="gs-run-time" value="08:00" style="max-width:160px;">
-              </div>
-            </div>
-            <div id="gs-sched-day-row" style="display:none;">
-              <div class="form-row">
-                <label>Day of week</label>
-                <select id="gs-run-day" style="max-width:200px;">
-                  <option value="0">Monday</option>
-                  <option value="1">Tuesday</option>
-                  <option value="2">Wednesday</option>
-                  <option value="3">Thursday</option>
-                  <option value="4">Friday</option>
-                  <option value="5">Saturday</option>
-                  <option value="6">Sunday</option>
-                </select>
-              </div>
-            </div>
-
-            <hr class="slack-divider">
-            <div class="slack-toggle-row">
-              <span class="slack-toggle-label">
-                <span class="slack-icon">
-                  <svg width="16" height="16" viewBox="0 0 54 54" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M19.7 32.2c0 2.9-2.4 5.3-5.3 5.3s-5.3-2.4-5.3-5.3 2.4-5.3 5.3-5.3H19.7v5.3z" fill="#E01E5A"/>
-                    <path d="M22.3 32.2c0-2.9 2.4-5.3 5.3-5.3s5.3 2.4 5.3 5.3v13.3c0 2.9-2.4 5.3-5.3 5.3s-5.3-2.4-5.3-5.3V32.2z" fill="#E01E5A"/>
-                    <path d="M27.6 19.7c-2.9 0-5.3-2.4-5.3-5.3s2.4-5.3 5.3-5.3 5.3 2.4 5.3 5.3V19.7H27.6z" fill="#36C5F0"/>
-                    <path d="M27.6 22.3c2.9 0 5.3 2.4 5.3 5.3s-2.4 5.3-5.3 5.3H14.4c-2.9 0-5.3-2.4-5.3-5.3s2.4-5.3 5.3-5.3H27.6z" fill="#36C5F0"/>
-                    <path d="M40.1 27.6c0-2.9 2.4-5.3 5.3-5.3s5.3 2.4 5.3 5.3-2.4 5.3-5.3 5.3H40.1V27.6z" fill="#2EB67D"/>
-                    <path d="M37.4 27.6c0 2.9-2.4 5.3-5.3 5.3s-5.3-2.4-5.3-5.3V14.4c0-2.9 2.4-5.3 5.3-5.3s5.3 2.4 5.3 5.3V27.6z" fill="#2EB67D"/>
-                    <path d="M32.1 40.1c2.9 0 5.3 2.4 5.3 5.3s-2.4 5.3-5.3 5.3-5.3-2.4-5.3-5.3V40.1h5.3z" fill="#ECB22E"/>
-                    <path d="M32.1 37.4c-2.9 0-5.3-2.4-5.3-5.3s2.4-5.3 5.3-5.3h13.3c2.9 0 5.3 2.4 5.3 5.3s-2.4 5.3-5.3 5.3H32.1z" fill="#ECB22E"/>
-                  </svg>
-                </span>
-                Slack error notifications
-              </span>
-              <label class="toggle">
-                <input type="checkbox" id="gs-slack-enabled" onchange="toggleGsSlack(this.checked)">
-                <span class="toggle-slider"></span>
-              </label>
-            </div>
-            <div id="gs-slack-body" class="slack-body" style="display:none;">
-              <div>
-                <label>Channel</label>
-                <div class="search-select">
-                  <input type="text" id="gs-slack-ch-search" placeholder="Search channels…" autocomplete="off">
-                  <div class="search-dropdown" id="gs-slack-ch-dropdown"></div>
-                </div>
-              </div>
-              <div class="token-hint">You'll be notified when the sync encounters errors with the Sheet or HubSpot.</div>
-            </div>
-
-          </div><!-- /gs-mapping-section -->
-
-          <div class="form-footer">
-            <button class="btn btn-cream" onclick="cancelEdit()">Cancel</button>
-            <button class="btn btn-primary" onclick="createGsheetSync()" id="create-btn-gsheet_sync">Create automation</button>
-          </div>
-          <div class="error-msg" id="form-error-gsheet_sync"></div>
-        </div>
-      </div>
-
       </div><!-- close form col -->
 
-      <!-- Right column: alert panel -->
+      <!-- Right column -->
       <div id="right-column">
         <div class="card" id="alert-panel">
           <div class="card-header">
@@ -891,17 +700,7 @@ let editingId        = null;
 let currentAction    = 'enroll';
 let pendingDeleteId  = null;
 
-const GS_EMAIL = 'scalearmy-sheets-sync@core-sprite-496011-q2.iam.gserviceaccount.com';
-let gsState = {
-  sheetUrl:'', sheetTab:'', objectType:'contact',
-  primaryKeyColumn:'', primaryKeyType:'email',
-  columnMappings:[], defaultPipeline:'', defaultPipelineLabel:'',
-  defaultStage:'', defaultStageLabel:'',
-  scheduleType:'interval', intervalMinutes:60, runTime:'08:00', runDay:0,
-  sheetTabs:[], sheetHeaders:[], hsProps:[], pipelines:[],
-};
-let gsSlackChSelected = {id:'', name:''};
-
+// ── Theme ────────────────────────────────────────────────────
 function applyTheme(light) {
   document.body.classList.toggle('light-mode', light);
   const icon  = document.getElementById('theme-icon');
@@ -921,6 +720,7 @@ function toggleTheme() {
 }
 applyTheme(localStorage.getItem('sa-theme') === 'light');
 
+// ── Toast ────────────────────────────────────────────────────
 function showToast(msg, type='success') {
   const t = document.getElementById('toast');
   t.textContent = msg;
@@ -928,6 +728,7 @@ function showToast(msg, type='success') {
   setTimeout(() => t.className = 'toast', 2800);
 }
 
+// ── Auth ─────────────────────────────────────────────────────
 async function login() {
   const pw  = document.getElementById('pw-input').value;
   const btn = document.getElementById('login-btn');
@@ -953,6 +754,7 @@ function logout() {
   document.getElementById('pw-input').value = '';
 }
 
+// ── Navigation ───────────────────────────────────────────────
 function showPage(page) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
@@ -962,6 +764,7 @@ function showPage(page) {
   if (page === 'dashboard') setFilter(currentFilter);
 }
 
+// ── Form helpers ─────────────────────────────────────────────
 function selectAction(action) {
   currentAction = action;
   document.getElementById('action-enroll').classList.toggle('selected', action === 'enroll');
@@ -983,11 +786,10 @@ function toggleAlertDayRow(show) {
 }
 
 function updateAlertPanelVisibility() {
-  const activePanel = document.querySelector('.tab-panel.active');
-  const isGsheet = activePanel && activePanel.id === 'tab-gsheet_sync';
-  document.getElementById('alert-panel').style.display = isGsheet ? 'none' : '';
+  document.getElementById('alert-panel').style.display = '';
 }
 
+// ── New / Cancel ─────────────────────────────────────────────
 function newAutomation() {
   editingId = null;
   currentAction = 'enroll';
@@ -1009,20 +811,141 @@ function newAutomation() {
   document.getElementById('delay-unit').value = 'hours';
   filtersInstantly = []; filtersForm = [];
   renderFilters('instantly'); renderFilters('hubspot_form');
+  ['instantly','hubspot_form'].forEach(dt => {
+    const cb = document.getElementById(`slack-enabled-${dt}`);
+    if (cb) { cb.checked = false; toggleSlackSection(dt, false); }
+    resetSearchSelect(`slack-ch-search-${dt}`, `slack-ch-dropdown-${dt}`, dt === 'instantly' ? slackChSelectedInstantly : slackChSelectedForm);
+    const ta = document.getElementById(`slack-msg-${dt}`);
+    if (ta) ta.value = '';
+  });
   document.getElementById('alert-enabled').checked = false;
   toggleAlertConfig(false);
-  document.getElementById('slack-enabled-instantly').checked = false;
-  toggleSlackSection('instantly', false);
-  document.getElementById('slack-enabled-hubspot_form').checked = false;
-  toggleSlackSection('hubspot_form', false);
-  resetGsForm();
+  document.getElementById('alert-threshold').value = '20';
+  resetSearchSelect('alert-slack-ch-search', 'alert-slack-ch-dropdown', alertSlackChSelected);
+  document.getElementById('alert-message').value = '';
+  selectSchedule('daily');
+  document.getElementById('alert-time').value = '08:00';
+  document.getElementById('alert-day').value = '0';
   switchTab('instantly');
   showPage('add');
 }
 
 function cancelEdit() {
   editingId = null;
+  document.getElementById('create-btn-instantly').textContent = 'Create automation';
+  document.getElementById('create-btn-hubspot_form').textContent = 'Create automation';
+  document.getElementById('add-page-title').textContent = 'New automation';
+  document.querySelector('.tab-bar').style.display = '';
+  document.getElementById('view-logs-btn').style.display = 'none';
   showPage('dashboard');
+}
+
+// ── Filters ──────────────────────────────────────────────────
+function addFilter(deliveryType) {
+  const arr = deliveryType === 'instantly' ? filtersInstantly : filtersForm;
+  arr.push({ property: '', operator: 'equals', value: '' });
+  renderFilters(deliveryType);
+}
+
+function removeFilter(deliveryType, index) {
+  const arr = deliveryType === 'instantly' ? filtersInstantly : filtersForm;
+  arr.splice(index, 1);
+  renderFilters(deliveryType);
+}
+
+function updateFilter(deliveryType, index, field, value) {
+  const arr = deliveryType === 'instantly' ? filtersInstantly : filtersForm;
+  arr[index][field] = value;
+  if (field === 'property') arr[index].value = '';
+  if (field === 'operator' || field === 'property') renderFilters(deliveryType);
+}
+
+function renderFilters(deliveryType) {
+  const arr = deliveryType === 'instantly' ? filtersInstantly : filtersForm;
+  const container = document.getElementById(`filters-${deliveryType}`);
+  if (!container) return;
+  if (!arr.length) {
+    container.innerHTML = '<div style="font-size:13px;color:var(--muted);padding:6px 0;">No conditions — all contacts will be processed.</div>';
+    return;
+  }
+  container.innerHTML = arr.map((f, i) => {
+    const propMeta = hsPropList.find(p => p.name === f.property);
+    const isEnum = propMeta && (propMeta.type === 'enumeration' || ['select','radio','checkbox','booleancheckbox'].includes(propMeta.fieldType)) && propMeta.options.length;
+    let valueField = `<div style="flex:2;min-width:0;"></div>`;
+    if (f.operator !== 'exists') {
+      if (isEnum) {
+        valueField = `<select onchange="updateFilter('${deliveryType}',${i},'value',this.value)"
+            style="flex:2;font-size:13px;padding:8px 10px;min-width:0;">
+            <option value="" disabled ${!f.value?'selected':''}>Select value…</option>
+            ${propMeta.options.map(o => `<option value="${esc(o.value)}" ${f.value===o.value?'selected':''}>${esc(o.label)}</option>`).join('')}
+          </select>`;
+      } else {
+        valueField = `<input type="text" placeholder="Value" value="${esc(f.value)}"
+            oninput="updateFilter('${deliveryType}',${i},'value',this.value)"
+            style="flex:2;font-size:13px;padding:8px 10px;min-width:0;">`;
+      }
+    }
+    return `<div style="display:flex;gap:8px;margin-bottom:8px;align-items:center;">
+      <div class="search-select" style="flex:2;min-width:0;">
+        <input type="text" id="prop-search-${deliveryType}-${i}" placeholder="Search properties…" autocomplete="off"
+          style="font-size:13px;padding:8px 10px;">
+        <div class="search-dropdown" id="prop-dropdown-${deliveryType}-${i}"></div>
+      </div>
+      <select onchange="updateFilter('${deliveryType}',${i},'operator',this.value)"
+        style="flex:1;font-size:13px;padding:8px 10px;min-width:0;">
+        <option value="equals"       ${f.operator==='equals'       ?'selected':''}>equals</option>
+        <option value="not_equals"   ${f.operator==='not_equals'   ?'selected':''}>not equals</option>
+        <option value="contains"     ${f.operator==='contains'     ?'selected':''}>contains</option>
+        <option value="not_contains" ${f.operator==='not_contains' ?'selected':''}>not contains</option>
+        <option value="exists"       ${f.operator==='exists'       ?'selected':''}>exists</option>
+      </select>
+      ${valueField}
+      <button type="button" onclick="removeFilter('${deliveryType}',${i})"
+        style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:18px;line-height:1;flex-shrink:0;padding:0 2px;">×</button>
+    </div>`;
+  }).join('');
+  arr.forEach((f, i) => initFilterPropSearch(deliveryType, i, f.property));
+}
+
+function initFilterPropSearch(deliveryType, index, currentPropName) {
+  const input    = document.getElementById(`prop-search-${deliveryType}-${index}`);
+  const dropdown = document.getElementById(`prop-dropdown-${deliveryType}-${index}`);
+  if (!input || !dropdown) return;
+  const currentProp = hsPropList.find(p => p.name === currentPropName);
+  if (currentProp) { input.value = currentProp.label; input.classList.add('has-value'); }
+  function renderOptions(query) {
+    const q = query.trim().toLowerCase();
+    const matches = q
+      ? hsPropList.filter(p => p.label.toLowerCase().includes(q) || p.name.toLowerCase().includes(q))
+      : hsPropList;
+    if (!matches.length) {
+      dropdown.innerHTML = `<div class="search-option-empty">No properties found</div>`;
+    } else {
+      dropdown.innerHTML = matches.map(p =>
+        `<div class="search-option${currentPropName===p.name?' selected':''}" data-name="${esc(p.name)}" data-label="${esc(p.label)}">${esc(p.label)}<span style="font-size:10px;opacity:0.45;margin-left:6px;">${esc(p.name)}</span></div>`
+      ).join('');
+      dropdown.querySelectorAll('.search-option').forEach(el => {
+        el.addEventListener('mousedown', e => {
+          e.preventDefault();
+          updateFilter(deliveryType, index, 'property', el.dataset.name);
+        });
+      });
+    }
+    dropdown.classList.add('open');
+  }
+  input.addEventListener('focus', () => renderOptions(''));
+  input.addEventListener('input', () => { input.classList.remove('has-value'); renderOptions(input.value); });
+  input.addEventListener('blur', () => {
+    setTimeout(() => dropdown.classList.remove('open'), 150);
+    const arr2 = deliveryType === 'instantly' ? filtersInstantly : filtersForm;
+    const meta = hsPropList.find(p => p.name === arr2[index]?.property);
+    if (meta) { input.value = meta.label; input.classList.add('has-value'); }
+    else { input.value = ''; input.classList.remove('has-value'); }
+  });
+}
+
+function toggleSlackSection(deliveryType, enabled) {
+  document.getElementById(`slack-body-${deliveryType}`).style.display = enabled ? 'flex' : 'none';
 }
 
 function switchTab(tab) {
@@ -1033,6 +956,7 @@ function switchTab(tab) {
   updateAlertPanelVisibility();
 }
 
+// ── API ──────────────────────────────────────────────────────
 async function api(method, path, body) {
   const opts = { method, headers:{'Content-Type':'application/json','X-Auth-Token':TOKEN} };
   if (body) opts.body = JSON.stringify(body);
@@ -1040,6 +964,7 @@ async function api(method, path, body) {
   return { ok:res.ok, status:res.status, data:await res.json() };
 }
 
+// ── Load automations ─────────────────────────────────────────
 async function loadAutomations() {
   const list = document.getElementById('automations-list');
   list.innerHTML = '<div class="empty-state"><p>Loading…</p></div>';
@@ -1054,6 +979,9 @@ async function loadAutomations() {
 
 function setFilter(filter) {
   currentFilter = filter;
+  document.getElementById('nav-dashboard').classList.toggle('active', filter === 'all');
+  document.getElementById('nav-filter-instantly').classList.toggle('active', filter === 'instantly');
+  document.getElementById('nav-filter-hubspot_form').classList.toggle('active', filter === 'hubspot_form');
   renderAutomations();
 }
 
@@ -1068,15 +996,13 @@ function renderAutomations() {
   document.getElementById('stat-total').textContent = count || '0';
 
   let filtered = automations;
-  if (currentFilter === 'instantly')    filtered = filtered.filter(a => a.delivery_type === 'instantly');
+  if (currentFilter === 'instantly')    filtered = filtered.filter(a => a.delivery_type !== 'hubspot_form');
   if (currentFilter === 'hubspot_form') filtered = filtered.filter(a => a.delivery_type === 'hubspot_form');
-  if (currentFilter === 'gsheet_sync')  filtered = filtered.filter(a => a.delivery_type === 'gsheet_sync');
   if (searchQuery) filtered = filtered.filter(a =>
     (a.name||'').toLowerCase().includes(searchQuery) ||
     (a.hubspot_list_name||'').toLowerCase().includes(searchQuery) ||
     (a.instantly_campaign_name||'').toLowerCase().includes(searchQuery) ||
-    (a.hubspot_form_name||'').toLowerCase().includes(searchQuery) ||
-    (a.sheet_url||'').toLowerCase().includes(searchQuery)
+    (a.hubspot_form_name||'').toLowerCase().includes(searchQuery)
   );
 
   document.getElementById('auto-count').textContent = filtered.length;
@@ -1088,54 +1014,51 @@ function renderAutomations() {
     return;
   }
 
+  const trashSvg = `<svg width="13" height="13" viewBox="0 0 13 13" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M1.5 3h10M4.5 3V2a.5.5 0 01.5-.5h2.5a.5.5 0 01.5.5v1M5.5 5.5v4M7.5 5.5v4M2.5 3l.5 7.5a.5.5 0 00.5.5h6a.5.5 0 00.5-.5L10.5 3" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+
   list.innerHTML = filtered.map(a => {
-    const dt = a.delivery_type;
-    let deliveryChip;
-    if (dt === 'hubspot_form') {
-      deliveryChip = `<span class="chip chip-form">HS Form · ${esc(a.hubspot_form_name || a.hubspot_form_id)}</span>`;
-    } else if (dt === 'gsheet_sync') {
-      const objLabel = {contact:'Contacts', company:'Companies', deal:'Deals'}[a.object_type] || 'Records';
-      deliveryChip = `<span class="chip" style="color:#a78bfa;border-color:rgba(167,139,250,0.3);background:rgba(167,139,250,0.08);">📊 Sheet → HS ${esc(objLabel)}</span>`;
-    } else {
-      deliveryChip = `<span class="chip chip-in">Instantly · ${esc(a.instantly_campaign_name || a.instantly_campaign_id)}</span>`;
-    }
+    const isForm = a.delivery_type === 'hubspot_form';
+    const deliveryChip = isForm
+      ? `<span class="chip chip-form">HS Form · ${esc(a.hubspot_form_name || a.hubspot_form_id)}</span>`
+      : `<span class="chip chip-in">Instantly · ${esc(a.instantly_campaign_name || a.instantly_campaign_id)}</span>`;
     const active = a.active !== false;
-    const delayLabel = (dt === 'instantly' && (a.delay_hours||0) > 0)
-      ? `<span class="chip chip-hs">⏱ ${a.delay_hours >= 24 ? (a.delay_hours/24) + 'd delay' : a.delay_hours + 'h delay'}</span>` : '';
-    const unenrollLabel = (dt === 'instantly' && a.action === 'unenroll')
-      ? `<span class="chip chip-unenroll">Unenroll</span>` : '';
-    const alertLabel = a.alert_enabled ? `<span class="chip chip-alert">⚠ Alert</span>` : '';
+    const delayLabel = (!isForm && a.delay_hours > 0)
+      ? `<span class="chip chip-hs">⏱ ${a.delay_hours >= 24 ? (a.delay_hours/24) + 'd delay' : a.delay_hours + 'h delay'}</span>`
+      : '';
+    const actionChip = !isForm
+      ? (a.action === 'unenroll'
+          ? `<span class="chip chip-unenroll">⊖ Unenroll</span>`
+          : `<span class="chip chip-in" style="color:#86efac;border-color:rgba(134,239,172,0.3);background:rgba(134,239,172,0.08);">⊕ Enroll</span>`)
+      : '';
+    const alertChip = a.alert_enabled ? `<span class="chip chip-alert">🔔 Alert</span>` : '';
+    const slackChip = a.slack_enabled
+      ? `<span class="chip chip-hs" style="gap:4px;"><svg width="10" height="10" viewBox="0 0 54 54" xmlns="http://www.w3.org/2000/svg"><path d="M19.7 32.2c0 2.9-2.4 5.3-5.3 5.3s-5.3-2.4-5.3-5.3 2.4-5.3 5.3-5.3H19.7v5.3z" fill="#E01E5A"/><path d="M22.3 32.2c0-2.9 2.4-5.3 5.3-5.3s5.3 2.4 5.3 5.3v13.3c0 2.9-2.4 5.3-5.3 5.3s-5.3-2.4-5.3-5.3V32.2z" fill="#E01E5A"/><path d="M27.6 19.7c-2.9 0-5.3-2.4-5.3-5.3s2.4-5.3 5.3-5.3 5.3 2.4 5.3 5.3V19.7H27.6z" fill="#36C5F0"/><path d="M27.6 22.3c2.9 0 5.3 2.4 5.3 5.3s-2.4 5.3-5.3 5.3H14.4c-2.9 0-5.3-2.4-5.3-5.3s2.4-5.3 5.3-5.3H27.6z" fill="#36C5F0"/><path d="M40.1 27.6c0-2.9 2.4-5.3 5.3-5.3s5.3 2.4 5.3 5.3-2.4 5.3-5.3 5.3H40.1V27.6z" fill="#2EB67D"/><path d="M37.4 27.6c0 2.9-2.4 5.3-5.3 5.3s-5.3-2.4-5.3-5.3V14.4c0-2.9 2.4-5.3 5.3-5.3s5.3 2.4 5.3 5.3V27.6z" fill="#2EB67D"/><path d="M32.1 40.1c2.9 0 5.3 2.4 5.3 5.3s-2.4 5.3-5.3 5.3-5.3-2.4-5.3-5.3V40.1h5.3z" fill="#ECB22E"/><path d="M32.1 37.4c-2.9 0-5.3-2.4-5.3-5.3s2.4-5.3 5.3-5.3h13.3c2.9 0 5.3 2.4 5.3 5.3s-2.4 5.3-5.3 5.3H32.1z" fill="#ECB22E"/></svg>${esc(a.slack_channel_name || 'Slack')}</span>`
+      : '';
     const lastRunLabel = a.last_run
       ? `<span style="font-size:11px;color:var(--muted);">Last run: ${timeAgo(a.last_run)}</span>`
       : `<span style="font-size:11px;color:var(--muted);">Never run</span>`;
-    const hsChip = dt !== 'gsheet_sync'
-      ? `<span class="chip chip-hs">HubSpot · ${esc(a.hubspot_list_name || a.hubspot_list_id)}</span>` : '';
-    return `<div class="automation-row" id="row-${esc(a.id)}">
+
+    return `<div class="automation-row" onclick="editAutomation('${esc(a.id)}')" id="row-${esc(a.id)}">
       <div style="flex:1;min-width:0;">
         <div class="auto-name">${esc(a.name)}</div>
         <div class="auto-meta">
-          ${hsChip}
-          ${deliveryChip}
-          ${delayLabel}
-          ${unenrollLabel}
-          ${alertLabel}
-          <span class="chip ${active ? 'chip-active' : 'chip-inactive'}">${active ? '● Active' : '○ Paused'}</span>
+          <span class="chip chip-hs">HubSpot · ${esc(a.hubspot_list_name || a.hubspot_list_id)}</span>
+          ${deliveryChip}${actionChip}${delayLabel}${slackChip}${alertChip}
         </div>
       </div>
-      <div class="auto-actions" style="display:flex;align-items:center;gap:12px;">
+      <div class="auto-actions" style="display:flex;align-items:center;gap:10px;" onclick="event.stopPropagation()">
         ${lastRunLabel}
-        <label class="toggle" title="${active ? 'Pause' : 'Activate'}">
+        <label class="toggle" title="${active ? 'Pause' : 'Activate'}" onclick="event.stopPropagation()">
           <input type="checkbox" ${active ? 'checked' : ''} onchange="toggleAutomation('${esc(a.id)}', this.checked)">
           <span class="toggle-slider"></span>
         </label>
-        <button class="btn btn-cream" onclick="viewLogs('${esc(a.id)}')">Logs</button>
-        <button class="btn btn-cream" onclick="editAutomation('${esc(a.id)}')">Edit</button>
-        <button class="btn btn-danger" onclick="openDeleteModal('${esc(a.id)}')">Remove</button>
+        <button class="btn-trash" onclick="promptDelete('${esc(a.id)}')" title="Remove automation">${trashSvg}</button>
       </div>
     </div>`;
   }).join('');
 }
 
+// ── Toggle active ────────────────────────────────────────────
 async function toggleAutomation(id, active) {
   try {
     const { ok } = await api('PATCH', `/automations/${id}`, { active });
@@ -1143,21 +1066,35 @@ async function toggleAutomation(id, active) {
       automations = automations.map(a => a.id === id ? {...a, active} : a);
       renderAutomations();
       showToast(active ? 'Automation activated' : 'Automation paused');
-    } else {
-      showToast('Failed to update', 'error');
-      renderAutomations();
-    }
-  } catch(e) {
-    showToast('Network error', 'error');
-    renderAutomations();
-  }
+    } else { showToast('Failed to update', 'error'); renderAutomations(); }
+  } catch(e) { showToast('Network error', 'error'); renderAutomations(); }
 }
 
+// ── Delete ───────────────────────────────────────────────────
+function promptDelete(id) {
+  pendingDeleteId = id;
+  document.getElementById('delete-modal').style.display = 'flex';
+}
+function closeDeleteModal() {
+  pendingDeleteId = null;
+  document.getElementById('delete-modal').style.display = 'none';
+}
+async function confirmDelete() {
+  const id = pendingDeleteId;
+  closeDeleteModal();
+  if (!id) return;
+  try {
+    const { ok } = await api('DELETE', `/automations/${id}`);
+    if (ok) { automations = automations.filter(a => a.id !== id); renderAutomations(); showToast('Automation removed'); }
+    else showToast('Failed to remove', 'error');
+  } catch(e) { showToast('Network error', 'error'); }
+}
+
+// ── Search selects ───────────────────────────────────────────
 function initSearchSelect(inputId, dropdownId, items, selectedObj, placeholder) {
   const input = document.getElementById(inputId);
   const dropdown = document.getElementById(dropdownId);
   if (!input || !dropdown) return;
-
   function renderOptions(filter) {
     const q = filter.trim().toLowerCase();
     const filtered = q ? items.filter(x => x.name.toLowerCase().includes(q)) : items;
@@ -1178,13 +1115,8 @@ function initSearchSelect(inputId, dropdownId, items, selectedObj, placeholder) 
     }
     dropdown.classList.add('open');
   }
-
   input.addEventListener('focus', () => renderOptions(input.value));
-  input.addEventListener('input', () => {
-    selectedObj.id=''; selectedObj.name='';
-    input.classList.remove('has-value');
-    renderOptions(input.value);
-  });
+  input.addEventListener('input', () => { selectedObj.id=''; selectedObj.name=''; input.classList.remove('has-value'); renderOptions(input.value); });
   input.addEventListener('blur', () => {
     setTimeout(() => dropdown.classList.remove('open'), 150);
     if (!selectedObj.id) { input.value=''; input.classList.remove('has-value'); }
@@ -1200,14 +1132,14 @@ function resetSearchSelect(inputId, dropdownId, selectedObj) {
   if (dd) dd.classList.remove('open');
 }
 
+// ── Load dropdowns ───────────────────────────────────────────
 async function loadDropdowns() {
   dropdownsLoaded = true;
   const ids = ['hs-search-instantly','hs-search-hubspot_form','camp-search','form-search'];
   ids.forEach(id => { const el=document.getElementById(id); if(el){el.disabled=true; el.placeholder='Loading…';} });
   try {
-    const [l, c, f, s, p] = await Promise.all([
-      api('GET','/lists'), api('GET','/campaigns'), api('GET','/forms'),
-      api('GET','/slack/channels'), api('GET','/properties')
+    const [l, c, f, s, pr] = await Promise.all([
+      api('GET','/lists'), api('GET','/campaigns'), api('GET','/forms'), api('GET','/slack/channels'), api('GET','/properties')
     ]);
     if (l.ok && Array.isArray(l.data)) {
       hsList = l.data;
@@ -1232,170 +1164,69 @@ async function loadDropdowns() {
     }
     if (s.ok && Array.isArray(s.data)) {
       slackChannels = s.data;
-      initSearchSelect('slack-ch-search-instantly',   'slack-ch-dropdown-instantly',   slackChannels, slackChSelectedInstantly, 'Search channels…');
-      initSearchSelect('slack-ch-search-hubspot_form','slack-ch-dropdown-hubspot_form',slackChannels, slackChSelectedForm,      'Search channels…');
-      initSearchSelect('alert-slack-ch-search','alert-slack-ch-dropdown',slackChannels, alertSlackChSelected,'Search channels…');
-      initSearchSelect('gs-slack-ch-search','gs-slack-ch-dropdown',slackChannels, gsSlackChSelected,'Search channels…');
+      initSearchSelect('slack-ch-search-instantly',    'slack-ch-dropdown-instantly',    slackChannels, slackChSelectedInstantly, 'Search channels…');
+      initSearchSelect('slack-ch-search-hubspot_form', 'slack-ch-dropdown-hubspot_form', slackChannels, slackChSelectedForm,      'Search channels…');
+      initSearchSelect('alert-slack-ch-search',        'alert-slack-ch-dropdown',        slackChannels, alertSlackChSelected,     'Search channels…');
     }
-    if (p.ok && Array.isArray(p.data)) {
-      hsPropList = p.data;
-    }
+    if (pr.ok && Array.isArray(pr.data)) hsPropList = pr.data;
   } catch(e) {
     ids.forEach(id => { const el=document.getElementById(id); if(el) el.placeholder='Network error'; });
   }
   ids.forEach(id => { const el=document.getElementById(id); if(el) el.disabled=false; });
 }
 
-async function refreshDropdowns() {
-  dropdownsLoaded = false;
-  await loadDropdowns();
-  showToast('Lists refreshed');
-}
-
-function toggleSlackSection(tab, enabled) {
-  document.getElementById(`slack-body-${tab}`).style.display = enabled ? 'flex' : 'none';
-}
-
-function addFilter(tab) {
-  const arr = tab === 'instantly' ? filtersInstantly : filtersForm;
-  arr.push({ property:'', operator:'equals', value:'' });
-  renderFilters(tab);
-}
-
-function removeFilter(tab, idx) {
-  const arr = tab === 'instantly' ? filtersInstantly : filtersForm;
-  arr.splice(idx, 1);
-  renderFilters(tab);
-}
-
-function updateFilter(tab, idx, field, value) {
-  const arr = tab === 'instantly' ? filtersInstantly : filtersForm;
-  arr[idx][field] = value;
-  if (field === 'property' || field === 'operator') renderFilters(tab);
-}
-
-function renderFilters(tab) {
-  const arr = tab === 'instantly' ? filtersInstantly : filtersForm;
-  const container = document.getElementById(`filters-${tab}`);
-  if (!arr.length) {
-    const label = tab === 'instantly' ? 'processed' : 'enrolled';
-    container.innerHTML = `<div style="font-size:13px;color:var(--muted);padding:6px 0;">No conditions — all contacts will be ${label}.</div>`;
-    return;
-  }
-  const operatorOpts = [
-    {v:'equals',l:'equals'},{v:'not_equals',l:'not equals'},{v:'contains',l:'contains'},
-    {v:'not_contains',l:'not contains'},{v:'exists',l:'exists (not empty)'}
-  ];
-  container.innerHTML = arr.map((f, i) => {
-    const prop = hsPropList.find(p => p.name === f.property);
-    const isEnum = prop && (prop.type === 'enumeration' || ['select','radio','checkbox','booleancheckbox'].includes(prop.fieldType));
-    const valueInput = (f.operator !== 'exists')
-      ? (isEnum && prop.options && prop.options.length
-          ? `<select onchange="updateFilter('${tab}',${i},'value',this.value)" style="flex:1;">
-               <option value="">Select…</option>
-               ${prop.options.map(o => `<option value="${esc(o.value)}" ${f.value===o.value?'selected':''}>${esc(o.label)}</option>`).join('')}
-             </select>`
-          : `<input type="text" value="${esc(f.value)}" placeholder="Value…" style="flex:1;" oninput="updateFilter('${tab}',${i},'value',this.value)">`)
-      : `<span style="flex:1;font-size:13px;color:var(--muted);padding:0 4px;">—</span>`;
-    return `<div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;">
-      <select style="flex:1.2;" onchange="updateFilter('${tab}',${i},'property',this.value)">
-        <option value="">Select property…</option>
-        ${hsPropList.map(p => `<option value="${esc(p.name)}" ${f.property===p.name?'selected':''}>${esc(p.label)}</option>`).join('')}
-      </select>
-      <select style="flex:1;" onchange="updateFilter('${tab}',${i},'operator',this.value)">
-        ${operatorOpts.map(o => `<option value="${o.v}" ${f.operator===o.v?'selected':''}>${o.l}</option>`).join('')}
-      </select>
-      ${valueInput}
-      <button type="button" class="btn-trash" onclick="removeFilter('${tab}',${i})">
-        <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M2 2l9 9M11 2l-9 9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
-      </button>
-    </div>`;
-  }).join('');
-}
-
-function openDeleteModal(id) {
-  pendingDeleteId = id;
-  document.getElementById('delete-modal').style.display = 'flex';
-}
-
-function closeDeleteModal() {
-  pendingDeleteId = null;
-  document.getElementById('delete-modal').style.display = 'none';
-}
-
-async function confirmDelete() {
-  if (!pendingDeleteId) return;
-  const id = pendingDeleteId;
-  closeDeleteModal();
-  try {
-    const { ok } = await api('DELETE', `/automations/${id}`);
-    if (ok) {
-      automations = automations.filter(a => a.id !== id);
-      renderAutomations();
-      showToast('Automation removed');
-    } else {
-      showToast('Failed to remove', 'error');
-    }
-  } catch(e) {
-    showToast('Network error', 'error');
-  }
-}
-
+// ── Create / Update ──────────────────────────────────────────
 async function createAutomation(deliveryType) {
   const nameEl = document.getElementById(`auto-name-${deliveryType}`);
   const errEl  = document.getElementById(`form-error-${deliveryType}`);
   const btn    = document.getElementById(`create-btn-${deliveryType}`);
   const name   = nameEl.value.trim();
   const hsSelected = deliveryType === 'instantly' ? hsSelectedInstantly : hsSelectedForm;
-
   errEl.style.display = 'none';
   if (!name)          { errEl.textContent='Please enter an automation name.'; errEl.style.display='block'; return; }
   if (!hsSelected.id) { errEl.textContent='Please select a HubSpot list.';   errEl.style.display='block'; return; }
 
-  let payload = {
-    name, delivery_type: deliveryType,
-    hubspot_list_id: hsSelected.id, hubspot_list_name: hsSelected.name
-  };
+  let payload = { name, delivery_type:deliveryType, hubspot_list_id:hsSelected.id, hubspot_list_name:hsSelected.name };
 
   if (deliveryType === 'instantly') {
     if (!campSelected.id) { errEl.textContent='Please select an Instantly campaign.'; errEl.style.display='block'; return; }
     payload.instantly_campaign_id   = campSelected.id;
     payload.instantly_campaign_name = campSelected.name;
-    payload.action      = currentAction;
-    const delayAmount   = parseInt(document.getElementById('delay-amount').value) || 0;
-    const delayUnit     = document.getElementById('delay-unit').value;
+    payload.action = currentAction;
+    const delayAmount = parseInt(document.getElementById('delay-amount').value) || 0;
+    const delayUnit   = document.getElementById('delay-unit').value;
     payload.delay_hours = delayUnit === 'days' ? delayAmount * 24 : delayAmount;
-    payload.filters     = filtersInstantly.filter(f => f.property);
-    const slackEnabled  = document.getElementById('slack-enabled-instantly').checked;
-    payload.slack_enabled = slackEnabled;
-    if (slackEnabled) {
-      payload.slack_channel      = slackChSelectedInstantly.id;
-      payload.slack_channel_name = slackChSelectedInstantly.name;
-      payload.slack_message      = document.getElementById('slack-msg-instantly').value;
-    }
   } else {
     if (!formSelected.id) { errEl.textContent='Please select a HubSpot form.'; errEl.style.display='block'; return; }
     payload.hubspot_form_id   = formSelected.id;
     payload.hubspot_form_name = formSelected.name;
-    payload.filters           = filtersForm.filter(f => f.property);
-    const slackEnabled        = document.getElementById('slack-enabled-hubspot_form').checked;
-    payload.slack_enabled = slackEnabled;
-    if (slackEnabled) {
-      payload.slack_channel      = slackChSelectedForm.id;
-      payload.slack_channel_name = slackChSelectedForm.name;
-      payload.slack_message      = document.getElementById('slack-msg-hubspot_form').value;
-    }
   }
 
-  const alertEnabled = document.getElementById('alert-enabled').checked;
-  payload.alert_enabled = alertEnabled;
+  payload.filters = (deliveryType === 'instantly' ? filtersInstantly : filtersForm).filter(f => f.property.trim());
+
+  const slackEnabled = document.getElementById(`slack-enabled-${deliveryType}`)?.checked;
+  if (slackEnabled) {
+    const slackChSel = deliveryType === 'instantly' ? slackChSelectedInstantly : slackChSelectedForm;
+    const slackMsg   = (document.getElementById(`slack-msg-${deliveryType}`)?.value || '').trim();
+    if (!slackChSel.id) { errEl.textContent='Please select a Slack channel for notifications.'; errEl.style.display='block'; return; }
+    if (!slackMsg)      { errEl.textContent='Please enter a Slack message template.'; errEl.style.display='block'; return; }
+    payload.slack_enabled = true; payload.slack_channel = slackChSel.id; payload.slack_channel_name = slackChSel.name; payload.slack_message = slackMsg;
+  } else { payload.slack_enabled = false; }
+
+  const alertEnabled = document.getElementById('alert-enabled')?.checked;
+  payload.alert_enabled = !!alertEnabled;
   if (alertEnabled) {
-    payload.alert_threshold          = parseInt(document.getElementById('alert-threshold').value) || 0;
+    const alertThreshold = parseInt(document.getElementById('alert-threshold').value) || 0;
+    const alertMsg       = (document.getElementById('alert-message').value || '').trim();
+    if (!alertSlackChSelected.id) { errEl.textContent='Please select a Slack channel for the enrollment alert.'; errEl.style.display='block'; return; }
+    if (!alertMsg)                { errEl.textContent='Please enter an alert message template.'; errEl.style.display='block'; return; }
+    if (!alertThreshold)          { errEl.textContent='Please enter an alert threshold.'; errEl.style.display='block'; return; }
+    payload.alert_threshold          = alertThreshold;
     payload.alert_slack_channel      = alertSlackChSelected.id;
     payload.alert_slack_channel_name = alertSlackChSelected.name;
-    payload.alert_message            = document.getElementById('alert-message').value;
-    payload.alert_schedule           = document.getElementById('sched-btn-weekly').classList.contains('active') ? 'weekly' : 'daily';
-    payload.alert_time               = document.getElementById('alert-time').value;
+    payload.alert_message            = alertMsg;
+    payload.alert_schedule           = document.querySelector('.sched-btn.active')?.dataset.sched || 'daily';
+    payload.alert_time               = document.getElementById('alert-time').value || '08:00';
     payload.alert_day                = parseInt(document.getElementById('alert-day').value) || 0;
   }
 
@@ -1405,8 +1236,18 @@ async function createAutomation(deliveryType) {
       ? await api('PATCH', `/automations/${editingId}`, payload)
       : await api('POST', '/automations', payload);
     if (ok) {
-      showToast(editingId ? 'Automation updated' : 'Automation created');
+      const wasEditing = !!editingId;
       editingId = null;
+      document.getElementById('create-btn-instantly').textContent = 'Create automation';
+      document.getElementById('create-btn-hubspot_form').textContent = 'Create automation';
+      document.getElementById('add-page-title').textContent = 'New automation';
+      document.querySelector('.tab-bar').style.display = '';
+      document.getElementById('view-logs-btn').style.display = 'none';
+      nameEl.value = '';
+      resetSearchSelect(`hs-search-${deliveryType}`,`hs-dropdown-${deliveryType}`,hsSelected);
+      if (deliveryType==='instantly') resetSearchSelect('camp-search','camp-dropdown',campSelected);
+      else resetSearchSelect('form-search','form-dropdown',formSelected);
+      showToast(wasEditing ? 'Automation updated' : 'Automation created');
       showPage('dashboard');
       loadAutomations();
     } else {
@@ -1416,67 +1257,22 @@ async function createAutomation(deliveryType) {
   } catch(e) {
     errEl.textContent='Network error. Try again.'; errEl.style.display='block';
   }
-  btn.disabled=false;
-  btn.textContent = editingId ? 'Save changes' : 'Create automation';
+  btn.disabled=false; btn.textContent = editingId ? 'Save changes' : 'Create automation';
 }
 
+// ── Edit ─────────────────────────────────────────────────────
 async function editAutomation(id) {
   const a = automations.find(x => x.id === id);
   if (!a) return;
   editingId = id;
   if (!dropdownsLoaded) await loadDropdowns();
-  document.getElementById('add-page-title').textContent = 'Edit automation';
-  document.getElementById('view-logs-btn').style.display = 'flex';
-  document.querySelector('.tab-bar').style.display = 'none';
-  showPage('add');
-
-  if (a.delivery_type === 'gsheet_sync') {
-    switchTab('gsheet_sync');
-    gsState.sheetUrl           = a.sheet_url || '';
-    gsState.sheetTab           = a.sheet_tab || '';
-    gsState.objectType         = a.object_type || 'contact';
-    gsState.primaryKeyColumn   = a.primary_key_column || '';
-    gsState.primaryKeyType     = a.primary_key_type || 'email';
-    gsState.columnMappings     = a.column_mappings || [];
-    gsState.defaultPipeline    = a.default_pipeline || '';
-    gsState.defaultStage       = a.default_stage || '';
-    gsState.scheduleType       = a.gsheet_schedule_type || 'interval';
-    gsState.intervalMinutes    = a.gsheet_interval_minutes || 60;
-    gsState.runTime            = a.gsheet_run_time || '08:00';
-    gsState.runDay             = a.gsheet_run_day || 0;
-    document.getElementById('gs-name').value      = a.name || '';
-    document.getElementById('gs-sheet-url').value = a.sheet_url || '';
-    selectGsObjectType(gsState.objectType);
-    selectGsSchedule(gsState.scheduleType);
-    if (gsState.scheduleType === 'interval') {
-      const mins = gsState.intervalMinutes;
-      document.getElementById('gs-interval-value').value = (mins >= 60 && mins % 60 === 0) ? mins / 60 : mins;
-      document.getElementById('gs-interval-unit').value  = (mins >= 60 && mins % 60 === 0) ? '60' : '1';
-    } else {
-      document.getElementById('gs-run-time').value = gsState.runTime;
-      document.getElementById('gs-run-day').value  = gsState.runDay;
-    }
-    if (a.sheet_url) {
-      await loadGsheetTabs(true);
-      if (a.sheet_tab) {
-        document.getElementById('gs-tab-select').value = a.sheet_tab;
-        await onGsTabSelected(a.sheet_tab, true);
-      }
-    }
-    const gsSlackEnabled = a.slack_enabled || false;
-    document.getElementById('gs-slack-enabled').checked = gsSlackEnabled;
-    toggleGsSlack(gsSlackEnabled);
-    if (gsSlackEnabled && a.slack_channel) {
-      gsSlackChSelected = { id: a.slack_channel, name: a.slack_channel_name || '' };
-      const el = document.getElementById('gs-slack-ch-search');
-      if (el) { el.value = a.slack_channel_name || a.slack_channel; el.classList.add('has-value'); }
-    }
-    document.getElementById('create-btn-gsheet_sync').textContent = 'Save changes';
-    return;
-  }
-
   const isForm = a.delivery_type === 'hubspot_form';
+  document.getElementById('add-page-title').textContent = 'Edit automation';
+  document.querySelector('.tab-bar').style.display = 'none';
+  document.getElementById('view-logs-btn').style.display = 'flex';
+  showPage('add');
   switchTab(isForm ? 'hubspot_form' : 'instantly');
+
   if (isForm) {
     document.getElementById('auto-name-hubspot_form').value = a.name || '';
     hsSelectedForm = { id: a.hubspot_list_id || '', name: a.hubspot_list_name || '' };
@@ -1485,18 +1281,8 @@ async function editAutomation(id) {
     formSelected = { id: a.hubspot_form_id || '', name: a.hubspot_form_name || '' };
     const fi = document.getElementById('form-search');
     if (fi) { fi.value = a.hubspot_form_name || ''; fi.classList.toggle('has-value', !!a.hubspot_form_id); }
-    filtersForm = a.filters || [];
-    renderFilters('hubspot_form');
-    const slackEnabled = a.slack_enabled || false;
-    document.getElementById('slack-enabled-hubspot_form').checked = slackEnabled;
-    toggleSlackSection('hubspot_form', slackEnabled);
-    if (slackEnabled) {
-      slackChSelectedForm = { id: a.slack_channel || '', name: a.slack_channel_name || '' };
-      const si = document.getElementById('slack-ch-search-hubspot_form');
-      if (si) { si.value = a.slack_channel_name || ''; si.classList.toggle('has-value', !!a.slack_channel); }
-      document.getElementById('slack-msg-hubspot_form').value = a.slack_message || '';
-    }
     document.getElementById('create-btn-hubspot_form').textContent = 'Save changes';
+    filtersForm = JSON.parse(JSON.stringify(a.filters || [])); renderFilters('hubspot_form');
   } else {
     document.getElementById('auto-name-instantly').value = a.name || '';
     hsSelectedInstantly = { id: a.hubspot_list_id || '', name: a.hubspot_list_name || '' };
@@ -1505,81 +1291,99 @@ async function editAutomation(id) {
     campSelected = { id: a.instantly_campaign_id || '', name: a.instantly_campaign_name || '' };
     const ci = document.getElementById('camp-search');
     if (ci) { ci.value = a.instantly_campaign_name || ''; ci.classList.toggle('has-value', !!a.instantly_campaign_id); }
-    selectAction(a.action || 'enroll');
-    const dh = a.delay_hours || 0;
-    document.getElementById('delay-amount').value = (dh > 0 && dh % 24 === 0) ? dh / 24 : dh;
-    document.getElementById('delay-unit').value   = (dh > 0 && dh % 24 === 0) ? 'days' : 'hours';
-    filtersInstantly = a.filters || [];
-    renderFilters('instantly');
-    const slackEnabled = a.slack_enabled || false;
-    document.getElementById('slack-enabled-instantly').checked = slackEnabled;
-    toggleSlackSection('instantly', slackEnabled);
-    if (slackEnabled) {
-      slackChSelectedInstantly = { id: a.slack_channel || '', name: a.slack_channel_name || '' };
-      const si = document.getElementById('slack-ch-search-instantly');
-      if (si) { si.value = a.slack_channel_name || ''; si.classList.toggle('has-value', !!a.slack_channel); }
-      document.getElementById('slack-msg-instantly').value = a.slack_message || '';
+    const delayHours = a.delay_hours || 0;
+    if (delayHours > 0 && delayHours % 24 === 0) {
+      document.getElementById('delay-amount').value = delayHours / 24;
+      document.getElementById('delay-unit').value = 'days';
+    } else {
+      document.getElementById('delay-amount').value = delayHours;
+      document.getElementById('delay-unit').value = 'hours';
     }
     document.getElementById('create-btn-instantly').textContent = 'Save changes';
+    filtersInstantly = JSON.parse(JSON.stringify(a.filters || [])); renderFilters('instantly');
+    selectAction(a.action === 'unenroll' ? 'unenroll' : 'enroll');
   }
 
-  const alertEnabled = a.alert_enabled || false;
+  const dt = isForm ? 'hubspot_form' : 'instantly';
+  const slackCb = document.getElementById(`slack-enabled-${dt}`);
+  if (slackCb) {
+    slackCb.checked = !!a.slack_enabled;
+    toggleSlackSection(dt, !!a.slack_enabled);
+    if (a.slack_enabled) {
+      const slackChSel = isForm ? slackChSelectedForm : slackChSelectedInstantly;
+      slackChSel.id = a.slack_channel || ''; slackChSel.name = a.slack_channel_name || '';
+      const sci = document.getElementById(`slack-ch-search-${dt}`);
+      if (sci) { sci.value = a.slack_channel_name || ''; sci.classList.toggle('has-value', !!a.slack_channel); }
+      const ta = document.getElementById(`slack-msg-${dt}`);
+      if (ta) ta.value = a.slack_message || '';
+    }
+  }
+
+  const alertEnabled = !!a.alert_enabled;
   document.getElementById('alert-enabled').checked = alertEnabled;
   toggleAlertConfig(alertEnabled);
   if (alertEnabled) {
     document.getElementById('alert-threshold').value = a.alert_threshold || 20;
-    alertSlackChSelected = { id: a.alert_slack_channel || '', name: a.alert_slack_channel_name || '' };
+    alertSlackChSelected.id = a.alert_slack_channel || ''; alertSlackChSelected.name = a.alert_slack_channel_name || '';
     const asi = document.getElementById('alert-slack-ch-search');
     if (asi) { asi.value = a.alert_slack_channel_name || ''; asi.classList.toggle('has-value', !!a.alert_slack_channel); }
     document.getElementById('alert-message').value = a.alert_message || '';
     selectSchedule(a.alert_schedule || 'daily');
     document.getElementById('alert-time').value = a.alert_time || '08:00';
-    document.getElementById('alert-day').value  = a.alert_day || 0;
+    document.getElementById('alert-day').value  = String(a.alert_day || 0);
+  } else {
+    document.getElementById('alert-threshold').value = '20';
+    resetSearchSelect('alert-slack-ch-search', 'alert-slack-ch-dropdown', alertSlackChSelected);
+    document.getElementById('alert-message').value = '';
+    selectSchedule('daily');
+    document.getElementById('alert-time').value = '08:00';
+    document.getElementById('alert-day').value = '0';
   }
+}
+
+async function refreshDropdowns() {
+  dropdownsLoaded = false;
+  await loadDropdowns();
+  showToast('Lists refreshed');
+}
+
+// ── Logs ─────────────────────────────────────────────────────
+function viewCurrentLogs() {
+  if (editingId) viewLogs(editingId);
 }
 
 async function viewLogs(id) {
   const a = automations.find(x => x.id === id);
   if (!a) return;
-  const modal = document.getElementById('logs-modal');
-  document.getElementById('logs-modal-title').textContent = `Logs · ${a.name}`;
-  document.getElementById('logs-modal-count').style.display = 'none';
+  const modal   = document.getElementById('logs-modal');
+  const countEl = document.getElementById('logs-modal-count');
+  document.getElementById('logs-modal-title').textContent = `List contacts · ${a.name}`;
+  countEl.style.display = 'none';
   document.getElementById('logs-body').innerHTML = '<div class="empty-state"><p>Loading…</p></div>';
   modal.style.display = 'flex';
   try {
-    const { ok, data } = await api('GET', `/logs/${id}`);
+    const { ok, data } = await api('GET', `/contacts/${a.hubspot_list_id}`);
     if (ok && Array.isArray(data) && data.length) {
-      document.getElementById('logs-modal-count').textContent = data.length;
-      document.getElementById('logs-modal-count').style.display = '';
-      document.getElementById('logs-body').innerHTML = data.map(raw => {
-        let e = raw;
-        if (typeof e === 'string') { try { e = JSON.parse(e); } catch(_) {} }
-        const email = (e && e.email) || '—';
-        const ts    = (e && e.ts)    || '';
-        const typeLabel = (e && e.type === 'hubspot_form') ? 'HS Form' : 'Instantly';
-        return `<div class="log-row">
-          <span class="log-email">${esc(email)}</span>
-          <span class="log-meta">${esc(typeLabel)} · ${esc(ts)}</span>
-        </div>`;
-      }).join('');
+      countEl.textContent = data.length; countEl.style.display = '';
+      document.getElementById('logs-body').innerHTML = data.map(e =>
+        `<div class="log-row"><span class="log-email">${esc(e.email)}</span><span class="log-meta">${esc(e.name)}</span></div>`
+      ).join('');
     } else if (ok) {
-      document.getElementById('logs-body').innerHTML = '<div class="empty-state"><div class="empty-icon">📋</div><p>No enrollments recorded yet.</p></div>';
+      countEl.textContent = '0'; countEl.style.display = '';
+      document.getElementById('logs-body').innerHTML = '<div class="empty-state"><div class="empty-icon">📋</div><p>No contacts in this list yet.</p></div>';
     } else {
-      document.getElementById('logs-body').innerHTML = '<div class="empty-state"><p>Failed to load logs.</p></div>';
+      document.getElementById('logs-body').innerHTML = `<div class="empty-state"><p>Error: ${esc((data&&data.error)||'Failed to load contacts.')}</p></div>`;
     }
   } catch(e) {
     document.getElementById('logs-body').innerHTML = '<div class="empty-state"><p>Network error.</p></div>';
   }
 }
 
-function viewCurrentLogs() {
-  if (editingId) viewLogs(editingId);
-}
-
 function closeLogs() {
   document.getElementById('logs-modal').style.display = 'none';
 }
 
+// ── Helpers ──────────────────────────────────────────────────
 function timeAgo(isoStr) {
   const diff = Math.floor((Date.now() - new Date(isoStr)) / 1000);
   if (diff < 60)    return 'just now';
@@ -1590,271 +1394,6 @@ function timeAgo(isoStr) {
 
 function esc(str) {
   return String(str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-}
-
-// ══ Google Sheet Sync ════════════════════════════════════════
-
-function copyGsEmail() {
-  const email = document.getElementById('gs-email-display').textContent.trim();
-  navigator.clipboard.writeText(email).then(() => showToast('Email copied')).catch(() => {
-    prompt('Copy this email:', email);
-  });
-}
-
-async function loadGsheetTabs(silent = false) {
-  const url = document.getElementById('gs-sheet-url').value.trim();
-  if (!url) { showGsError('Please paste a Google Sheet URL first.'); return; }
-  const btn = document.getElementById('gs-load-tabs-btn');
-  btn.disabled = true; btn.textContent = 'Loading…';
-  try {
-    const res  = await fetch(`${BASE}/gsheet/tabs?url=${encodeURIComponent(url)}`, { headers:{'X-Auth-Token':TOKEN} });
-    const data = await res.json();
-    if (!res.ok) { showGsError(data.error || 'Failed to load tabs.'); btn.disabled=false; btn.textContent='Load tabs'; return; }
-    gsState.sheetTabs = data;
-    gsState.sheetUrl  = url;
-    const sel = document.getElementById('gs-tab-select');
-    sel.innerHTML = '<option value="">Select a tab…</option>' + data.map(t => `<option value="${esc(t)}">${esc(t)}</option>`).join('');
-    document.getElementById('gs-tab-row').style.display = '';
-    if (!silent) showToast('Tabs loaded');
-  } catch(e) {
-    showGsError('Network error loading tabs.');
-  }
-  btn.disabled = false; btn.textContent = 'Load tabs';
-}
-
-async function onGsTabSelected(tab, silent = false) {
-  if (!tab) return;
-  gsState.sheetTab = tab;
-  const url = document.getElementById('gs-sheet-url').value.trim();
-  try {
-    const res  = await fetch(`${BASE}/gsheet/headers?url=${encodeURIComponent(url)}&tab=${encodeURIComponent(tab)}`, { headers:{'X-Auth-Token':TOKEN} });
-    const data = await res.json();
-    if (!res.ok) { showGsError(data.error || 'Failed to load headers.'); return; }
-    gsState.sheetHeaders = data;
-    populateGsPkColumn(data);
-    await loadGsheetHsProps(gsState.objectType, silent);
-    document.getElementById('gs-mapping-section').style.display = '';
-    if (!silent) showToast('Headers loaded');
-  } catch(e) {
-    showGsError('Network error loading headers.');
-  }
-}
-
-function populateGsPkColumn(headers) {
-  const sel = document.getElementById('gs-pk-column');
-  sel.innerHTML = '<option value="">Select column…</option>' + headers.map(h => `<option value="${esc(h)}">${esc(h)}</option>`).join('');
-  if (gsState.primaryKeyColumn && headers.includes(gsState.primaryKeyColumn)) sel.value = gsState.primaryKeyColumn;
-  updateGsPkTypeOptions(gsState.objectType);
-}
-
-function updateGsPkTypeOptions(objectType) {
-  const sel = document.getElementById('gs-pk-type');
-  const opts = {
-    contact: [{v:'email',l:'Email'},{v:'contact_id',l:'Contact ID (HS)'}],
-    company: [{v:'domain',l:'Domain'},{v:'company_id',l:'Company ID (HS)'}],
-    deal:    [{v:'deal_id',l:'Deal ID (HS)'}],
-  }[objectType] || [{v:'email',l:'Email'}];
-  sel.innerHTML = opts.map(o => `<option value="${o.v}">${o.l}</option>`).join('');
-  if (gsState.primaryKeyType) sel.value = gsState.primaryKeyType;
-}
-
-function selectGsObjectType(type) {
-  gsState.objectType = type;
-  ['contact','company','deal'].forEach(t => {
-    document.getElementById(`gs-obj-${t}`).classList.toggle('active', t === type);
-  });
-  updateGsPkTypeOptions(type);
-  document.getElementById('gs-deal-defaults').style.display = type === 'deal' ? '' : 'none
-     document.getElementById('gs-deal-defaults').style.display = type === 'deal' ? '' : 'none';
-  if (type === 'deal' && gsState.pipelines.length === 0) populateGsPipelines();
-  if (gsState.sheetHeaders.length) loadGsheetHsProps(type);
-}
-
-async function loadGsheetHsProps(objectType, silent = false) {
-  try {
-    const res  = await fetch(`${BASE}/gsheet/hs-properties?type=${objectType}`, { headers:{'X-Auth-Token':TOKEN} });
-    const data = await res.json();
-    if (!res.ok) return;
-    gsState.hsProps = data;
-    renderGsMappings();
-  } catch(e) {
-    if (!silent) showGsError('Failed to load HubSpot properties.');
-  }
-}
-
-async function populateGsPipelines() {
-  try {
-    const res  = await fetch(`${BASE}/gsheet/pipelines`, { headers:{'X-Auth-Token':TOKEN} });
-    const data = await res.json();
-    if (!res.ok) return;
-    gsState.pipelines = data;
-    const sel = document.getElementById('gs-pipeline-select');
-    sel.innerHTML = '<option value="">None</option>' + data.map(p => `<option value="${esc(p.id)}">${esc(p.label)}</option>`).join('');
-    if (gsState.defaultPipeline) { sel.value = gsState.defaultPipeline; onGsPipelineChange(gsState.defaultPipeline); }
-  } catch(e) {}
-}
-
-function onGsPipelineChange(pipelineId) {
-  gsState.defaultPipeline = pipelineId;
-  const pipeline = gsState.pipelines.find(p => p.id === pipelineId);
-  const stageSel = document.getElementById('gs-stage-select');
-  stageSel.innerHTML = '<option value="">None</option>';
-  if (pipeline) {
-    pipeline.stages.forEach(s => {
-      const opt = document.createElement('option');
-      opt.value = s.id; opt.textContent = s.label;
-      stageSel.appendChild(opt);
-    });
-  }
-  if (gsState.defaultStage) stageSel.value = gsState.defaultStage;
-}
-
-function addGsMapping() {
-  gsState.columnMappings.push({ column:'', property:'' });
-  renderGsMappings();
-}
-
-function removeGsMapping(idx) {
-  gsState.columnMappings.splice(idx, 1);
-  renderGsMappings();
-}
-
-function updateGsMapping(idx, field, value) {
-  gsState.columnMappings[idx][field] = value;
-}
-
-function renderGsMappings() {
-  const container = document.getElementById('gs-mappings-container');
-  if (!gsState.columnMappings.length) {
-    container.innerHTML = `<div style="font-size:13px;color:var(--muted);padding:6px 0;">No mappings yet — add a sheet column → HubSpot property pair.</div>`;
-    return;
-  }
-  container.innerHTML = gsState.columnMappings.map((m, i) => {
-    const colOpts  = gsState.sheetHeaders.map(h => `<option value="${esc(h)}" ${m.column===h?'selected':''}>${esc(h)}</option>`).join('');
-    const propOpts = gsState.hsProps.map(p => `<option value="${esc(p.name)}" ${m.property===p.name?'selected':''}>${esc(p.label)}</option>`).join('');
-    return `<div style="display:grid;grid-template-columns:1fr 1fr 30px;gap:8px;align-items:center;margin-bottom:8px;">
-      <select onchange="updateGsMapping(${i},'column',this.value)">
-        <option value="">Sheet column…</option>
-        ${colOpts}
-      </select>
-      <select onchange="updateGsMapping(${i},'property',this.value)">
-        <option value="">HS property…</option>
-        ${propOpts}
-      </select>
-      <button type="button" class="btn-trash" onclick="removeGsMapping(${i})">
-        <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M2 2l9 9M11 2l-9 9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
-      </button>
-    </div>`;
-  }).join('');
-}
-
-function selectGsSchedule(type) {
-  gsState.scheduleType = type;
-  ['interval','daily','weekly'].forEach(t => {
-    document.getElementById(`gs-sched-btn-${t}`).classList.toggle('active', t === type);
-  });
-  document.getElementById('gs-sched-interval-row').style.display = type === 'interval' ? '' : 'none';
-  document.getElementById('gs-sched-time-row').style.display     = (type === 'daily' || type === 'weekly') ? '' : 'none';
-  document.getElementById('gs-sched-day-row').style.display      = type === 'weekly' ? '' : 'none';
-}
-
-function toggleGsSlack(enabled) {
-  document.getElementById('gs-slack-body').style.display = enabled ? 'flex' : 'none';
-}
-
-function resetGsForm() {
-  gsState = {
-    sheetUrl:'', sheetTab:'', objectType:'contact',
-    primaryKeyColumn:'', primaryKeyType:'email',
-    columnMappings:[], defaultPipeline:'', defaultStage:'',
-    scheduleType:'interval', intervalMinutes:60, runTime:'08:00', runDay:0,
-    sheetTabs:[], sheetHeaders:[], hsProps:[], pipelines:[],
-  };
-  gsSlackChSelected = {id:'', name:''};
-  document.getElementById('gs-name').value = '';
-  document.getElementById('gs-sheet-url').value = '';
-  document.getElementById('gs-tab-row').style.display = 'none';
-  document.getElementById('gs-mapping-section').style.display = 'none';
-  document.getElementById('gs-slack-enabled').checked = false;
-  toggleGsSlack(false);
-  selectGsObjectType('contact');
-  selectGsSchedule('interval');
-  document.getElementById('gs-interval-value').value = '1';
-  document.getElementById('gs-interval-unit').value  = '60';
-  document.getElementById('create-btn-gsheet_sync').textContent = 'Create automation';
-  document.getElementById('form-error-gsheet_sync').style.display = 'none';
-}
-
-async function createGsheetSync() {
-  const errEl = document.getElementById('form-error-gsheet_sync');
-  const btn   = document.getElementById('create-btn-gsheet_sync');
-  errEl.style.display = 'none';
-
-  const name = document.getElementById('gs-name').value.trim();
-  if (!name)                         { showGsError('Please enter an automation name.'); return; }
-  if (!gsState.sheetUrl)             { showGsError('Please load a Google Sheet URL first.'); return; }
-  if (!gsState.sheetTab)             { showGsError('Please select a sheet tab.'); return; }
-  if (!document.getElementById('gs-pk-column').value) { showGsError('Please select a primary key column.'); return; }
-  if (!gsState.columnMappings.filter(m => m.column && m.property).length) {
-    showGsError('Please add at least one column → property mapping.'); return;
-  }
-
-  const scheduleType = gsState.scheduleType;
-  let intervalMinutes = 60;
-  if (scheduleType === 'interval') {
-    const val  = parseInt(document.getElementById('gs-interval-value').value) || 1;
-    const unit = parseInt(document.getElementById('gs-interval-unit').value)  || 60;
-    intervalMinutes = val * unit;
-  }
-
-  const gsSlackEnabled = document.getElementById('gs-slack-enabled').checked;
-  const payload = {
-    name,
-    delivery_type:           'gsheet_sync',
-    hubspot_list_id:         '',
-    hubspot_list_name:       '',
-    sheet_url:               gsState.sheetUrl,
-    sheet_tab:               document.getElementById('gs-tab-select').value,
-    object_type:             gsState.objectType,
-    primary_key_column:      document.getElementById('gs-pk-column').value,
-    primary_key_type:        document.getElementById('gs-pk-type').value,
-    column_mappings:         gsState.columnMappings.filter(m => m.column && m.property),
-    default_pipeline:        document.getElementById('gs-pipeline-select').value,
-    default_stage:           document.getElementById('gs-stage-select').value,
-    gsheet_schedule_type:    scheduleType,
-    gsheet_interval_minutes: intervalMinutes,
-    gsheet_run_time:         document.getElementById('gs-run-time').value,
-    gsheet_run_day:          parseInt(document.getElementById('gs-run-day').value) || 0,
-    slack_enabled:           gsSlackEnabled,
-    slack_channel:           gsSlackEnabled ? gsSlackChSelected.id   : '',
-    slack_channel_name:      gsSlackEnabled ? gsSlackChSelected.name : '',
-  };
-
-  btn.disabled = true; btn.textContent = editingId ? 'Saving…' : 'Creating…';
-  try {
-    const { ok, data } = editingId
-      ? await api('PATCH', `/automations/${editingId}`, payload)
-      : await api('POST', '/automations', payload);
-    if (ok) {
-      showToast(editingId ? 'Sync updated' : 'Sync created');
-      editingId = null;
-      resetGsForm();
-      showPage('dashboard');
-      loadAutomations();
-    } else {
-      showGsError(data.error || 'Something went wrong.');
-    }
-  } catch(e) {
-    showGsError('Network error. Try again.');
-  }
-  btn.disabled = false;
-  btn.textContent = editingId ? 'Save changes' : 'Create automation';
-}
-
-function showGsError(msg) {
-  const errEl = document.getElementById('form-error-gsheet_sync');
-  errEl.textContent = msg;
-  errEl.style.display = 'block';
 }
 </script>
 </body>
