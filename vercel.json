@@ -16,6 +16,7 @@
     { "src": "/api/slack/channels", "dest": "/api/automations.py" },
     { "src": "/api/gsheet/(.*)", "dest": "/api/gsheet.py" },
     { "src": "/api/sync", "dest": "/api/sync.py" },
+    { "src": "/api/sync_gsheet", "dest": "/api/sync_gsheet.py" },
     { "src": "/webhook/calendly", "dest": "/api/calendly_webhook.py" },
     { "src": "/webhook", "dest": "/api/webhook.py" },
     { "src": "/status", "dest": "/api/webhook.py" },
