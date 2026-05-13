@@ -75,16 +75,56 @@ def get_automations():
 def save_automations(automations):
     _redis_set_json("automations_config", automations)
 
-def already_sent(email, target_id):
-    key = f"sent:{email.lower()}:{target_id}"
-    url = f"{UPSTASH_URL}/get/{key}"
-    req = Request(url, headers={"Authorization": f"Bearer {UPSTASH_TOKEN}"})
-    with urlopen(req, timeout=5) as r:
-        result = json.loads(r.read())
-    return result.get("result") is not None
+# ── Sent cache ────────────────────────────────────────────────
+# Instead of one Redis read per contact, we scan all sent: keys
+# once at the start of each run into a Python set, then check
+# that in-memory set. New sends are written to Redis immediately
+# AND added to the local set so the cache stays accurate mid-run.
 
-def mark_as_sent(email, target_id):
-    _redis_set_raw(f"sent:{email.lower()}:{target_id}", 1)
+def load_sent_cache():
+    """Scan all sent: keys from Redis into a local set. One scan per run."""
+    sent = set()
+    cursor = 0
+    try:
+        while True:
+            url = f"{UPSTASH_URL}/scan/{cursor}?match=sent:*&count=500"
+            req = Request(url, headers={"Authorization": f"Bearer {UPSTASH_TOKEN}"})
+            with urlopen(req, timeout=10) as r:
+                data = json.loads(r.read())
+            result = data.get("result", [0, []])
+            cursor = int(result[0])
+            keys   = result[1] if len(result) > 1 else []
+            for k in keys:
+                # key format: sent:email@example.com:target_id
+                sent.add(k)
+            if cursor == 0:
+                break
+    except Exception as e:
+        _log(f"[sync] sent cache load error (falling back to per-key reads): {e}")
+        return None  # None signals fallback to old behaviour
+    _log(f"[sync] sent cache loaded: {len(sent)} keys")
+    return sent
+
+def already_sent_cached(email, target_id, sent_cache):
+    """Check sent cache (in-memory). Falls back to Redis if cache unavailable."""
+    key = f"sent:{email.lower()}:{target_id}"
+    if sent_cache is None:
+        # Fallback: read directly from Redis
+        url = f"{UPSTASH_URL}/get/{key}"
+        req = Request(url, headers={"Authorization": f"Bearer {UPSTASH_TOKEN}"})
+        with urlopen(req, timeout=5) as r:
+            result = json.loads(r.read())
+        return result.get("result") is not None
+    return key in sent_cache
+
+def mark_as_sent(email, target_id, sent_cache=None):
+    """Write to Redis and update local cache immediately."""
+    key = f"sent:{email.lower()}:{target_id}"
+    _redis_set_raw(key, 1)
+    if sent_cache is not None:
+        sent_cache.add(key)
+
+# ── First seen helpers (unchanged) ───────────────────────────
 
 def get_first_seen(email, target_id):
     key = f"first_seen:{email.lower()}:{target_id}"
@@ -179,7 +219,7 @@ def send_slack_message(channel_id, text):
 def send_enrollment_notification(automation, email, first_name, last_name, company):
     if not automation.get("slack_enabled"):
         return
-    channel_id = automation.get("slack_channel", "")
+    channel_id  = automation.get("slack_channel", "")
     message_tpl = automation.get("slack_message", "")
     if not channel_id or not message_tpl:
         return
@@ -247,12 +287,12 @@ def check_and_send_alert(automation, auto_id, est_now, est_date):
 
 def get_list_contacts(list_id, extra_properties=None):
     headers = {"Authorization": f"Bearer {HUBSPOT_API_KEY}"}
-    contacts = []
+    contacts   = []
     vid_offset = None
 
     base_props = ["email", "firstname", "lastname", "company"]
-    all_props = base_props + [p for p in (extra_properties or []) if p not in base_props]
-    prop_str = "&".join(f"property={p}" for p in all_props)
+    all_props  = base_props + [p for p in (extra_properties or []) if p not in base_props]
+    prop_str   = "&".join(f"property={p}" for p in all_props)
 
     while True:
         url = f"https://api.hubapi.com/contacts/v1/lists/{list_id}/contacts/all?count=100&{prop_str}"
@@ -330,7 +370,7 @@ def get_instantly_lead(email, campaign_id):
     try:
         resp = requests.get(url, headers=headers, timeout=10)
         resp.raise_for_status()
-        data = resp.json()
+        data  = resp.json()
         items = data if isinstance(data, list) else data.get("items", data.get("leads", []))
         for lead in items:
             if lead.get("email", "").lower() == email.lower():
@@ -380,6 +420,9 @@ class handler(BaseHTTPRequestHandler):
         ]
         _log(f"[sync] running for {len(active)} active automations")
 
+        # Load all sent: keys into memory once — eliminates per-contact Redis reads
+        sent_cache = load_sent_cache()
+
         total_processed = total_duplicates = total_errors = total_waiting = total_filtered = 0
 
         est_now  = datetime.datetime.now(EST)
@@ -401,7 +444,7 @@ class handler(BaseHTTPRequestHandler):
                 continue
 
             extra_props = [f["property"] for f in filters if f.get("property")]
-            contacts = get_list_contacts(list_id, extra_properties=extra_props)
+            contacts    = get_list_contacts(list_id, extra_properties=extra_props)
 
             for c in contacts:
                 email      = c["email"]
@@ -409,7 +452,8 @@ class handler(BaseHTTPRequestHandler):
                 last_name  = c.get("lastname", "")
                 company    = c.get("company", "")
                 try:
-                    if already_sent(email, target_id):
+                    # Use in-memory cache instead of individual Redis reads
+                    if already_sent_cached(email, target_id, sent_cache):
                         total_duplicates += 1
                         continue
 
@@ -429,7 +473,7 @@ class handler(BaseHTTPRequestHandler):
 
                     if not check_filters(c, filters):
                         _log(f"[sync] filtered out {email}: failed conditions")
-                        mark_as_sent(email, target_id)
+                        mark_as_sent(email, target_id, sent_cache)
                         total_filtered += 1
                         continue
 
@@ -438,13 +482,13 @@ class handler(BaseHTTPRequestHandler):
                             lead = get_instantly_lead(email, target_id)
                             if lead is None:
                                 _log(f"[sync] unenroll: {email} not in campaign, skip")
-                                mark_as_sent(email, target_id)
+                                mark_as_sent(email, target_id, sent_cache)
                                 total_duplicates += 1
                                 continue
                             lead_status = lead.get("status", "")
                             if lead_status in INSTANTLY_TERMINAL_STATUSES:
                                 _log(f"[sync] unenroll: {email} already terminal ({lead_status}), skip")
-                                mark_as_sent(email, target_id)
+                                mark_as_sent(email, target_id, sent_cache)
                                 total_duplicates += 1
                                 continue
                             lead_id = lead.get("id", "")
@@ -473,7 +517,7 @@ class handler(BaseHTTPRequestHandler):
                         except Exception:
                             pass
 
-                    mark_as_sent(email, target_id)
+                    mark_as_sent(email, target_id, sent_cache)
                     ts = datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
                     try:
                         log_enrollment(auto_id, email,
