@@ -192,6 +192,7 @@ input:focus,textarea:focus{border-color:var(--orange);background:rgba(255,100,50
     <button class="nav-item" id="nav-filter-instantly" onclick="showPage('dashboard');setFilter('instantly')" style="padding-left:28px;font-size:13px;"><span class="nav-icon" style="font-size:12px;">⚡</span> Instantly</button>
     <button class="nav-item" id="nav-filter-hubspot_form" onclick="showPage('dashboard');setFilter('hubspot_form')" style="padding-left:28px;font-size:13px;"><span class="nav-icon" style="font-size:12px;">◈</span> HS Form</button>
     <button class="nav-item" id="nav-filter-gsheet_sync" onclick="showPage('dashboard');setFilter('gsheet_sync')" style="padding-left:28px;font-size:13px;"><span class="nav-icon" style="font-size:12px;">▦</span> GSheet Sync</button>
+    <button class="nav-item" id="nav-filter-enrichment" onclick="showPage('dashboard');setFilter('enrichment')" style="padding-left:28px;font-size:13px;"><span class="nav-icon" style="font-size:12px;">⬡</span> Enrichment</button>
     <button class="nav-item" onclick="newAutomation()" id="nav-add" style="margin-top:4px;"><span class="nav-icon">+</span> New automation</button>
     <div class="sidebar-footer">
       <button class="nav-item" onclick="toggleTheme()"><span class="nav-icon" id="theme-icon">☀</span><span id="theme-label">Light mode</span></button>
@@ -223,6 +224,7 @@ input:focus,textarea:focus{border-color:var(--orange);background:rgba(255,100,50
         <button class="tab-btn active" id="tab-btn-instantly" onclick="switchTab('instantly')">Instantly</button>
         <button class="tab-btn" id="tab-btn-hubspot_form" onclick="switchTab('hubspot_form')" style="color:var(--teal);">HS Form</button>
         <button class="tab-btn gs-tab" id="tab-btn-gsheet_sync" onclick="switchTab('gsheet_sync')">GSheet → HubSpot</button>
+        <button class="tab-btn" id="tab-btn-enrichment" onclick="switchTab('enrichment')" style="color:#a78bfa;">⬡ Enrichment</button>
       </div>
       <div class="edit-grid">
       <div>
@@ -365,6 +367,115 @@ input:focus,textarea:focus{border-color:var(--orange);background:rgba(255,100,50
             <div class="error-msg" id="form-error-gsheet_sync"></div>
           </div>
         </div>
+
+        <!-- ── Tab: Enrichment ── -->
+        <div class="tab-panel" id="tab-enrichment">
+          <div class="form-card" style="max-width:620px;">
+            <h3>Enrichment</h3>
+            <p class="form-desc">Push HubSpot contacts to Clay for enrichment, and/or pull enriched data back from a Google Sheet into HubSpot. Toggle each step independently.</p>
+
+            <div class="form-row"><label>Automation name</label><input type="text" id="auto-name-enrichment" placeholder="e.g. Lead Enrichment Pipeline"></div>
+            <div class="form-row"><label>HubSpot list</label><div class="search-select"><input type="text" id="hs-search-enrichment" placeholder="Search HubSpot lists…" autocomplete="off"><div class="search-dropdown" id="hs-dropdown-enrichment"></div></div></div>
+
+            <!-- Step 1: Clay push -->
+            <div style="border:1px solid rgba(167,139,250,0.25);border-radius:var(--radius-sm);padding:1.25rem;margin-bottom:1rem;background:rgba(167,139,250,0.04);">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.9rem;">
+                <div style="display:flex;align-items:center;gap:8px;">
+                  <span style="font-size:16px;">⬡</span>
+                  <span style="font-size:14px;font-weight:500;color:var(--cream);">Step 1 — Push to Clay</span>
+                </div>
+                <label class="toggle"><input type="checkbox" id="clay-enabled" onchange="toggleClaySection(this.checked)"><span class="toggle-slider"></span></label>
+              </div>
+              <div id="clay-body" style="display:none;">
+                <div class="form-row">
+                  <label>Clay table ID</label>
+                  <div style="display:flex;gap:8px;">
+                    <input type="text" id="clay-table-id" placeholder="e.g. tbl_abc123" style="flex:1;" oninput="onClayTableIdChange()">
+                    <button type="button" class="btn btn-cream" onclick="loadClayColumns()" id="clay-load-btn" style="white-space:nowrap;flex-shrink:0;">Load columns</button>
+                  </div>
+                  <div class="token-hint" style="margin-top:5px;">Find this in your Clay table URL: clay.com/table/<strong>TABLE_ID</strong></div>
+                </div>
+                <div class="form-row">
+                  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+                    <label style="margin-bottom:0;">Column mappings <span style="font-size:11px;opacity:0.6;">(HubSpot property → Clay column)</span></label>
+                    <button type="button" class="btn btn-cream" onclick="addClayMapping()" style="font-size:12px;padding:5px 10px;">+ Add mapping</button>
+                  </div>
+                  <div class="gs-mapping-header">
+                    <span>HubSpot property</span>
+                    <span>Clay column</span>
+                    <span></span>
+                  </div>
+                  <div id="clay-mappings-container"><div style="font-size:13px;color:var(--muted);padding:6px 0;">Load columns first, then add mappings.</div></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Step 2: GSheet pull -->
+            <div style="border:1px solid rgba(45,212,191,0.2);border-radius:var(--radius-sm);padding:1.25rem;margin-bottom:1rem;background:rgba(45,212,191,0.04);">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.9rem;">
+                <div style="display:flex;align-items:center;gap:8px;">
+                  <span style="font-size:16px;">▦</span>
+                  <span style="font-size:14px;font-weight:500;color:var(--cream);">Step 2 — Pull from GSheet → HubSpot</span>
+                </div>
+                <label class="toggle"><input type="checkbox" id="enrichment-gsheet-enabled" onchange="toggleEnrichmentGsheetSection(this.checked)"><span class="toggle-slider"></span></label>
+              </div>
+              <div id="enrichment-gsheet-body" style="display:none;">
+                <div class="form-row">
+                  <div class="gs-email-banner">
+                    <div class="gs-email-banner-icon">📋</div>
+                    <div class="gs-email-banner-content">
+                      <div class="gs-email-banner-title">Share your sheet with the service account</div>
+                      <div class="gs-email-banner-row">
+                        <code id="enrich-service-email">scalearmy-sheets-sync@core-sprite-496011-q2.iam.gserviceaccount.com</code>
+                        <button class="gs-copy-btn" onclick="copyEnrichServiceEmail()">Copy</button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div class="form-row"><label>Google Sheet URL</label><input type="url" id="enrich-sheet-url" placeholder="https://docs.google.com/spreadsheets/d/…"></div>
+                <div class="form-row"><label>Sheet tab name <span style="font-size:11px;opacity:0.6;">(blank = first tab)</span></label><input type="text" id="enrich-sheet-tab" placeholder="e.g. Sheet1"></div>
+                <div class="form-row"><label>HubSpot object type</label><select id="enrich-object-type" onchange="onEnrichObjectTypeChange(this.value)"><option value="contact">Contact</option><option value="company">Company</option><option value="deal">Deal</option></select></div>
+                <div class="form-row"><label>Primary key column header</label><input type="text" id="enrich-pk-column" placeholder="e.g. Email"></div>
+                <div class="form-row"><label>Primary key type</label><select id="enrich-pk-type"><option value="email">Email (contact)</option><option value="id">HubSpot object ID</option></select></div>
+                <div class="form-row">
+                  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+                    <label style="margin-bottom:0;">Column mappings <span style="font-size:11px;opacity:0.6;">(Sheet column → HubSpot property)</span></label>
+                    <button type="button" class="btn btn-cream" onclick="addEnrichMapping()" style="font-size:12px;padding:5px 10px;">+ Add mapping</button>
+                  </div>
+                  <div class="gs-mapping-header"><span>Sheet column header</span><span>HubSpot property</span><span></span></div>
+                  <div id="enrich-mappings-container"><div style="font-size:13px;color:var(--muted);padding:6px 0;">No mappings yet.</div></div>
+                </div>
+                <div class="form-row">
+                  <label>Sync schedule</label>
+                  <div class="gs-sched-toggle">
+                    <button type="button" class="gs-sched-btn active" id="enrich-sched-btn-interval" onclick="selectEnrichSchedule('interval')">Interval</button>
+                    <button type="button" class="gs-sched-btn" id="enrich-sched-btn-daily" onclick="selectEnrichSchedule('daily')">Daily</button>
+                    <button type="button" class="gs-sched-btn" id="enrich-sched-btn-weekly" onclick="selectEnrichSchedule('weekly')">Weekly</button>
+                  </div>
+                  <div class="gs-sched-details" id="enrich-sched-interval-details"><div style="flex:1;"><label>Run every</label><select id="enrich-interval-minutes"><option value="15">15 minutes</option><option value="30">30 minutes</option><option value="60" selected>1 hour</option><option value="180">3 hours</option><option value="360">6 hours</option><option value="720">12 hours</option></select></div></div>
+                  <div class="gs-sched-details" id="enrich-sched-daily-details" style="display:none;"><div style="flex:1;"><label>Run time (EST)</label><input type="time" id="enrich-daily-time" value="08:00"></div></div>
+                  <div class="gs-sched-details" id="enrich-sched-weekly-details" style="display:none;"><div style="flex:1;"><label>Day</label><select id="enrich-weekly-day"><option value="0">Monday</option><option value="1">Tuesday</option><option value="2">Wednesday</option><option value="3">Thursday</option><option value="4">Friday</option><option value="5">Saturday</option><option value="6">Sunday</option></select></div><div style="flex:1;"><label>Run time (EST)</label><input type="time" id="enrich-weekly-time" value="08:00"></div></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Slack -->
+            <hr class="slack-divider">
+            <div class="slack-toggle-row">
+              <span class="slack-toggle-label">⚡ Slack notification</span>
+              <label class="toggle"><input type="checkbox" id="slack-enabled-enrichment" onchange="toggleSlackSection('enrichment',this.checked)"><span class="toggle-slider"></span></label>
+            </div>
+            <div id="slack-body-enrichment" class="slack-body" style="display:none;">
+              <div><label>Channel</label><div class="search-select"><input type="text" id="slack-ch-search-enrichment" placeholder="Search channels…" autocomplete="off"><div class="search-dropdown" id="slack-ch-dropdown-enrichment"></div></div></div>
+              <div><label>Message template</label><textarea id="slack-msg-enrichment" rows="3" placeholder="e.g. ✅ Enrichment sync done for {{automation_name}}"></textarea></div>
+            </div>
+
+            <div class="form-footer"><button class="btn btn-cream" onclick="cancelEdit()">Cancel</button><button class="btn btn-primary" onclick="createAutomation('enrichment')" id="create-btn-enrichment">Create automation</button></div>
+            <div class="error-msg" id="form-error-enrichment"></div>
+          </div>
+        </div>
+
+        </div>
       </div><!-- /form col -->
       <!-- Right column -->
       <div id="right-column">
@@ -409,6 +520,13 @@ let slackChSelectedGsheet={id:'',name:''};
 let alertSlackChSelected={id:'',name:''};
 let gsMappings=[];
 let gsScheduleType='interval';
+let enrichMappings=[];
+let clayMappings=[];
+let clayColumnsCache=[];
+let enrichPropCache={};
+let enrichScheduleType="interval";
+let hsSelectedEnrichment={id:"",name:""};
+let slackChSelectedEnrichment={id:"",name:""};
 let filtersInstantly=[],filtersForm=[];
 let dropdownsLoaded=false;
 let currentFilter='all';
@@ -463,7 +581,7 @@ function switchTab(tab){
   document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
   document.getElementById('tab-btn-'+tab).classList.add('active');
   document.getElementById('tab-'+tab).classList.add('active');
-  document.getElementById('alert-panel').style.display=tab==='gsheet_sync'?'none':'';
+  document.getElementById('alert-panel').style.display=(tab==='gsheet_sync'||tab==='enrichment')?'none':'';
 }
 
 // ── GSheet: object type change ──────────────────────────────
@@ -601,12 +719,12 @@ function newAutomation(){
   resetSearchSelect('form-search','form-dropdown',formSelected);
   selectAction('enroll');document.getElementById('delay-amount').value='0';document.getElementById('delay-unit').value='hours';
   filtersInstantly=[];filtersForm=[];renderFilters('instantly');renderFilters('hubspot_form');
-  ['instantly','hubspot_form'].forEach(dt=>{const cb=document.getElementById('slack-enabled-'+dt);if(cb){cb.checked=false;toggleSlackSection(dt,false);}resetSearchSelect('slack-ch-search-'+dt,'slack-ch-dropdown-'+dt,dt==='instantly'?slackChSelectedInstantly:slackChSelectedForm);const ta=document.getElementById('slack-msg-'+dt);if(ta)ta.value='';});
+  ['instantly','hubspot_form'].forEach(dt=>{const cb=document.getElementById('slack-enabled-'+dt);if(cb){cb.checked=false;toggleSlackSection(dt,false);}resetSearchSelect('slack-ch-search-'+dt,'slack-ch-dropdown-'+dt,dt==='instantly'?slackChSelectedInstantly:slackChSelectedForm);const ta=document.getElementById('slack-msg-'+dt);if(ta)ta.value='';});resetEnrichForm();
   document.getElementById('alert-enabled').checked=false;toggleAlertConfig(false);
   document.getElementById('alert-threshold').value='20';resetSearchSelect('alert-slack-ch-search','alert-slack-ch-dropdown',alertSlackChSelected);document.getElementById('alert-message').value='';selectSchedule('daily');document.getElementById('alert-time').value='08:00';document.getElementById('alert-day').value='0';
   resetGsForm();switchTab('instantly');showPage('add');
 }
-function cancelEdit(){editingId=null;['instantly','hubspot_form','gsheet_sync'].forEach(dt=>{const b=document.getElementById('create-btn-'+dt);if(b)b.textContent='Create automation';});document.getElementById('add-page-title').textContent='New automation';document.querySelector('.tab-bar').style.display='';document.getElementById('view-logs-btn').style.display='none';showPage('dashboard');}
+function cancelEdit(){editingId=null;['instantly','hubspot_form','gsheet_sync','enrichment'].forEach(dt=>{const b=document.getElementById('create-btn-'+dt);if(b)b.textContent='Create automation';});document.getElementById('add-page-title').textContent='New automation';document.querySelector('.tab-bar').style.display='';document.getElementById('view-logs-btn').style.display='none';showPage('dashboard');}
 
 // ── Filters ──────────────────────────────────────────────────
 function addFilter(dt){(dt==='instantly'?filtersInstantly:filtersForm).push({property:'',operator:'equals',value:''});renderFilters(dt);}
@@ -666,12 +784,44 @@ function renderAutomations(){
   document.getElementById('auto-count').textContent=filtered.length;
   if(!filtered.length){list.innerHTML=automations.length?'<div class="empty-state"><div class="empty-icon">🔍</div><p>No automations match filter.</p></div>':'<div class="empty-state"><div class="empty-icon">⚡</div><p>No automations yet.</p></div>';return;}
   list.innerHTML=filtered.map(a=>{
-    const isGsheet=a.delivery_type==='gsheet_sync',isForm=a.delivery_type==='hubspot_form',active=a.active!==false;
+    const isGsheet=a.delivery_type==='gsheet_sync',isForm=a.delivery_type==='hubspot_form',isEnrich=a.delivery_type==='enrichment',active=a.active!==false;
     let sourceChip,deliveryChip;
-    if(isGsheet){const objLabel={contact:'Contacts',company:'Companies',deal:'Deals'}[a.object_type]||a.object_type;const schedLabel=a.gsheet_schedule_type==='interval'?(()=>{const m=a.gsheet_interval_minutes||60;return m>=60?m/60+'h':m+'m';})():a.gsheet_schedule_type==='daily'?'Daily':'Weekly';sourceChip='<span class="chip chip-gs">▦ GSheet</span>';deliveryChip=`<span class="chip chip-gs">HubSpot ${objLabel} · ${schedLabel}</span>`;}
+    if(isEnrich){
+    document.getElementById('auto-name-enrichment').value=a.name||'';
+    hsSelectedEnrichment={id:a.hubspot_list_id||'',name:a.hubspot_list_name||''};
+    const ehi=document.getElementById('hs-search-enrichment');if(ehi){ehi.value=a.hubspot_list_name||'';ehi.classList.toggle('has-value',!!a.hubspot_list_id);}
+    // Clay
+    const clayEnabled=!!a.clay_enabled;
+    document.getElementById('clay-enabled').checked=clayEnabled;toggleClaySection(clayEnabled);
+    if(clayEnabled){document.getElementById('clay-table-id').value=a.clay_table_id||'';clayMappings=JSON.parse(JSON.stringify(a.clay_column_mappings||[]));if(a.clay_table_id){loadClayColumns().then(()=>renderClayMappings());}else renderClayMappings();}
+    // GSheet pull
+    const gsheetEnabled=!!a.enrichment_gsheet_enabled;
+    document.getElementById('enrichment-gsheet-enabled').checked=gsheetEnabled;toggleEnrichmentGsheetSection(gsheetEnabled);
+    if(gsheetEnabled){
+      document.getElementById('enrich-sheet-url').value=a.sheet_url||'';
+      document.getElementById('enrich-sheet-tab').value=a.sheet_tab||'';
+      document.getElementById('enrich-object-type').value=a.object_type||'contact';
+      document.getElementById('enrich-pk-column').value=a.primary_key_column||'';
+      document.getElementById('enrich-pk-type').value=a.primary_key_type||'email';
+      enrichMappings=JSON.parse(JSON.stringify(a.column_mappings||[]));
+      await onEnrichObjectTypeChange(a.object_type||'contact');
+      renderEnrichMappings();
+      selectEnrichSchedule(a.gsheet_schedule_type||'interval');
+      document.getElementById('enrich-interval-minutes').value=String(a.gsheet_interval_minutes||60);
+      document.getElementById('enrich-daily-time').value=a.gsheet_run_time||'08:00';
+      document.getElementById('enrich-weekly-time').value=a.gsheet_run_time||'08:00';
+      document.getElementById('enrich-weekly-day').value=String(a.gsheet_run_day||0);
+    }
+    // Slack
+    const slackCbE=document.getElementById('slack-enabled-enrichment');
+    if(slackCbE){slackCbE.checked=!!a.slack_enabled;toggleSlackSection('enrichment',!!a.slack_enabled);if(a.slack_enabled){slackChSelectedEnrichment.id=a.slack_channel||'';slackChSelectedEnrichment.name=a.slack_channel_name||'';const sci=document.getElementById('slack-ch-search-enrichment');if(sci){sci.value=a.slack_channel_name||'';sci.classList.toggle('has-value',!!a.slack_channel);}const ta=document.getElementById('slack-msg-enrichment');if(ta)ta.value=a.slack_message||'';}}
+    document.getElementById('create-btn-enrichment').textContent='Save changes';
+    return;
+  }
+  if(isGsheet){const objLabel={contact:'Contacts',company:'Companies',deal:'Deals'}[a.object_type]||a.object_type;const schedLabel=a.gsheet_schedule_type==='interval'?(()=>{const m=a.gsheet_interval_minutes||60;return m>=60?m/60+'h':m+'m';})():a.gsheet_schedule_type==='daily'?'Daily':'Weekly';sourceChip='<span class="chip chip-gs">▦ GSheet</span>';deliveryChip=`<span class="chip chip-gs">HubSpot ${objLabel} · ${schedLabel}</span>`;}else if(isEnrich){const steps=[];if(a.clay_enabled)steps.push('Clay');if(a.enrichment_gsheet_enabled)steps.push('GSheet');sourceChip=`<span class="chip chip-hs">HubSpot · ${esc(a.hubspot_list_name||a.hubspot_list_id)}</span>`;deliveryChip=`<span class="chip" style="color:#a78bfa;border-color:rgba(167,139,250,.3);background:rgba(167,139,250,.08);">⬡ ${steps.join(' + ')||'Enrichment'}</span>`;}
     else{sourceChip=`<span class="chip chip-hs">HubSpot · ${esc(a.hubspot_list_name||a.hubspot_list_id)}</span>`;deliveryChip=isForm?`<span class="chip chip-form">HS Form · ${esc(a.hubspot_form_name||a.hubspot_form_id)}</span>`:`<span class="chip chip-in">Instantly · ${esc(a.instantly_campaign_name||a.instantly_campaign_id)}</span>`;}
-    const actionChip=(!isForm&&!isGsheet)?(a.action==='unenroll'?'<span class="chip chip-unenroll">⊖ Unenroll</span>':'<span class="chip chip-in" style="color:#86efac;border-color:rgba(134,239,172,.3);background:rgba(134,239,172,.08);">⊕ Enroll</span>'):'';
-    const delayChip=(!isForm&&!isGsheet&&a.delay_hours>0)?`<span class="chip chip-hs">⏱ ${a.delay_hours>=24?(a.delay_hours/24)+'d':a.delay_hours+'h'} delay</span>`:'';
+    const actionChip=(!isForm&&!isGsheet&&!isEnrich)?(a.action==='unenroll'?'<span class="chip chip-unenroll">⊖ Unenroll</span>':'<span class="chip chip-in" style="color:#86efac;border-color:rgba(134,239,172,.3);background:rgba(134,239,172,.08);">⊕ Enroll</span>'):'';
+    const delayChip=(!isForm&&!isGsheet&&!isEnrich&&a.delay_hours>0)?`<span class="chip chip-hs">⏱ ${a.delay_hours>=24?(a.delay_hours/24)+'d':a.delay_hours+'h'} delay</span>`:'';
     const alertChip=a.alert_enabled?'<span class="chip chip-alert">🔔 Alert</span>':'';
     const slackChip=a.slack_enabled?`<span class="chip chip-hs">⚡ ${esc(a.slack_channel_name||'Slack')}</span>`:'';
     const lastRun=a.last_run?`<span style="font-size:11px;color:var(--muted);">${timeAgo(a.last_run)}</span>`:'<span style="font-size:11px;color:var(--muted);">Never run</span>';
@@ -715,10 +865,10 @@ async function loadDropdowns(){
   dropdownsLoaded=true;
   try{
     const[l,c,f,s,pr]=await Promise.all([api('GET','/lists'),api('GET','/campaigns'),api('GET','/forms'),api('GET','/slack/channels'),api('GET','/properties?object=contacts')]);
-    if(l.ok&&Array.isArray(l.data)){hsList=l.data;initSearchSelect('hs-search-instantly','hs-dropdown-instantly',hsList,hsSelectedInstantly,'Search HubSpot lists…');initSearchSelect('hs-search-hubspot_form','hs-dropdown-hubspot_form',hsList,hsSelectedForm,'Search HubSpot lists…');}
+    if(l.ok&&Array.isArray(l.data)){hsList=l.data;initSearchSelect('hs-search-instantly','hs-dropdown-instantly',hsList,hsSelectedInstantly,'Search HubSpot lists…');initSearchSelect('hs-search-hubspot_form','hs-dropdown-hubspot_form',hsList,hsSelectedForm,'Search HubSpot lists…');initSearchSelect('hs-search-enrichment','hs-dropdown-enrichment',hsList,hsSelectedEnrichment,'Search HubSpot lists…');}
     if(c.ok&&Array.isArray(c.data)){campList=c.data;initSearchSelect('camp-search','camp-dropdown',campList,campSelected,'Search Instantly campaigns…');}
     if(f.ok&&Array.isArray(f.data)){formList=f.data;initSearchSelect('form-search','form-dropdown',formList,formSelected,'Search HubSpot forms…');}
-    if(s.ok&&Array.isArray(s.data)){slackChannels=s.data;['instantly','hubspot_form','gsheet_sync'].forEach(dt=>initSearchSelect('slack-ch-search-'+dt,'slack-ch-dropdown-'+dt,slackChannels,dt==='instantly'?slackChSelectedInstantly:dt==='hubspot_form'?slackChSelectedForm:slackChSelectedGsheet,'Search channels…'));initSearchSelect('alert-slack-ch-search','alert-slack-ch-dropdown',slackChannels,alertSlackChSelected,'Search channels…');}
+    if(s.ok&&Array.isArray(s.data)){slackChannels=s.data;['instantly','hubspot_form','gsheet_sync','enrichment'].forEach(dt=>initSearchSelect('slack-ch-search-'+dt,'slack-ch-dropdown-'+dt,slackChannels,dt==='instantly'?slackChSelectedInstantly:dt==='hubspot_form'?slackChSelectedForm:dt==='enrichment'?slackChSelectedEnrichment:slackChSelectedGsheet,'Search channels…'));initSearchSelect('alert-slack-ch-search','alert-slack-ch-dropdown',slackChannels,alertSlackChSelected,'Search channels…');}
     if(pr.ok&&Array.isArray(pr.data)){hsPropList=pr.data;gsPropCache['contact']=pr.data;gsPropCache['contacts']=pr.data;}
   }catch(e){}
 }
@@ -732,6 +882,51 @@ async function createAutomation(deliveryType){
   errEl.style.display='none';
   if(!name){errEl.textContent='Please enter an automation name.';errEl.style.display='block';return;}
 
+  if(deliveryType==='enrichment'){
+    const errEl2=document.getElementById('form-error-enrichment');
+    const btn2=document.getElementById('create-btn-enrichment');
+    const name2=document.getElementById('auto-name-enrichment').value.trim();
+    if(!name2){errEl2.textContent='Please enter an automation name.';errEl2.style.display='block';return;}
+    if(!hsSelectedEnrichment.id){errEl2.textContent='Please select a HubSpot list.';errEl2.style.display='block';return;}
+    const clayEnabled=document.getElementById('clay-enabled').checked;
+    const gsheetEnabled=document.getElementById('enrichment-gsheet-enabled').checked;
+    if(!clayEnabled&&!gsheetEnabled){errEl2.textContent='Enable at least one step (Clay push or GSheet pull).';errEl2.style.display='block';return;}
+    if(clayEnabled){
+      const tid=document.getElementById('clay-table-id').value.trim();
+      const validClay=clayMappings.filter(m=>m.hs_property&&m.clay_column);
+      if(!tid){errEl2.textContent='Please enter the Clay table ID.';errEl2.style.display='block';return;}
+      if(!validClay.length){errEl2.textContent='Please add at least one Clay column mapping.';errEl2.style.display='block';return;}
+    }
+    if(gsheetEnabled){
+      const surl=document.getElementById('enrich-sheet-url').value.trim();
+      const spk=document.getElementById('enrich-pk-column').value.trim();
+      const validEM=enrichMappings.filter(m=>m.column&&m.property);
+      if(!surl){errEl2.textContent='Please enter the Google Sheet URL.';errEl2.style.display='block';return;}
+      if(!spk){errEl2.textContent='Please enter the primary key column.';errEl2.style.display='block';return;}
+      if(!validEM.length){errEl2.textContent='Please add at least one GSheet column mapping.';errEl2.style.display='block';return;}
+    }
+    let payload={name:name2,delivery_type:'enrichment',hubspot_list_id:hsSelectedEnrichment.id,hubspot_list_name:hsSelectedEnrichment.name,
+      clay_enabled:clayEnabled,clay_table_id:document.getElementById('clay-table-id').value.trim(),
+      clay_column_mappings:clayMappings.filter(m=>m.hs_property&&m.clay_column),
+      enrichment_gsheet_enabled:gsheetEnabled,
+      sheet_url:document.getElementById('enrich-sheet-url').value.trim(),
+      sheet_tab:document.getElementById('enrich-sheet-tab').value.trim(),
+      object_type:document.getElementById('enrich-object-type').value,
+      primary_key_column:document.getElementById('enrich-pk-column').value.trim(),
+      primary_key_type:document.getElementById('enrich-pk-type').value,
+      column_mappings:enrichMappings.filter(m=>m.column&&m.property),
+      gsheet_schedule_type:enrichScheduleType,
+      gsheet_interval_minutes:parseInt(document.getElementById('enrich-interval-minutes').value)||60,
+      gsheet_run_time:enrichScheduleType==='daily'?document.getElementById('enrich-daily-time').value:document.getElementById('enrich-weekly-time').value,
+      gsheet_run_day:parseInt(document.getElementById('enrich-weekly-day').value)||0};
+    const slackEnabled=document.getElementById('slack-enabled-enrichment')?.checked;
+    if(slackEnabled){const sm=(document.getElementById('slack-msg-enrichment')?.value||'').trim();if(!slackChSelectedEnrichment.id){errEl2.textContent='Please select a Slack channel.';errEl2.style.display='block';return;}payload.slack_enabled=true;payload.slack_channel=slackChSelectedEnrichment.id;payload.slack_channel_name=slackChSelectedEnrichment.name;payload.slack_message=sm;}else payload.slack_enabled=false;
+    btn2.disabled=true;btn2.textContent=editingId?'Saving…':'Creating…';
+    try{const{ok,data}=editingId?await api('PATCH','/automations/'+editingId,payload):await api('POST','/automations',payload);
+      if(ok){const wasEditing=!!editingId;editingId=null;document.getElementById('create-btn-enrichment').textContent='Create automation';document.getElementById('add-page-title').textContent='New automation';document.querySelector('.tab-bar').style.display='';document.getElementById('view-logs-btn').style.display='none';showToast(wasEditing?'Automation updated':'Automation created');showPage('dashboard');loadAutomations();}
+      else{errEl2.textContent=data.error||'Something went wrong.';errEl2.style.display='block';}}catch(e){errEl2.textContent='Network error.';errEl2.style.display='block';}
+    btn2.disabled=false;btn2.textContent=editingId?'Save changes':'Create automation';return;
+  }
   if(deliveryType==='gsheet_sync'){
     const sheetUrl=document.getElementById('gs-sheet-url').value.trim();
     const sheetTab=document.getElementById('gs-sheet-tab').value.trim();
@@ -771,11 +966,11 @@ async function createAutomation(deliveryType){
 async function editAutomation(id){
   const a=automations.find(x=>x.id===id);if(!a)return;
   editingId=id;if(!dropdownsLoaded)await loadDropdowns();
-  const isForm=a.delivery_type==='hubspot_form',isGsheet=a.delivery_type==='gsheet_sync';
+  const isForm=a.delivery_type==='hubspot_form',isGsheet=a.delivery_type==='gsheet_sync',isEnrich=a.delivery_type==='enrichment';
   document.getElementById('add-page-title').textContent='Edit automation';
   document.querySelector('.tab-bar').style.display='none';
-  document.getElementById('view-logs-btn').style.display=isGsheet?'none':'flex';
-  showPage('add');switchTab(isGsheet?'gsheet_sync':isForm?'hubspot_form':'instantly');
+  document.getElementById('view-logs-btn').style.display=(isGsheet||isEnrich)?'none':'flex';
+  showPage('add');switchTab(isEnrich?'enrichment':isGsheet?'gsheet_sync':isForm?'hubspot_form':'instantly');
 
   if(isGsheet){
     document.getElementById('auto-name-gsheet_sync').value=a.name||'';
@@ -842,5 +1037,158 @@ function closeLogs(){document.getElementById('logs-modal').style.display='none';
 function timeAgo(isoStr){const diff=Math.floor((Date.now()-new Date(isoStr))/1000);if(diff<60)return 'just now';if(diff<3600)return Math.floor(diff/60)+'m ago';if(diff<86400)return Math.floor(diff/3600)+'h ago';return Math.floor(diff/86400)+'d ago';}
 function esc(str){return String(str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 </script>
+
+// ── Enrichment: Clay section ──────────────────────────────────
+function toggleClaySection(enabled){
+  document.getElementById('clay-body').style.display=enabled?'block':'none';
+}
+function onClayTableIdChange(){
+  clayColumnsCache=[];
+  document.getElementById('clay-mappings-container').innerHTML='<div style="font-size:13px;color:var(--muted);padding:6px 0;">Load columns first, then add mappings.</div>';
+  clayMappings=[];
+}
+async function loadClayColumns(){
+  const tableId=document.getElementById('clay-table-id').value.trim();
+  if(!tableId){showToast('Enter a Clay table ID first','error');return;}
+  const btn=document.getElementById('clay-load-btn');
+  btn.disabled=true;btn.textContent='Loading…';
+  try{
+    const{ok,data}=await api('GET','/clay/columns?table_id='+encodeURIComponent(tableId));
+    if(ok&&Array.isArray(data)){
+      clayColumnsCache=data;
+      showToast('Clay columns loaded: '+data.length+' columns');
+      renderClayMappings();
+    } else {
+      showToast((data&&data.error)||'Failed to load Clay columns','error');
+    }
+  }catch(e){showToast('Network error loading Clay columns','error');}
+  btn.disabled=false;btn.textContent='Load columns';
+}
+function addClayMapping(){clayMappings.push({hs_property:'',hs_label:'',clay_column:''});renderClayMappings();}
+function removeClayMapping(i){clayMappings.splice(i,1);renderClayMappings();}
+function renderClayMappings(){
+  const container=document.getElementById('clay-mappings-container');
+  if(!clayMappings.length){container.innerHTML='<div style="font-size:13px;color:var(--muted);padding:6px 0;">No mappings yet — add at least one.</div>';return;}
+  const colOptions=clayColumnsCache.map(c=>`<option value="${esc(c.id)}">${esc(c.name)}</option>`).join('');
+  container.innerHTML=clayMappings.map((m,i)=>`
+    <div class="gs-mapping-row">
+      <div class="search-select" style="min-width:0;">
+        <input type="text" id="clay-hs-prop-${i}" placeholder="Search HubSpot property…" autocomplete="off" style="font-size:13px;padding:8px 10px;" class="${m.hs_property?'has-value':''}">
+        <div class="search-dropdown" id="clay-hs-dropdown-${i}"></div>
+      </div>
+      <select onchange="clayMappings[${i}].clay_column=this.value" style="font-size:13px;padding:8px 10px;">
+        <option value="">— select Clay column —</option>
+        ${colOptions}
+      </select>
+      <button type="button" class="btn-trash" onclick="removeClayMapping(${i})" title="Remove">×</button>
+    </div>`).join('');
+  clayMappings.forEach((m,i)=>initClayHsPropSearch(i,m.hs_property,m.hs_label));
+  // Restore clay_column selection
+  clayMappings.forEach((m,i)=>{
+    const sel=document.getElementById('clay-mappings-container')?.querySelectorAll('select')[i];
+    if(sel&&m.clay_column)sel.value=m.clay_column;
+  });
+}
+function initClayHsPropSearch(index,currentPropName,currentPropLabel){
+  const input=document.getElementById('clay-hs-prop-'+index);
+  const dropdown=document.getElementById('clay-hs-dropdown-'+index);
+  if(!input||!dropdown)return;
+  const propList=hsPropList||[];
+  if(currentPropName){input.value=currentPropLabel||currentPropName;input.classList.add('has-value');}
+  function renderOptions(query){
+    const q=query.trim().toLowerCase();
+    const matches=q?propList.filter(p=>p.label.toLowerCase().includes(q)||p.name.toLowerCase().includes(q)):propList;
+    if(!matches.length){dropdown.innerHTML='<div class="search-option-empty">No properties found</div>';}
+    else{dropdown.innerHTML=matches.map(p=>`<div class="search-option${currentPropName===p.name?' selected':''}" data-name="${esc(p.name)}" data-label="${esc(p.label)}">${esc(p.label)}<span style="font-size:10px;opacity:.4;margin-left:6px;">${esc(p.name)}</span></div>`).join('');
+      dropdown.querySelectorAll('.search-option').forEach(el=>{el.addEventListener('mousedown',e=>{e.preventDefault();clayMappings[index].hs_property=el.dataset.name;clayMappings[index].hs_label=el.dataset.label;input.value=el.dataset.label;input.classList.add('has-value');dropdown.classList.remove('open');currentPropName=el.dataset.name;});});}
+    dropdown.classList.add('open');
+  }
+  input.addEventListener('focus',()=>renderOptions(''));
+  input.addEventListener('input',()=>{input.classList.remove('has-value');clayMappings[index].hs_property='';renderOptions(input.value);});
+  input.addEventListener('blur',()=>{setTimeout(()=>dropdown.classList.remove('open'),150);if(!clayMappings[index].hs_property){input.value='';input.classList.remove('has-value');}else{input.value=clayMappings[index].hs_label||clayMappings[index].hs_property;input.classList.add('has-value');}});
+}
+
+// ── Enrichment: GSheet section ────────────────────────────────
+function toggleEnrichmentGsheetSection(enabled){
+  document.getElementById('enrichment-gsheet-body').style.display=enabled?'block':'none';
+}
+function copyEnrichServiceEmail(){
+  const email=document.getElementById('enrich-service-email').textContent;
+  navigator.clipboard.writeText(email).then(()=>showToast('Email copied')).catch(()=>showToast('Email copied'));
+}
+async function onEnrichObjectTypeChange(objType){
+  if(!enrichPropCache[objType]){
+    try{const{ok,data}=await api('GET','/properties?object='+objType);if(ok&&Array.isArray(data))enrichPropCache[objType]=data;}catch(e){}
+  }
+  renderEnrichMappings();
+  // Update pk type options
+  const pkSel=document.getElementById('enrich-pk-type');
+  pkSel.innerHTML=objType==='contact'
+    ?'<option value="email">Email (contact)</option><option value="id">HubSpot object ID</option>'
+    :objType==='company'
+    ?'<option value="domain">Domain (company)</option><option value="id">HubSpot object ID</option>'
+    :'<option value="id">HubSpot object ID</option>';
+}
+function addEnrichMapping(){enrichMappings.push({column:'',property:'',propertyLabel:''});renderEnrichMappings();}
+function removeEnrichMapping(i){enrichMappings.splice(i,1);renderEnrichMappings();}
+function renderEnrichMappings(){
+  const container=document.getElementById('enrich-mappings-container');
+  if(!enrichMappings.length){container.innerHTML='<div style="font-size:13px;color:var(--muted);padding:6px 0;">No mappings yet.</div>';return;}
+  container.innerHTML=enrichMappings.map((m,i)=>`
+    <div class="gs-mapping-row">
+      <input type="text" value="${esc(m.column)}" placeholder="Sheet column header" oninput="enrichMappings[${i}].column=this.value" style="font-size:13px;padding:8px 10px;">
+      <div class="search-select" style="min-width:0;">
+        <input type="text" id="enrich-prop-${i}" placeholder="Search HubSpot property…" autocomplete="off" style="font-size:13px;padding:8px 10px;" class="${m.property?'has-value':''}">
+        <div class="search-dropdown" id="enrich-prop-dropdown-${i}"></div>
+      </div>
+      <button type="button" class="btn-trash" onclick="removeEnrichMapping(${i})" title="Remove">×</button>
+    </div>`).join('');
+  enrichMappings.forEach((m,i)=>initEnrichPropSearch(i,m.property,m.propertyLabel));
+}
+function initEnrichPropSearch(index,currentPropName,currentPropLabel){
+  const input=document.getElementById('enrich-prop-'+index);
+  const dropdown=document.getElementById('enrich-prop-dropdown-'+index);
+  if(!input||!dropdown)return;
+  const objType=document.getElementById('enrich-object-type').value;
+  const propList=enrichPropCache[objType]||hsPropList||[];
+  if(currentPropName){input.value=currentPropLabel||currentPropName;input.classList.add('has-value');}
+  function renderOptions(query){
+    const q=query.trim().toLowerCase();
+    const matches=q?propList.filter(p=>p.label.toLowerCase().includes(q)||p.name.toLowerCase().includes(q)):propList;
+    if(!matches.length){dropdown.innerHTML='<div class="search-option-empty">No properties found</div>';}
+    else{dropdown.innerHTML=matches.map(p=>`<div class="search-option${currentPropName===p.name?' selected':''}" data-name="${esc(p.name)}" data-label="${esc(p.label)}">${esc(p.label)}<span style="font-size:10px;opacity:.4;margin-left:6px;">${esc(p.name)}</span></div>`).join('');
+      dropdown.querySelectorAll('.search-option').forEach(el=>{el.addEventListener('mousedown',e=>{e.preventDefault();enrichMappings[index].property=el.dataset.name;enrichMappings[index].propertyLabel=el.dataset.label;input.value=el.dataset.label;input.classList.add('has-value');dropdown.classList.remove('open');currentPropName=el.dataset.name;});});}
+    dropdown.classList.add('open');
+  }
+  input.addEventListener('focus',()=>renderOptions(''));
+  input.addEventListener('input',()=>{input.classList.remove('has-value');enrichMappings[index].property='';renderOptions(input.value);});
+  input.addEventListener('blur',()=>{setTimeout(()=>dropdown.classList.remove('open'),150);if(!enrichMappings[index].property){input.value='';input.classList.remove('has-value');}else{input.value=enrichMappings[index].propertyLabel||enrichMappings[index].property;input.classList.add('has-value');}});
+}
+function selectEnrichSchedule(type){
+  enrichScheduleType=type;
+  ['interval','daily','weekly'].forEach(t=>{document.getElementById('enrich-sched-btn-'+t).classList.toggle('active',t===type);document.getElementById('enrich-sched-'+t+'-details').style.display=t===type?'flex':'none';});
+}
+function resetEnrichForm(){
+  document.getElementById('auto-name-enrichment').value='';
+  resetSearchSelect('hs-search-enrichment','hs-dropdown-enrichment',hsSelectedEnrichment);
+  document.getElementById('clay-enabled').checked=false;toggleClaySection(false);
+  document.getElementById('clay-table-id').value='';
+  clayMappings=[];clayColumnsCache=[];renderClayMappings();
+  document.getElementById('enrichment-gsheet-enabled').checked=false;toggleEnrichmentGsheetSection(false);
+  document.getElementById('enrich-sheet-url').value='';
+  document.getElementById('enrich-sheet-tab').value='';
+  document.getElementById('enrich-object-type').value='contact';
+  document.getElementById('enrich-pk-column').value='';
+  document.getElementById('enrich-pk-type').innerHTML='<option value="email">Email (contact)</option><option value="id">HubSpot object ID</option>';
+  enrichMappings=[];renderEnrichMappings();
+  selectEnrichSchedule('interval');
+  document.getElementById('enrich-interval-minutes').value='60';
+  document.getElementById('enrich-daily-time').value='08:00';
+  document.getElementById('enrich-weekly-time').value='08:00';
+  document.getElementById('enrich-weekly-day').value='0';
+  const cb=document.getElementById('slack-enabled-enrichment');if(cb){cb.checked=false;toggleSlackSection('enrichment',false);}
+  resetSearchSelect('slack-ch-search-enrichment','slack-ch-dropdown-enrichment',slackChSelectedEnrichment);
+  const ta=document.getElementById('slack-msg-enrichment');if(ta)ta.value='';
+  document.getElementById('form-error-enrichment').style.display='none';
+}
 </body>
-</html>
