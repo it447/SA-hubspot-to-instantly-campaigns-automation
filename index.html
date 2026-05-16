@@ -354,7 +354,6 @@
     <button class="nav-item" id="nav-filter-gsheet_sync" onclick="showPage('dashboard');setFilter('gsheet_sync')" style="padding-left:28px;font-size:13px;">
       <span class="nav-icon" style="font-size:12px;">▦</span> GSheet Sync
     </button>
-    <button class="nav-item" id="nav-filter-enrichment" onclick="showPage('dashboard');setFilter('enrichment')" style="padding-left:28px;font-size:13px;"><span class="nav-icon" style="font-size:12px;">⬡</span> Enrichment</button>
     <button class="nav-item" onclick="newAutomation()" id="nav-add" style="margin-top:4px;">
       <span class="nav-icon">+</span> New automation
     </button>
@@ -433,7 +432,6 @@
         <button class="tab-btn active"  id="tab-btn-instantly"    onclick="switchTab('instantly')">Instantly Automation</button>
         <button class="tab-btn teal"    id="tab-btn-hubspot_form" onclick="switchTab('hubspot_form')">HS Form Fill Sequence</button>
         <button class="tab-btn gs-tab"  id="tab-btn-gsheet_sync"  onclick="switchTab('gsheet_sync')">GSheet → HubSpot Sync</button>
-        <button class="tab-btn" id="tab-btn-enrichment" onclick="switchTab('enrichment')" style="color:#a78bfa;">⬡ Enrichment</button>
       </div>
 
       <div class="edit-grid">
@@ -572,7 +570,40 @@
           <h3>GSheet → HubSpot Sync</h3>
           <p class="form-desc">Rows in a Google Sheet are upserted into HubSpot CRM objects (contacts, companies, or deals) on a schedule. Column headers map directly to HubSpot property names.</p>
 
-          <!-- Share reminder banner -->
+          <!-- Step 1: Clay push toggle -->
+          <div style="border:1px solid rgba(167,139,250,0.2);border-radius:var(--radius-sm);padding:1.1rem 1.25rem;margin-bottom:1.5rem;background:rgba(167,139,250,0.04);">
+            <div style="display:flex;align-items:center;justify-content:space-between;">
+              <div style="display:flex;align-items:center;gap:8px;">
+                <span style="font-size:15px;">⬡</span>
+                <div>
+                  <div style="font-size:14px;font-weight:500;color:var(--cream);">Step 1 — Push to Clay <span style="font-size:11px;color:var(--muted);font-weight:400;">(optional)</span></div>
+                  <div style="font-size:11px;color:var(--muted);margin-top:1px;">Send HubSpot contacts to a Clay table for enrichment</div>
+                </div>
+              </div>
+              <label class="toggle"><input type="checkbox" id="clay-enabled" onchange="toggleClaySection(this.checked)"><span class="toggle-slider"></span></label>
+            </div>
+            <div id="clay-body" style="display:none;margin-top:1rem;">
+              <div class="form-row" style="margin-bottom:0.75rem;">
+                <label>Clay table ID</label>
+                <div style="display:flex;gap:8px;">
+                  <input type="text" id="clay-table-id" placeholder="e.g. tbl_abc123" style="flex:1;">
+                  <button type="button" class="btn btn-cream" onclick="loadClayColumns()" id="clay-load-btn" style="white-space:nowrap;flex-shrink:0;">Load columns</button>
+                </div>
+                <div class="token-hint" style="margin-top:5px;">Find in your Clay table URL: clay.com/table/<strong>TABLE_ID</strong></div>
+              </div>
+              <div class="form-row" style="margin-bottom:0;">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+                  <label style="margin-bottom:0;">Column mappings <span style="font-size:11px;opacity:0.6;">(HubSpot property → Clay column)</span></label>
+                  <button type="button" class="btn btn-cream" onclick="addClayMapping()" style="font-size:12px;padding:5px 10px;">+ Add</button>
+                </div>
+                <div class="gs-mapping-header"><span>HubSpot property</span><span>Clay column</span><span></span></div>
+                <div id="clay-mappings-container"><div style="font-size:13px;color:var(--muted);padding:6px 0;">Load columns first, then add mappings.</div></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Step 2: GSheet → HubSpot (existing) -->
+          <!-- Step 2 share reminder banner -->
           <div class="gs-email-banner">
             <div class="gs-email-banner-icon">📋</div>
             <div class="gs-email-banner-content">
@@ -717,104 +748,6 @@
             <button class="btn btn-primary" onclick="createAutomation('gsheet_sync')" id="create-btn-gsheet_sync">Create automation</button>
           </div>
           <div class="error-msg" id="form-error-gsheet_sync"></div>
-        </div>
-      </div>
-
-
-      <!-- ── Tab: Enrichment ── -->
-      <div class="tab-panel" id="tab-enrichment">
-        <div class="form-card" style="max-width:620px;">
-          <h3>⬡ Enrichment</h3>
-          <p class="form-desc">Push HubSpot contacts to Clay for enrichment, then pull enriched data from a Google Sheet back into HubSpot. Toggle each step independently.</p>
-
-          <div class="form-row"><label>Automation name</label><input type="text" id="auto-name-enrichment" placeholder="e.g. Lead Enrichment Pipeline"></div>
-          <div class="form-row"><label>HubSpot list</label><div class="search-select"><input type="text" id="hs-search-enrichment" placeholder="Search HubSpot lists…" autocomplete="off"><div class="search-dropdown" id="hs-dropdown-enrichment"></div></div></div>
-
-          <!-- Step 1: Clay push -->
-          <div style="border:1px solid rgba(167,139,250,0.25);border-radius:var(--radius-sm);padding:1.25rem;margin-bottom:1rem;background:rgba(167,139,250,0.04);">
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.9rem;">
-              <div style="display:flex;align-items:center;gap:8px;"><span style="font-size:16px;">⬡</span><span style="font-size:14px;font-weight:500;color:var(--cream);">Step 1 — Push to Clay</span></div>
-              <label class="toggle"><input type="checkbox" id="clay-enabled" onchange="toggleClaySection(this.checked)"><span class="toggle-slider"></span></label>
-            </div>
-            <div id="clay-body" style="display:none;">
-              <div class="form-row">
-                <label>Clay table ID</label>
-                <div style="display:flex;gap:8px;">
-                  <input type="text" id="clay-table-id" placeholder="e.g. tbl_abc123" style="flex:1;">
-                  <button type="button" class="btn btn-cream" onclick="loadClayColumns()" id="clay-load-btn" style="white-space:nowrap;flex-shrink:0;">Load columns</button>
-                </div>
-                <div class="token-hint" style="margin-top:5px;">Find in your Clay table URL: clay.com/table/<strong>TABLE_ID</strong></div>
-              </div>
-              <div class="form-row">
-                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
-                  <label style="margin-bottom:0;">Column mappings <span style="font-size:11px;opacity:0.6;">(HubSpot property → Clay column)</span></label>
-                  <button type="button" class="btn btn-cream" onclick="addClayMapping()" style="font-size:12px;padding:5px 10px;">+ Add</button>
-                </div>
-                <div class="gs-mapping-header"><span>HubSpot property</span><span>Clay column</span><span></span></div>
-                <div id="clay-mappings-container"><div style="font-size:13px;color:var(--muted);padding:6px 0;">Load columns first, then add mappings.</div></div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Step 2: GSheet pull -->
-          <div style="border:1px solid rgba(45,212,191,0.2);border-radius:var(--radius-sm);padding:1.25rem;margin-bottom:1rem;background:rgba(45,212,191,0.04);">
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.9rem;">
-              <div style="display:flex;align-items:center;gap:8px;"><span style="font-size:16px;">▦</span><span style="font-size:14px;font-weight:500;color:var(--cream);">Step 2 — Pull from GSheet → HubSpot</span></div>
-              <label class="toggle"><input type="checkbox" id="enrichment-gsheet-enabled" onchange="toggleEnrichmentGsheetSection(this.checked)"><span class="toggle-slider"></span></label>
-            </div>
-            <div id="enrichment-gsheet-body" style="display:none;">
-              <div class="gs-email-banner" style="margin-bottom:1rem;">
-                <div class="gs-email-banner-icon">📋</div>
-                <div class="gs-email-banner-content">
-                  <div class="gs-email-banner-title">Share your sheet with the service account</div>
-                  <div class="gs-email-banner-row">
-                    <code id="enrich-service-email">scalearmy-sheets-sync@core-sprite-496011-q2.iam.gserviceaccount.com</code>
-                    <button class="gs-copy-btn" onclick="copyEnrichServiceEmail()">Copy</button>
-                  </div>
-                </div>
-              </div>
-              <div class="form-row"><label>Google Sheet URL</label><input type="url" id="enrich-sheet-url" placeholder="https://docs.google.com/spreadsheets/d/…"></div>
-              <div class="form-row"><label>Sheet tab name <span style="font-size:11px;opacity:0.6;">(blank = first tab)</span></label><input type="text" id="enrich-sheet-tab" placeholder="e.g. Sheet1"></div>
-              <div class="form-row"><label>HubSpot object type</label><select id="enrich-object-type" onchange="onEnrichObjectTypeChange(this.value)"><option value="contact">Contact</option><option value="company">Company</option><option value="deal">Deal</option></select></div>
-              <div class="form-row"><label>Primary key column header</label><input type="text" id="enrich-pk-column" placeholder="e.g. Email"></div>
-              <div class="form-row"><label>Primary key type</label><select id="enrich-pk-type"><option value="email">Email (contact)</option><option value="domain">Domain (company)</option><option value="id">HubSpot object ID</option></select></div>
-              <div class="form-row">
-                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
-                  <label style="margin-bottom:0;">Column mappings <span style="font-size:11px;opacity:0.6;">(Sheet column → HubSpot property)</span></label>
-                  <button type="button" class="btn btn-cream" onclick="addEnrichMapping()" style="font-size:12px;padding:5px 10px;">+ Add</button>
-                </div>
-                <div class="gs-mapping-header"><span>Sheet column header</span><span>HubSpot property name</span><span></span></div>
-                <div id="enrich-mappings-container"><div style="font-size:13px;color:var(--muted);padding:6px 0;">No mappings yet.</div></div>
-              </div>
-              <div class="form-row">
-                <label>Sync schedule</label>
-                <div class="gs-sched-toggle">
-                  <button type="button" class="gs-sched-btn active" id="enrich-sched-btn-interval" onclick="selectEnrichSchedule('interval')">Interval</button>
-                  <button type="button" class="gs-sched-btn" id="enrich-sched-btn-daily" onclick="selectEnrichSchedule('daily')">Daily</button>
-                  <button type="button" class="gs-sched-btn" id="enrich-sched-btn-weekly" onclick="selectEnrichSchedule('weekly')">Weekly</button>
-                </div>
-                <div class="gs-sched-details" id="enrich-sched-interval-details"><div style="flex:1;"><label>Run every</label><select id="enrich-interval-minutes"><option value="15">15 minutes</option><option value="30">30 minutes</option><option value="60" selected>1 hour</option><option value="180">3 hours</option><option value="360">6 hours</option><option value="720">12 hours</option></select></div></div>
-                <div class="gs-sched-details" id="enrich-sched-daily-details" style="display:none;"><div style="flex:1;"><label>Run time (EST)</label><input type="time" id="enrich-daily-time" value="08:00"></div></div>
-                <div class="gs-sched-details" id="enrich-sched-weekly-details" style="display:none;"><div style="flex:1;"><label>Day</label><select id="enrich-weekly-day"><option value="0">Monday</option><option value="1">Tuesday</option><option value="2">Wednesday</option><option value="3">Thursday</option><option value="4">Friday</option><option value="5">Saturday</option><option value="6">Sunday</option></select></div><div style="flex:1;"><label>Run time (EST)</label><input type="time" id="enrich-weekly-time" value="08:00"></div></div>
-              </div>
-            </div>
-          </div>
-
-          <hr class="slack-divider">
-          <div class="slack-toggle-row">
-            <span class="slack-toggle-label"><span class="slack-icon"><svg width="16" height="16" viewBox="0 0 54 54" xmlns="http://www.w3.org/2000/svg"><path d="M19.7 32.2c0 2.9-2.4 5.3-5.3 5.3s-5.3-2.4-5.3-5.3 2.4-5.3 5.3-5.3H19.7v5.3z" fill="#E01E5A"/><path d="M22.3 32.2c0-2.9 2.4-5.3 5.3-5.3s5.3 2.4 5.3 5.3v13.3c0 2.9-2.4 5.3-5.3 5.3s-5.3-2.4-5.3-5.3V32.2z" fill="#E01E5A"/><path d="M27.6 19.7c-2.9 0-5.3-2.4-5.3-5.3s2.4-5.3 5.3-5.3 5.3 2.4 5.3 5.3V19.7H27.6z" fill="#36C5F0"/><path d="M27.6 22.3c2.9 0 5.3 2.4 5.3 5.3s-2.4 5.3-5.3 5.3H14.4c-2.9 0-5.3-2.4-5.3-5.3s2.4-5.3 5.3-5.3H27.6z" fill="#36C5F0"/><path d="M40.1 27.6c0-2.9 2.4-5.3 5.3-5.3s5.3 2.4 5.3 5.3-2.4 5.3-5.3 5.3H40.1V27.6z" fill="#2EB67D"/><path d="M37.4 27.6c0 2.9-2.4 5.3-5.3 5.3s-5.3-2.4-5.3-5.3V14.4c0-2.9 2.4-5.3 5.3-5.3s5.3 2.4 5.3 5.3V27.6z" fill="#2EB67D"/><path d="M32.1 40.1c2.9 0 5.3 2.4 5.3 5.3s-2.4 5.3-5.3 5.3-5.3-2.4-5.3-5.3V40.1h5.3z" fill="#ECB22E"/><path d="M32.1 37.4c-2.9 0-5.3-2.4-5.3-5.3s2.4-5.3 5.3-5.3h13.3c2.9 0 5.3 2.4 5.3 5.3s-2.4 5.3-5.3 5.3H32.1z" fill="#ECB22E"/></svg></span> Slack notification</span>
-            <label class="toggle"><input type="checkbox" id="slack-enabled-enrichment" onchange="toggleSlackSection('enrichment',this.checked)"><span class="toggle-slider"></span></label>
-          </div>
-          <div id="slack-body-enrichment" class="slack-body" style="display:none;">
-            <div><label>Channel</label><div class="search-select"><input type="text" id="slack-ch-search-enrichment" placeholder="Search channels…" autocomplete="off"><div class="search-dropdown" id="slack-ch-dropdown-enrichment"></div></div></div>
-            <div><label>Message template</label><textarea id="slack-msg-enrichment" rows="3" placeholder="e.g. ✅ Enrichment sync done for {{automation_name}}"></textarea></div>
-          </div>
-
-          <div class="form-footer">
-            <button class="btn btn-cream" onclick="cancelEdit()">Cancel</button>
-            <button class="btn btn-primary" onclick="createAutomation('enrichment')" id="create-btn-enrichment">Create automation</button>
-          </div>
-          <div class="error-msg" id="form-error-enrichment"></div>
         </div>
       </div>
 
@@ -1032,9 +965,8 @@ function toggleAlertConfig(enabled) {
 }
 function updateAlertPanelVisibility() {
   // Hide alert panel for gsheet_sync (it doesn't apply)
-  const isGsheet   = document.getElementById('tab-gsheet_sync').classList.contains('active');
-  const isEnrich   = document.getElementById('tab-enrichment')?.classList.contains('active');
-  document.getElementById('alert-panel').style.display = (isGsheet || isEnrich) ? 'none' : '';
+  const isGsheet = document.getElementById('tab-gsheet_sync').classList.contains('active');
+  document.getElementById('alert-panel').style.display = isGsheet ? 'none' : '';
 }
 function toggleSlackSection(deliveryType, enabled) {
   document.getElementById(`slack-body-${deliveryType}`).style.display = enabled ? 'flex' : 'none';
@@ -1112,6 +1044,7 @@ function resetGsForm() {
   const ta = document.getElementById('slack-msg-gsheet_sync');
   if (ta) ta.value = '';
   document.getElementById('form-error-gsheet_sync').style.display = 'none';
+  resetClayFields();
 }
 
 // ── New / Cancel ─────────────────────────────────────────────
@@ -1154,14 +1087,13 @@ function newAutomation() {
   document.getElementById('alert-time').value = '08:00';
   document.getElementById('alert-day').value = '0';
   resetGsForm();
-  resetEnrichForm();
   switchTab('instantly');
   showPage('add');
 }
 
 function cancelEdit() {
   editingId = null;
-  ['instantly','hubspot_form','gsheet_sync','enrichment'].forEach(dt => {
+  ['instantly','hubspot_form','gsheet_sync'].forEach(dt => {
     const btn = document.getElementById(`create-btn-${dt}`);
     if (btn) btn.textContent = 'Create automation';
   });
@@ -1290,7 +1222,6 @@ function setFilter(filter) {
   if (filter === 'instantly')    document.getElementById('nav-filter-instantly').classList.add('active');
   if (filter === 'hubspot_form') document.getElementById('nav-filter-hubspot_form').classList.add('active');
   if (filter === 'gsheet_sync')  document.getElementById('nav-filter-gsheet_sync').classList.add('active');
-  if (filter === 'enrichment')    document.getElementById('nav-filter-enrichment')?.classList.add('active');
   renderAutomations();
 }
 
@@ -1308,7 +1239,6 @@ function renderAutomations() {
   if (currentFilter === 'instantly')    filtered = filtered.filter(a => a.delivery_type === 'instantly');
   if (currentFilter === 'hubspot_form') filtered = filtered.filter(a => a.delivery_type === 'hubspot_form');
   if (currentFilter === 'gsheet_sync')  filtered = filtered.filter(a => a.delivery_type === 'gsheet_sync');
-  if (currentFilter === 'enrichment')    filtered = filtered.filter(a => a.delivery_type === 'enrichment');
   if (searchQuery) filtered = filtered.filter(a =>
     (a.name||'').toLowerCase().includes(searchQuery) ||
     (a.hubspot_list_name||'').toLowerCase().includes(searchQuery) ||
@@ -1329,9 +1259,8 @@ function renderAutomations() {
   const trashSvg = `<svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M1.5 3h10M4.5 3V2a.5.5 0 01.5-.5h2.5a.5.5 0 01.5.5v1M5.5 5.5v4M7.5 5.5v4M2.5 3l.5 7.5a.5.5 0 00.5.5h6a.5.5 0 00.5-.5L10.5 3" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
 
   list.innerHTML = filtered.map(a => {
-    const isGsheet  = a.delivery_type === 'gsheet_sync';
-    const isForm    = a.delivery_type === 'hubspot_form';
-    const isEnrich  = a.delivery_type === 'enrichment';
+    const isGsheet = a.delivery_type === 'gsheet_sync';
+    const isForm   = a.delivery_type === 'hubspot_form';
     const active   = a.active !== false;
 
     let sourceChip, deliveryChip;
@@ -1342,10 +1271,6 @@ function renderAutomations() {
         : a.gsheet_schedule_type === 'daily' ? 'Daily' : 'Weekly';
       sourceChip   = `<span class="chip chip-gs">▦ GSheet</span>`;
       deliveryChip = `<span class="chip chip-gs">HubSpot ${objLabel} · ${schedLabel}</span>`;
-    } else if (isEnrich) {
-      const steps = []; if(a.clay_enabled)steps.push('Clay'); if(a.enrichment_gsheet_enabled)steps.push('GSheet');
-      sourceChip   = `<span class="chip chip-hs">HubSpot · ${esc(a.hubspot_list_name||a.hubspot_list_id)}</span>`;
-      deliveryChip = `<span class="chip" style="color:#a78bfa;border-color:rgba(167,139,250,.3);background:rgba(167,139,250,.08);">⬡ ${steps.join(' + ')||'Enrichment'}</span>`;
     } else {
       sourceChip = `<span class="chip chip-hs">HubSpot · ${esc(a.hubspot_list_name || a.hubspot_list_id)}</span>`;
       deliveryChip = isForm
@@ -1353,12 +1278,12 @@ function renderAutomations() {
         : `<span class="chip chip-in">Instantly · ${esc(a.instantly_campaign_name || a.instantly_campaign_id)}</span>`;
     }
 
-    const actionChip = (!isForm && !isGsheet && !isEnrich)
+    const actionChip = (!isForm && !isGsheet)
       ? (a.action === 'unenroll'
           ? `<span class="chip chip-unenroll">⊖ Unenroll</span>`
           : `<span class="chip chip-in" style="color:#86efac;border-color:rgba(134,239,172,0.3);background:rgba(134,239,172,0.08);">⊕ Enroll</span>`)
       : '';
-    const delayLabel = (!isForm && !isGsheet && !isEnrich && a.delay_hours > 0)
+    const delayLabel = (!isForm && !isGsheet && a.delay_hours > 0)
       ? `<span class="chip chip-hs">⏱ ${a.delay_hours>=24?(a.delay_hours/24)+'d':a.delay_hours+'h'} delay</span>` : '';
     const alertChip = a.alert_enabled ? `<span class="chip chip-alert">🔔 Alert</span>` : '';
     const slackChip = a.slack_enabled
@@ -1460,7 +1385,6 @@ async function loadDropdowns() {
       hsList = l.data;
       initSearchSelect('hs-search-instantly',   'hs-dropdown-instantly',   hsList,hsSelectedInstantly,'Search HubSpot lists…');
       initSearchSelect('hs-search-hubspot_form','hs-dropdown-hubspot_form',hsList,hsSelectedForm,     'Search HubSpot lists…');
-      initSearchSelect('hs-search-enrichment',   'hs-dropdown-enrichment',   hsList,hsSelectedEnrichment,'Search HubSpot lists…');
     } else { ['hs-search-instantly','hs-search-hubspot_form'].forEach(id=>{const el=document.getElementById(id);if(el)el.placeholder=`Error: ${(l.data&&l.data.error)||'failed'}`;}); }
     if (c.ok && Array.isArray(c.data)) {
       campList = c.data;
@@ -1476,7 +1400,6 @@ async function loadDropdowns() {
       initSearchSelect('slack-ch-search-hubspot_form','slack-ch-dropdown-hubspot_form',slackChannels,slackChSelectedForm,     'Search channels…');
       initSearchSelect('slack-ch-search-gsheet_sync', 'slack-ch-dropdown-gsheet_sync', slackChannels,slackChSelectedGsheet,  'Search channels…');
       initSearchSelect('alert-slack-ch-search',       'alert-slack-ch-dropdown',       slackChannels,alertSlackChSelected,   'Search channels…');
-      initSearchSelect('slack-ch-search-enrichment',  'slack-ch-dropdown-enrichment',  slackChannels,slackChSelectedEnrichment,'Search channels…');
     }
     if (pr.ok && Array.isArray(pr.data)) hsPropList = pr.data;
   } catch(e) { ids.forEach(id=>{const el=document.getElementById(id);if(el)el.placeholder='Network error';}); }
@@ -1490,8 +1413,6 @@ async function createAutomation(deliveryType) {
   const btn    = document.getElementById(`create-btn-${deliveryType}`);
   const name   = nameEl.value.trim();
   errEl.style.display = 'none';
-
-  if (deliveryType === 'enrichment') { await createEnrichmentAutomation(); return; }
 
   if (!name) { errEl.textContent='Please enter an automation name.'; errEl.style.display='block'; return; }
 
@@ -1523,6 +1444,9 @@ async function createAutomation(deliveryType) {
       gsheet_run_day:       parseInt(document.getElementById('gs-weekly-day').value) || 0,
       default_pipeline:     document.getElementById('gs-default-pipeline').value.trim(),
       default_stage:        document.getElementById('gs-default-stage').value.trim(),
+      clay_enabled:         document.getElementById('clay-enabled')?.checked || false,
+      clay_table_id:        document.getElementById('clay-table-id')?.value.trim() || '',
+      clay_column_mappings: clayMappings.filter(m => m.hs_property && m.clay_column),
     };
 
     const slackEnabled = document.getElementById('slack-enabled-gsheet_sync')?.checked;
@@ -1624,27 +1548,13 @@ async function editAutomation(id) {
   if (!a) return;
   editingId = id;
   if (!dropdownsLoaded) await loadDropdowns();
-  const isForm    = a.delivery_type==='hubspot_form';
-  const isGsheet  = a.delivery_type==='gsheet_sync';
-  const isEnrich  = a.delivery_type==='enrichment';
+  const isForm   = a.delivery_type==='hubspot_form';
+  const isGsheet = a.delivery_type==='gsheet_sync';
   document.getElementById('add-page-title').textContent='Edit automation';
   document.querySelector('.tab-bar').style.display='none';
-  document.getElementById('view-logs-btn').style.display = (isGsheet||isEnrich) ? 'none' : 'flex';
+  document.getElementById('view-logs-btn').style.display = isGsheet ? 'none' : 'flex';
   showPage('add');
-  switchTab(isEnrich?'enrichment':isGsheet?'gsheet_sync':isForm?'hubspot_form':'instantly');
-
-  if (isEnrich) {
-    document.getElementById('auto-name-enrichment').value = a.name||'';
-    hsSelectedEnrichment={id:a.hubspot_list_id||'',name:a.hubspot_list_name||''};
-    const ehi=document.getElementById('hs-search-enrichment'); if(ehi){ehi.value=a.hubspot_list_name||'';ehi.classList.toggle('has-value',!!a.hubspot_list_id);}
-    const clayEnabled=!!a.clay_enabled; document.getElementById('clay-enabled').checked=clayEnabled; toggleClaySection(clayEnabled);
-    if(clayEnabled){document.getElementById('clay-table-id').value=a.clay_table_id||'';clayMappings=JSON.parse(JSON.stringify(a.clay_column_mappings||[]));if(a.clay_table_id){loadClayColumns().then(()=>renderClayMappings());}else renderClayMappings();}
-    const gsheetEnabled=!!a.enrichment_gsheet_enabled; document.getElementById('enrichment-gsheet-enabled').checked=gsheetEnabled; toggleEnrichmentGsheetSection(gsheetEnabled);
-    if(gsheetEnabled){document.getElementById('enrich-sheet-url').value=a.sheet_url||'';document.getElementById('enrich-sheet-tab').value=a.sheet_tab||'';document.getElementById('enrich-object-type').value=a.object_type||'contact';onEnrichObjectTypeChange(a.object_type||'contact');document.getElementById('enrich-pk-column').value=a.primary_key_column||'';document.getElementById('enrich-pk-type').value=a.primary_key_type||'email';enrichMappings=JSON.parse(JSON.stringify(a.column_mappings||[]));renderEnrichMappings();selectEnrichSchedule(a.gsheet_schedule_type||'interval');document.getElementById('enrich-interval-minutes').value=String(a.gsheet_interval_minutes||60);document.getElementById('enrich-daily-time').value=a.gsheet_run_time||'08:00';document.getElementById('enrich-weekly-time').value=a.gsheet_run_time||'08:00';document.getElementById('enrich-weekly-day').value=String(a.gsheet_run_day||0);}
-    const slackCbE=document.getElementById('slack-enabled-enrichment'); if(slackCbE){slackCbE.checked=!!a.slack_enabled;toggleSlackSection('enrichment',!!a.slack_enabled);if(a.slack_enabled){slackChSelectedEnrichment.id=a.slack_channel||'';slackChSelectedEnrichment.name=a.slack_channel_name||'';const sci=document.getElementById('slack-ch-search-enrichment');if(sci){sci.value=a.slack_channel_name||'';sci.classList.toggle('has-value',!!a.slack_channel);}const ta=document.getElementById('slack-msg-enrichment');if(ta)ta.value=a.slack_message||'';}}
-    document.getElementById('create-btn-enrichment').textContent='Save changes';
-    return;
-  }
+  switchTab(isGsheet?'gsheet_sync':isForm?'hubspot_form':'instantly');
 
   if (isGsheet) {
     document.getElementById('auto-name-gsheet_sync').value = a.name||'';
@@ -1656,6 +1566,11 @@ async function editAutomation(id) {
     document.getElementById('gs-default-pipeline').value   = a.default_pipeline||'';
     document.getElementById('gs-default-stage').value      = a.default_stage||'';
     onObjectTypeChange();
+    // Restore clay fields
+    const clayCb = document.getElementById('clay-enabled');
+    if (clayCb) { clayCb.checked=!!a.clay_enabled; toggleClaySection(!!a.clay_enabled); }
+    if (a.clay_table_id) { const ctid=document.getElementById('clay-table-id'); if(ctid) ctid.value=a.clay_table_id; }
+    if (a.clay_column_mappings && a.clay_column_mappings.length) { clayMappings=JSON.parse(JSON.stringify(a.clay_column_mappings)); if(a.clay_table_id) loadClayColumns().then(()=>renderClayMappings()); else renderClayMappings(); } else { clayMappings=[]; renderClayMappings(); }
     gsMappings = JSON.parse(JSON.stringify(a.column_mappings||[]));
     renderGsMappings();
     selectGsSchedule(a.gsheet_schedule_type||'interval');
@@ -1775,24 +1690,14 @@ function esc(str) {
   return String(str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
-// ── Enrichment state ──────────────────────────────────────────
-let enrichMappings = [];
+// ── Clay state ────────────────────────────────────────────────
 let clayMappings = [];
 let clayColumnsCache = [];
-let enrichPropCache = {};
-let enrichScheduleType = 'interval';
-let hsSelectedEnrichment = { id:'', name:'' };
-let slackChSelectedEnrichment = { id:'', name:'' };
 
-// ── Enrichment: Clay section ──────────────────────────────────
 function toggleClaySection(enabled) {
   document.getElementById('clay-body').style.display = enabled ? 'block' : 'none';
 }
-function onClayTableIdChange() {
-  clayColumnsCache = [];
-  clayMappings = [];
-  document.getElementById('clay-mappings-container').innerHTML = '<div style="font-size:13px;color:var(--muted);padding:6px 0;">Load columns first, then add mappings.</div>';
-}
+
 async function loadClayColumns() {
   const tableId = document.getElementById('clay-table-id').value.trim();
   if (!tableId) { showToast('Enter a Clay table ID first', 'error'); return; }
@@ -1810,11 +1715,21 @@ async function loadClayColumns() {
   } catch(e) { showToast('Network error', 'error'); }
   btn.disabled = false; btn.textContent = 'Load columns';
 }
-function addClayMapping() { clayMappings.push({ hs_property:'', hs_label:'', clay_column:'' }); renderClayMappings(); }
-function removeClayMapping(i) { clayMappings.splice(i, 1); renderClayMappings(); }
+
+function addClayMapping() {
+  clayMappings.push({ hs_property:'', hs_label:'', clay_column:'' });
+  renderClayMappings();
+}
+function removeClayMapping(i) {
+  clayMappings.splice(i, 1);
+  renderClayMappings();
+}
 function renderClayMappings() {
   const container = document.getElementById('clay-mappings-container');
-  if (!clayMappings.length) { container.innerHTML = '<div style="font-size:13px;color:var(--muted);padding:6px 0;">No mappings yet — add at least one.</div>'; return; }
+  if (!clayMappings.length) {
+    container.innerHTML = '<div style="font-size:13px;color:var(--muted);padding:6px 0;">No mappings yet — add at least one.</div>';
+    return;
+  }
   const colOpts = clayColumnsCache.map(c => `<option value="${esc(c.id)}">${esc(c.name)}</option>`).join('');
   container.innerHTML = clayMappings.map((m, i) => `
     <div class="gs-mapping-row">
@@ -1825,7 +1740,9 @@ function renderClayMappings() {
       <select id="clay-col-sel-${i}" onchange="clayMappings[${i}].clay_column=this.value" style="font-size:13px;padding:8px 10px;">
         <option value="">— select Clay column —</option>${colOpts}
       </select>
-      <button type="button" class="btn-trash" onclick="removeClayMapping(${i})" title="Remove"><svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M1.5 3h10M4.5 3V2a.5.5 0 01.5-.5h2.5a.5.5 0 01.5.5v1M5.5 5.5v4M7.5 5.5v4M2.5 3l.5 7.5a.5.5 0 00.5.5h6a.5.5 0 00.5-.5L10.5 3" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+      <button type="button" class="btn-trash" onclick="removeClayMapping(${i})" title="Remove">
+        <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M1.5 3h10M4.5 3V2a.5.5 0 01.5-.5h2.5a.5.5 0 01.5.5v1M5.5 5.5v4M7.5 5.5v4M2.5 3l.5 7.5a.5.5 0 00.5.5h6a.5.5 0 00.5-.5L10.5 3" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
     </div>`).join('');
   clayMappings.forEach((m, i) => {
     const sel = document.getElementById('clay-col-sel-' + i);
@@ -1833,6 +1750,7 @@ function renderClayMappings() {
     initClayHsPropSearch(i, m.hs_property, m.hs_label);
   });
 }
+
 function initClayHsPropSearch(index, currentProp, currentLabel) {
   const input = document.getElementById('clay-hs-prop-' + index);
   const dropdown = document.getElementById('clay-hs-dd-' + index);
@@ -1845,141 +1763,34 @@ function initClayHsPropSearch(index, currentProp, currentLabel) {
       ? matches.map(p => `<div class="search-option${currentProp===p.name?' selected':''}" data-name="${esc(p.name)}" data-label="${esc(p.label)}">${esc(p.label)}<span style="font-size:10px;opacity:.4;margin-left:6px;">${esc(p.name)}</span></div>`).join('')
       : '<div class="search-option-empty">No properties found</div>';
     dropdown.querySelectorAll('.search-option').forEach(el => {
-      el.addEventListener('mousedown', e => { e.preventDefault(); clayMappings[index].hs_property=el.dataset.name; clayMappings[index].hs_label=el.dataset.label; input.value=el.dataset.label; input.classList.add('has-value'); dropdown.classList.remove('open'); currentProp=el.dataset.name; });
+      el.addEventListener('mousedown', e => {
+        e.preventDefault();
+        clayMappings[index].hs_property = el.dataset.name;
+        clayMappings[index].hs_label = el.dataset.label;
+        input.value = el.dataset.label;
+        input.classList.add('has-value');
+        dropdown.classList.remove('open');
+        currentProp = el.dataset.name;
+      });
     });
     dropdown.classList.add('open');
   }
   input.addEventListener('focus', () => renderOptions(''));
   input.addEventListener('input', () => { input.classList.remove('has-value'); clayMappings[index].hs_property=''; renderOptions(input.value.toLowerCase()); });
-  input.addEventListener('blur', () => { setTimeout(() => dropdown.classList.remove('open'), 150); if (!clayMappings[index].hs_property) { input.value=''; input.classList.remove('has-value'); } else { input.value=clayMappings[index].hs_label||clayMappings[index].hs_property; input.classList.add('has-value'); } });
-}
-
-// ── Enrichment: GSheet section ────────────────────────────────
-function toggleEnrichmentGsheetSection(enabled) {
-  document.getElementById('enrichment-gsheet-body').style.display = enabled ? 'block' : 'none';
-}
-function copyEnrichServiceEmail() {
-  const email = document.getElementById('enrich-service-email').textContent;
-  navigator.clipboard.writeText(email).then(() => showToast('Email copied')).catch(() => showToast('Email copied'));
-}
-function onEnrichObjectTypeChange(objType) {
-  const pkSel = document.getElementById('enrich-pk-type');
-  pkSel.innerHTML = objType === 'contact'
-    ? '<option value="email">Email (contact)</option><option value="id">HubSpot object ID</option>'
-    : objType === 'company'
-    ? '<option value="domain">Domain (company)</option><option value="id">HubSpot object ID</option>'
-    : '<option value="id">HubSpot object ID</option>';
-  renderEnrichMappings();
-}
-function addEnrichMapping() { enrichMappings.push({ column:'', property:'', propertyLabel:'' }); renderEnrichMappings(); }
-function removeEnrichMapping(i) { enrichMappings.splice(i, 1); renderEnrichMappings(); }
-function renderEnrichMappings() {
-  const container = document.getElementById('enrich-mappings-container');
-  if (!enrichMappings.length) { container.innerHTML = '<div style="font-size:13px;color:var(--muted);padding:6px 0;">No mappings yet.</div>'; return; }
-  container.innerHTML = enrichMappings.map((m, i) => `
-    <div class="gs-mapping-row">
-      <input type="text" value="${esc(m.column)}" placeholder="Sheet column header" oninput="enrichMappings[${i}].column=this.value" style="font-size:13px;padding:8px 10px;">
-      <input type="text" id="enrich-prop-${i}" placeholder="HubSpot property name" value="${esc(m.property)}" oninput="enrichMappings[${i}].property=this.value" style="font-size:13px;padding:8px 10px;">
-      <button type="button" class="btn-trash" onclick="removeEnrichMapping(${i})" title="Remove"><svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M1.5 3h10M4.5 3V2a.5.5 0 01.5-.5h2.5a.5.5 0 01.5.5v1M5.5 5.5v4M7.5 5.5v4M2.5 3l.5 7.5a.5.5 0 00.5.5h6a.5.5 0 00.5-.5L10.5 3" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
-    </div>`).join('');
-}
-function selectEnrichSchedule(type) {
-  enrichScheduleType = type;
-  ['interval','daily','weekly'].forEach(t => {
-    document.getElementById('enrich-sched-btn-' + t).classList.toggle('active', t === type);
-    document.getElementById('enrich-sched-' + t + '-details').style.display = t === type ? 'flex' : 'none';
+  input.addEventListener('blur', () => {
+    setTimeout(() => dropdown.classList.remove('open'), 150);
+    if (!clayMappings[index].hs_property) { input.value=''; input.classList.remove('has-value'); }
+    else { input.value = clayMappings[index].hs_label || clayMappings[index].hs_property; input.classList.add('has-value'); }
   });
 }
-function resetEnrichForm() {
-  document.getElementById('auto-name-enrichment').value = '';
-  resetSearchSelect('hs-search-enrichment','hs-dropdown-enrichment', hsSelectedEnrichment);
-  document.getElementById('clay-enabled').checked = false; toggleClaySection(false);
-  document.getElementById('clay-table-id').value = '';
-  clayMappings = []; clayColumnsCache = []; renderClayMappings();
-  document.getElementById('enrichment-gsheet-enabled').checked = false; toggleEnrichmentGsheetSection(false);
-  document.getElementById('enrich-sheet-url').value = '';
-  document.getElementById('enrich-sheet-tab').value = '';
-  document.getElementById('enrich-object-type').value = 'contact';
-  document.getElementById('enrich-pk-column').value = '';
-  document.getElementById('enrich-pk-type').innerHTML = '<option value="email">Email (contact)</option><option value="domain">Domain (company)</option><option value="id">HubSpot object ID</option>';
-  enrichMappings = []; renderEnrichMappings();
-  selectEnrichSchedule('interval');
-  document.getElementById('enrich-interval-minutes').value = '60';
-  document.getElementById('enrich-daily-time').value = '08:00';
-  document.getElementById('enrich-weekly-time').value = '08:00';
-  document.getElementById('enrich-weekly-day').value = '0';
-  const cb = document.getElementById('slack-enabled-enrichment'); if (cb) { cb.checked=false; toggleSlackSection('enrichment',false); }
-  resetSearchSelect('slack-ch-search-enrichment','slack-ch-dropdown-enrichment', slackChSelectedEnrichment);
-  const ta = document.getElementById('slack-msg-enrichment'); if (ta) ta.value = '';
-  document.getElementById('form-error-enrichment').style.display = 'none';
-}
 
-// ── Enrichment: createAutomation branch ──────────────────────
-// (called from createAutomation dispatcher below)
-async function createEnrichmentAutomation() {
-  const errEl = document.getElementById('form-error-enrichment');
-  const btn   = document.getElementById('create-btn-enrichment');
-  errEl.style.display = 'none';
-  const name = document.getElementById('auto-name-enrichment').value.trim();
-  if (!name) { errEl.textContent='Please enter an automation name.'; errEl.style.display='block'; return; }
-  if (!hsSelectedEnrichment.id) { errEl.textContent='Please select a HubSpot list.'; errEl.style.display='block'; return; }
-  const clayEnabled   = document.getElementById('clay-enabled').checked;
-  const gsheetEnabled = document.getElementById('enrichment-gsheet-enabled').checked;
-  if (!clayEnabled && !gsheetEnabled) { errEl.textContent='Enable at least one step (Clay push or GSheet pull).'; errEl.style.display='block'; return; }
-  if (clayEnabled) {
-    const tid = document.getElementById('clay-table-id').value.trim();
-    const validClay = clayMappings.filter(m => m.hs_property && m.clay_column);
-    if (!tid) { errEl.textContent='Please enter the Clay table ID.'; errEl.style.display='block'; return; }
-    if (!validClay.length) { errEl.textContent='Please add at least one Clay column mapping.'; errEl.style.display='block'; return; }
-  }
-  if (gsheetEnabled) {
-    const surl = document.getElementById('enrich-sheet-url').value.trim();
-    const spk  = document.getElementById('enrich-pk-column').value.trim();
-    const validEM = enrichMappings.filter(m => m.column && m.property);
-    if (!surl) { errEl.textContent='Please enter the Google Sheet URL.'; errEl.style.display='block'; return; }
-    if (!spk)  { errEl.textContent='Please enter the primary key column.'; errEl.style.display='block'; return; }
-    if (!validEM.length) { errEl.textContent='Please add at least one GSheet column mapping.'; errEl.style.display='block'; return; }
-  }
-  let payload = {
-    name, delivery_type:'enrichment',
-    hubspot_list_id: hsSelectedEnrichment.id, hubspot_list_name: hsSelectedEnrichment.name,
-    clay_enabled: clayEnabled,
-    clay_table_id: document.getElementById('clay-table-id').value.trim(),
-    clay_column_mappings: clayMappings.filter(m => m.hs_property && m.clay_column),
-    enrichment_gsheet_enabled: gsheetEnabled,
-    sheet_url:          document.getElementById('enrich-sheet-url').value.trim(),
-    sheet_tab:          document.getElementById('enrich-sheet-tab').value.trim(),
-    object_type:        document.getElementById('enrich-object-type').value,
-    primary_key_column: document.getElementById('enrich-pk-column').value.trim(),
-    primary_key_type:   document.getElementById('enrich-pk-type').value,
-    column_mappings:    enrichMappings.filter(m => m.column && m.property),
-    gsheet_schedule_type: enrichScheduleType,
-    gsheet_interval_minutes: parseInt(document.getElementById('enrich-interval-minutes').value) || 60,
-    gsheet_run_time: enrichScheduleType==='daily' ? document.getElementById('enrich-daily-time').value : document.getElementById('enrich-weekly-time').value,
-    gsheet_run_day:  parseInt(document.getElementById('enrich-weekly-day').value) || 0,
-  };
-  const slackEnabled = document.getElementById('slack-enabled-enrichment')?.checked;
-  if (slackEnabled) {
-    const sm = (document.getElementById('slack-msg-enrichment')?.value||'').trim();
-    if (!slackChSelectedEnrichment.id) { errEl.textContent='Please select a Slack channel.'; errEl.style.display='block'; return; }
-    payload.slack_enabled=true; payload.slack_channel=slackChSelectedEnrichment.id; payload.slack_channel_name=slackChSelectedEnrichment.name; payload.slack_message=sm;
-  } else { payload.slack_enabled=false; }
-  btn.disabled=true; btn.textContent=editingId?'Saving…':'Creating…';
-  try {
-    const { ok, data } = editingId
-      ? await api('PATCH', '/automations/' + editingId, payload)
-      : await api('POST', '/automations', payload);
-    if (ok) {
-      const wasEditing = !!editingId; editingId=null;
-      btn.textContent='Create automation';
-      document.getElementById('add-page-title').textContent='New automation';
-      document.querySelector('.tab-bar').style.display='';
-      document.getElementById('view-logs-btn').style.display='none';
-      showToast(wasEditing?'Automation updated':'Automation created');
-      showPage('dashboard'); loadAutomations();
-    } else { errEl.textContent=data.error||'Something went wrong.'; errEl.style.display='block'; }
-  } catch(e) { errEl.textContent='Network error.'; errEl.style.display='block'; }
-  btn.disabled=false; btn.textContent=editingId?'Save changes':'Create automation';
+function resetClayFields() {
+  const cb = document.getElementById('clay-enabled');
+  if (cb) { cb.checked = false; toggleClaySection(false); }
+  const tid = document.getElementById('clay-table-id');
+  if (tid) tid.value = '';
+  clayMappings = []; clayColumnsCache = [];
+  renderClayMappings();
 }
 
 </script>
