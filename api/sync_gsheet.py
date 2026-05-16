@@ -11,6 +11,7 @@ UPSTASH_TOKEN   = os.environ.get("UPSTASH_REDIS_REST_TOKEN", "")
 HUBSPOT_API_KEY = os.environ.get("HUBSPOT_API_KEY", "")
 SYNC_SECRET     = os.environ.get("SYNC_SECRET", "")
 SLACK_BOT_TOKEN = os.environ.get("SLACK_BOT_TOKEN", "")
+CLAY_API_KEY    = os.environ.get("CLAY_API_KEY", "")
 
 EST = datetime.timezone(datetime.timedelta(hours=-5))
 
@@ -28,11 +29,11 @@ def _redis_get(key):
     return json.loads(val) if val else None
 
 def _redis_set_json(key, value):
-    url = f"{UPSTASH_URL}/set/{key}"
+    url  = f"{UPSTASH_URL}/set/{key}"
     body = json.dumps(value).encode()
-    req = Request(url, data=body, headers={
+    req  = Request(url, data=body, headers={
         "Authorization": f"Bearer {UPSTASH_TOKEN}",
-        "Content-Type": "application/json"
+        "Content-Type":  "application/json"
     }, method="POST")
     with urlopen(req, timeout=5) as r:
         r.read()
@@ -50,24 +51,61 @@ def get_automations():
 def save_automations(automations):
     _redis_set_json("automations_config", automations)
 
+# ── Sent cache (for Clay deduplication) ──────────────────────
+
+def load_sent_cache():
+    """Scan all sent: keys into memory to avoid per-contact Redis reads."""
+    sent   = set()
+    cursor = 0
+    try:
+        while True:
+            url = f"{UPSTASH_URL}/scan/{cursor}?match=sent:*&count=500"
+            req = Request(url, headers={"Authorization": f"Bearer {UPSTASH_TOKEN}"})
+            with urlopen(req, timeout=10) as r:
+                data = json.loads(r.read())
+            result = data.get("result", [0, []])
+            cursor = int(result[0])
+            keys   = result[1] if len(result) > 1 else []
+            for k in keys:
+                sent.add(k)
+            if cursor == 0:
+                break
+    except Exception as e:
+        _log(f"[sync_gsheet] sent cache load error: {e}")
+        return None
+    _log(f"[sync_gsheet] sent cache loaded: {len(sent)} keys")
+    return sent
+
+def already_sent_cached(email, target_key, sent_cache):
+    key = f"sent:{email.lower()}:{target_key}"
+    if sent_cache is None:
+        url = f"{UPSTASH_URL}/get/{key}"
+        req = Request(url, headers={"Authorization": f"Bearer {UPSTASH_TOKEN}"})
+        with urlopen(req, timeout=5) as r:
+            result = json.loads(r.read())
+        return result.get("result") is not None
+    return key in sent_cache
+
+def mark_as_sent(email, target_key, sent_cache=None):
+    key = f"sent:{email.lower()}:{target_key}"
+    _redis_set_raw(key, 1)
+    if sent_cache is not None:
+        sent_cache.add(key)
+
 # ── Google auth token cache ───────────────────────────────────
 
 def get_google_token():
-    """Get Google auth token, using Redis cache to avoid refreshing every run."""
-    # Check cache first
     cached = _redis_get("gsheet_token_cache")
     if cached and cached.get("token") and cached.get("expires_at"):
         try:
             expires_at = datetime.datetime.fromisoformat(cached["expires_at"])
-            now = datetime.datetime.now(datetime.timezone.utc)
-            # Use cached token if it has more than 5 minutes left
+            now        = datetime.datetime.now(datetime.timezone.utc)
             if (expires_at - now).total_seconds() > 300:
                 _log("[gsheet] using cached Google token")
                 return cached["token"]
         except Exception:
             pass
 
-    # Refresh token
     _log("[gsheet] refreshing Google token")
     import google.oauth2.service_account
     import google.auth.transport.requests as google_requests
@@ -77,17 +115,16 @@ def get_google_token():
         raise ValueError("GOOGLE_SERVICE_ACCOUNT_JSON not configured")
 
     creds_data = json.loads(sa_json)
-    creds = google.oauth2.service_account.Credentials.from_service_account_info(
+    creds      = google.oauth2.service_account.Credentials.from_service_account_info(
         creds_data, scopes=["https://www.googleapis.com/auth/spreadsheets.readonly"]
     )
     creds.refresh(google_requests.Request())
 
-    # Cache token in Redis with expiry info (Google tokens last 60 minutes)
     expires_at = (datetime.datetime.now(datetime.timezone.utc) +
                   datetime.timedelta(minutes=55)).isoformat()
     try:
         _redis_set_json("gsheet_token_cache", {
-            "token": creds.token,
+            "token":      creds.token,
             "expires_at": expires_at
         })
     except Exception as e:
@@ -106,11 +143,8 @@ def extract_sheet_id(url):
 
 def get_sheet_data(sheet_id, tab_name, token):
     from urllib.parse import quote
-    if tab_name:
-        range_name = quote(f"'{tab_name}'", safe='')
-    else:
-        range_name = "A1:ZZ"
-    url = f"https://sheets.googleapis.com/v4/spreadsheets/{sheet_id}/values/{range_name}"
+    range_name = quote(f"'{tab_name}'", safe='') if tab_name else "A1:ZZ"
+    url  = f"https://sheets.googleapis.com/v4/spreadsheets/{sheet_id}/values/{range_name}"
     resp = requests.get(url, headers={"Authorization": f"Bearer {token}"}, timeout=20)
     resp.raise_for_status()
     return resp.json().get("values", [])
@@ -118,17 +152,13 @@ def get_sheet_data(sheet_id, tab_name, token):
 # ── HubSpot batch helpers ─────────────────────────────────────
 
 def hs_batch_upsert(hs_object, inputs):
-    hs_headers = {
-        "Authorization": f"Bearer {HUBSPOT_API_KEY}",
-        "Content-Type": "application/json"
-    }
+    hs_headers = {"Authorization": f"Bearer {HUBSPOT_API_KEY}", "Content-Type": "application/json"}
     errors = []
     for i in range(0, len(inputs), 100):
         batch = inputs[i:i + 100]
-        url = f"https://api.hubapi.com/crm/v3/objects/{hs_object}/batch/upsert"
+        url   = f"https://api.hubapi.com/crm/v3/objects/{hs_object}/batch/upsert"
         try:
-            resp = requests.post(url, headers=hs_headers,
-                                 json={"inputs": batch}, timeout=20)
+            resp = requests.post(url, headers=hs_headers, json={"inputs": batch}, timeout=20)
             if resp.status_code not in (200, 201, 207):
                 errors.append(f"HTTP {resp.status_code}: {resp.text[:200]}")
             else:
@@ -139,17 +169,13 @@ def hs_batch_upsert(hs_object, inputs):
     return errors
 
 def hs_batch_update(hs_object, inputs):
-    hs_headers = {
-        "Authorization": f"Bearer {HUBSPOT_API_KEY}",
-        "Content-Type": "application/json"
-    }
+    hs_headers = {"Authorization": f"Bearer {HUBSPOT_API_KEY}", "Content-Type": "application/json"}
     errors = []
     for i in range(0, len(inputs), 100):
         batch = inputs[i:i + 100]
-        url = f"https://api.hubapi.com/crm/v3/objects/{hs_object}/batch/update"
+        url   = f"https://api.hubapi.com/crm/v3/objects/{hs_object}/batch/update"
         try:
-            resp = requests.post(url, headers=hs_headers,
-                                 json={"inputs": batch}, timeout=20)
+            resp = requests.post(url, headers=hs_headers, json={"inputs": batch}, timeout=20)
             if resp.status_code not in (200, 201, 207):
                 errors.append(f"HTTP {resp.status_code}: {resp.text[:200]}")
             else:
@@ -160,22 +186,63 @@ def hs_batch_update(hs_object, inputs):
     return errors
 
 def hs_batch_create(hs_object, inputs):
-    hs_headers = {
-        "Authorization": f"Bearer {HUBSPOT_API_KEY}",
-        "Content-Type": "application/json"
-    }
+    hs_headers = {"Authorization": f"Bearer {HUBSPOT_API_KEY}", "Content-Type": "application/json"}
     errors = []
     for i in range(0, len(inputs), 100):
         batch = inputs[i:i + 100]
-        url = f"https://api.hubapi.com/crm/v3/objects/{hs_object}/batch/create"
+        url   = f"https://api.hubapi.com/crm/v3/objects/{hs_object}/batch/create"
         try:
-            resp = requests.post(url, headers=hs_headers,
-                                 json={"inputs": batch}, timeout=20)
+            resp = requests.post(url, headers=hs_headers, json={"inputs": batch}, timeout=20)
             if resp.status_code not in (200, 201, 207):
                 errors.append(f"HTTP {resp.status_code}: {resp.text[:200]}")
         except Exception as e:
             errors.append(str(e))
     return errors
+
+# ── HubSpot list contacts ─────────────────────────────────────
+
+def get_list_contacts(list_id, extra_properties=None):
+    headers    = {"Authorization": f"Bearer {HUBSPOT_API_KEY}"}
+    contacts   = []
+    vid_offset = None
+
+    base_props = ["email", "firstname", "lastname", "company", "company_domain"]
+    all_props  = base_props + [p for p in (extra_properties or []) if p not in base_props]
+    prop_str   = "&".join(f"property={p}" for p in all_props)
+
+    while True:
+        url = f"https://api.hubapi.com/contacts/v1/lists/{list_id}/contacts/all?count=100&{prop_str}"
+        if vid_offset:
+            url += f"&vidOffset={vid_offset}"
+        try:
+            resp = requests.get(url, headers=headers, timeout=15)
+            resp.raise_for_status()
+            body = resp.json()
+        except Exception as e:
+            _log(f"[sync_gsheet] HubSpot list {list_id} fetch error: {e}")
+            break
+
+        for c in body.get("contacts", []):
+            props = c.get("properties", {})
+            email = props.get("email", {}).get("value", "").strip().lower()
+            if email:
+                contact = {
+                    "email":          email,
+                    "firstname":      props.get("firstname",      {}).get("value", ""),
+                    "lastname":       props.get("lastname",       {}).get("value", ""),
+                    "company":        props.get("company",        {}).get("value", ""),
+                    "company_domain": props.get("company_domain", {}).get("value", ""),
+                }
+                for p in (extra_properties or []):
+                    contact[p] = props.get(p, {}).get("value", "")
+                contacts.append(contact)
+
+        if not body.get("has-more", False):
+            break
+        vid_offset = body.get("vid-offset")
+
+    _log(f"[sync_gsheet] list {list_id} has {len(contacts)} contacts")
+    return contacts
 
 # ── Slack ─────────────────────────────────────────────────────
 
@@ -188,7 +255,7 @@ def send_slack_message(channel_id, text):
         data=payload,
         headers={
             "Authorization": f"Bearer {SLACK_BOT_TOKEN}",
-            "Content-Type": "application/json"
+            "Content-Type":  "application/json"
         },
         method="POST"
     )
@@ -202,9 +269,9 @@ def send_slack_message(channel_id, text):
 
 # ── Schedule check ────────────────────────────────────────────
 
-def should_run_gsheet(automation):
+def should_run_gsheet(automation, last_run_key="last_run"):
     schedule_type = automation.get("gsheet_schedule_type", "interval")
-    last_run      = automation.get("last_run")
+    last_run      = automation.get(last_run_key)
     now_utc       = datetime.datetime.now(datetime.timezone.utc)
     est_now       = datetime.datetime.now(EST)
 
@@ -249,7 +316,7 @@ def should_run_gsheet(automation):
             return False
         if last_run:
             try:
-                lr = datetime.datetime.fromisoformat(
+                lr      = datetime.datetime.fromisoformat(
                     last_run.replace("Z", "+00:00")).astimezone(EST)
                 cal_lr  = lr.isocalendar()
                 cal_now = est_now.isocalendar()
@@ -261,7 +328,7 @@ def should_run_gsheet(automation):
 
     return True
 
-# ── Main sync logic ───────────────────────────────────────────
+# ── GSheet sync (existing gsheet_sync type) ───────────────────
 
 def run_gsheet_sync(automation):
     auto_name        = automation.get("name", "?")
@@ -281,7 +348,6 @@ def run_gsheet_sync(automation):
         "deal":    "deals"
     }.get(object_type, "contacts")
 
-    # Read Google Sheet
     try:
         gtoken   = get_google_token()
         sheet_id = extract_sheet_id(sheet_url)
@@ -307,8 +373,7 @@ def run_gsheet_sync(automation):
             send_slack_message(slack_channel, msg)
         return
 
-    pk_idx = headers.index(pk_column)
-
+    pk_idx        = headers.index(pk_column)
     upsert_inputs = []
     create_inputs = []
 
@@ -316,7 +381,6 @@ def run_gsheet_sync(automation):
         row_padded = list(row) + [''] * max(0, len(headers) - len(row))
         pk_value   = row_padded[pk_idx].strip() if pk_idx < len(row_padded) else ''
 
-        # Build property dict from column mappings
         properties = {}
         for mapping in column_mappings:
             col  = mapping.get("column", "").strip()
@@ -331,7 +395,6 @@ def run_gsheet_sync(automation):
         if not properties:
             continue
 
-        # Deals with no ID → create
         if object_type == "deal" and not pk_value:
             props = dict(properties)
             if "pipeline" not in props and default_pipeline:
@@ -345,28 +408,18 @@ def run_gsheet_sync(automation):
             continue
 
         if pk_type in ("email", "domain"):
-            upsert_inputs.append({
-                "id":         pk_value,
-                "idProperty": pk_type,
-                "properties": properties
-            })
+            upsert_inputs.append({"id": pk_value, "idProperty": pk_type, "properties": properties})
         else:
-            upsert_inputs.append({
-                "id":         pk_value,
-                "properties": properties
-            })
+            upsert_inputs.append({"id": pk_value, "properties": properties})
 
-    _log(f"[gsheet] {auto_name}: {len(upsert_inputs)} upserts, "
-         f"{len(create_inputs)} creates for {hs_object}")
+    _log(f"[gsheet] {auto_name}: {len(upsert_inputs)} upserts, {len(create_inputs)} creates for {hs_object}")
 
     all_errors = []
-
     if upsert_inputs:
         if pk_type in ("email", "domain"):
             all_errors += hs_batch_upsert(hs_object, upsert_inputs)
         else:
             all_errors += hs_batch_update(hs_object, upsert_inputs)
-
     if create_inputs:
         all_errors += hs_batch_create(hs_object, create_inputs)
 
@@ -384,6 +437,207 @@ def run_gsheet_sync(automation):
 
     _log(f"[gsheet] {auto_name}: done. errors={len(all_errors)}")
 
+# ── Clay helpers (enrichment type) ───────────────────────────
+
+def push_to_clay(table_id, row_data):
+    """Push a single row to a Clay table."""
+    headers = {
+        "Authorization": f"Bearer {CLAY_API_KEY}",
+        "Content-Type":  "application/json"
+    }
+    url  = f"https://api.clay.com/v1/sources/{table_id}/rows"
+    resp = requests.post(url, headers=headers, json={"data": row_data}, timeout=15)
+    if resp.status_code not in (200, 201):
+        raise Exception(f"Clay API error {resp.status_code}: {resp.text[:200]}")
+    return resp.json()
+
+def run_clay_push(automation, sent_cache):
+    """Push unsent HubSpot contacts to Clay table."""
+    auto_name     = automation.get("name", "?")
+    auto_id       = automation.get("id", "")
+    list_id       = automation.get("hubspot_list_id", "")
+    table_id      = automation.get("clay_table_id", "")
+    col_mappings  = automation.get("clay_column_mappings", [])
+    slack_channel = automation.get("slack_channel", "")
+
+    if not table_id:
+        _log(f"[clay] {auto_name}: no table_id configured, skipping")
+        return
+
+    if not CLAY_API_KEY:
+        _log(f"[clay] {auto_name}: CLAY_API_KEY not set, skipping")
+        return
+
+    contacts = get_list_contacts(list_id)
+    clay_key = f"clay:{auto_id}"  # separate namespace so it doesn't conflict with other automations
+
+    pushed  = 0
+    skipped = 0
+    errors  = 0
+
+    for contact in contacts:
+        email = contact["email"]
+
+        if already_sent_cached(email, clay_key, sent_cache):
+            skipped += 1
+            continue
+
+        # Build row from column mappings
+        row_data = {}
+        for mapping in col_mappings:
+            hs_prop  = mapping.get("hs_property", "")
+            clay_col = mapping.get("clay_column", "")
+            if not hs_prop or not clay_col:
+                continue
+            val = contact.get(hs_prop, "")
+            if val:
+                row_data[clay_col] = val
+
+        if not row_data:
+            skipped += 1
+            continue
+
+        try:
+            push_to_clay(table_id, row_data)
+            mark_as_sent(email, clay_key, sent_cache)
+            pushed += 1
+            _log(f"[clay] {auto_name}: pushed {email}")
+        except Exception as e:
+            _log(f"[clay] {auto_name}: error pushing {email}: {e}")
+            errors += 1
+
+    _log(f"[clay] {auto_name}: done. pushed={pushed} skipped={skipped} errors={errors}")
+
+    if errors > 0 and slack_channel and automation.get("slack_enabled"):
+        send_slack_message(slack_channel,
+            f"⚠️ *{auto_name}* — Clay push had {errors} error(s). Check Vercel logs.")
+    elif pushed > 0 and slack_channel and automation.get("slack_enabled"):
+        send_slack_message(slack_channel,
+            f"✅ *{auto_name}* — Clay push complete. {pushed} contacts sent.")
+
+def run_enrichment_gsheet_pull(automation):
+    """Pull enriched data from GSheet and upsert into HubSpot (enrichment type)."""
+    auto_name       = automation.get("name", "?")
+    sheet_url       = automation.get("sheet_url", "")
+    sheet_tab       = automation.get("sheet_tab", "")
+    object_type     = automation.get("object_type", "contact")
+    pk_column       = automation.get("primary_key_column", "")
+    pk_type         = automation.get("primary_key_type", "email")
+    column_mappings = automation.get("column_mappings", [])
+    slack_channel   = automation.get("slack_channel", "")
+
+    hs_object = {
+        "contact": "contacts",
+        "company": "companies",
+        "deal":    "deals"
+    }.get(object_type, "contacts")
+
+    try:
+        gtoken   = get_google_token()
+        sheet_id = extract_sheet_id(sheet_url)
+        rows     = get_sheet_data(sheet_id, sheet_tab, gtoken)
+    except Exception as e:
+        msg = f"⚠️ *{auto_name}* — Could not read Google Sheet: {e}"
+        _log(f"[enrich/gsheet] {msg}")
+        if slack_channel and automation.get("slack_enabled"):
+            send_slack_message(slack_channel, msg)
+        return
+
+    if not rows or len(rows) < 2:
+        _log(f"[enrich/gsheet] {auto_name}: sheet empty or header-only, skipping")
+        return
+
+    headers   = [h.strip() for h in rows[0]]
+    data_rows = rows[1:]
+
+    if pk_column not in headers:
+        msg = f"⚠️ *{auto_name}* — Primary key column '{pk_column}' not found. Headers: {headers}"
+        _log(f"[enrich/gsheet] {msg}")
+        if slack_channel and automation.get("slack_enabled"):
+            send_slack_message(slack_channel, msg)
+        return
+
+    pk_idx        = headers.index(pk_column)
+    upsert_inputs = []
+
+    for row in data_rows:
+        row_padded = list(row) + [''] * max(0, len(headers) - len(row))
+        pk_value   = row_padded[pk_idx].strip() if pk_idx < len(row_padded) else ''
+        if not pk_value:
+            continue
+
+        properties = {}
+        for mapping in column_mappings:
+            col  = mapping.get("column", "").strip()
+            prop = mapping.get("property", "").strip()
+            if not col or not prop or col not in headers:
+                continue
+            cidx = headers.index(col)
+            val  = row_padded[cidx].strip() if cidx < len(row_padded) else ''
+            if val:
+                properties[prop] = val
+
+        if not properties:
+            continue
+
+        if pk_type in ("email", "domain"):
+            upsert_inputs.append({"id": pk_value, "idProperty": pk_type, "properties": properties})
+        else:
+            upsert_inputs.append({"id": pk_value, "properties": properties})
+
+    _log(f"[enrich/gsheet] {auto_name}: {len(upsert_inputs)} upserts for {hs_object}")
+
+    all_errors = []
+    if upsert_inputs:
+        if pk_type in ("email", "domain"):
+            all_errors += hs_batch_upsert(hs_object, upsert_inputs)
+        else:
+            all_errors += hs_batch_update(hs_object, upsert_inputs)
+
+    if all_errors:
+        _log(f"[enrich/gsheet] {auto_name}: {len(all_errors)} error(s): {all_errors[:3]}")
+        if slack_channel and automation.get("slack_enabled"):
+            snippet = "\n".join(f"• {e}" for e in all_errors[:10])
+            send_slack_message(slack_channel,
+                f"⚠️ *{auto_name}* — GSheet pull had {len(all_errors)} error(s):\n{snippet}")
+    else:
+        _log(f"[enrich/gsheet] {auto_name}: done. errors=0")
+        if slack_channel and automation.get("slack_enabled"):
+            send_slack_message(slack_channel,
+                f"✅ *{auto_name}* — GSheet pull complete. {len(upsert_inputs)} records updated.")
+
+def run_enrichment(automation, sent_cache):
+    """Run Clay push and/or GSheet pull depending on which toggles are on."""
+    auto_name      = automation.get("name", "?")
+    clay_enabled   = automation.get("clay_enabled", False)
+    gsheet_enabled = automation.get("enrichment_gsheet_enabled", False)
+
+    # ── Step 1: Clay push ─────────────────────────────────────
+    if clay_enabled:
+        _log(f"[enrich] {auto_name}: running Clay push")
+        try:
+            run_clay_push(automation, sent_cache)
+        except Exception as e:
+            _log(f"[enrich] {auto_name}: Clay push error: {e}")
+    else:
+        _log(f"[enrich] {auto_name}: Clay push disabled, skipping")
+
+    # ── Step 2: GSheet pull ───────────────────────────────────
+    if gsheet_enabled:
+        # GSheet pull uses its own last_gsheet_run timestamp so it runs
+        # on its own schedule independently of the Clay push
+        if should_run_gsheet(automation, last_run_key="last_gsheet_run"):
+            _log(f"[enrich] {auto_name}: running GSheet pull")
+            try:
+                run_enrichment_gsheet_pull(automation)
+                automation["last_gsheet_run"] = datetime.datetime.utcnow().strftime(
+                    "%Y-%m-%dT%H:%M:%SZ")
+            except Exception as e:
+                _log(f"[enrich] {auto_name}: GSheet pull error: {e}")
+        else:
+            _log(f"[enrich] {auto_name}: GSheet pull not scheduled yet, skipping")
+    else:
+        _log(f"[enrich] {auto_name}: GSheet pull disabled, skipping")
 
 # ── Handler ───────────────────────────────────────────────────
 
@@ -398,40 +652,56 @@ class handler(BaseHTTPRequestHandler):
 
     def _run_sync(self):
         all_automations = get_automations()
-        gsheet_automations = [
+
+        # Pick up both gsheet_sync and enrichment automations
+        active = [
             a for a in all_automations
-            if a.get("active") and a.get("delivery_type") == "gsheet_sync"
+            if a.get("active") and a.get("delivery_type") in ("gsheet_sync", "enrichment")
         ]
 
-        _log(f"[gsheet_sync] running for {len(gsheet_automations)} active GSheet automations")
+        _log(f"[sync_gsheet] running for {len(active)} active automations")
 
-        ran = 0
+        # Load sent cache once for Clay deduplication
+        sent_cache = load_sent_cache()
+
+        ran     = 0
         skipped = 0
-        errors = 0
+        errors  = 0
 
-        for automation in gsheet_automations:
-            auto_id = automation.get("id", "")
+        for automation in active:
+            auto_id       = automation.get("id", "")
+            delivery_type = automation.get("delivery_type")
 
-            if not should_run_gsheet(automation):
-                _log(f"[gsheet_sync] {auto_id}: not scheduled yet, skip")
-                skipped += 1
-                continue
+            # ── GSheet sync ───────────────────────────────────
+            if delivery_type == "gsheet_sync":
+                if not should_run_gsheet(automation):
+                    _log(f"[sync_gsheet] {auto_id}: not scheduled yet, skip")
+                    skipped += 1
+                    continue
+                _log(f"[sync_gsheet] running gsheet_sync: {auto_id} — {automation.get('name', '')}")
+                try:
+                    run_gsheet_sync(automation)
+                    ran += 1
+                except Exception as e:
+                    _log(f"[sync_gsheet] {auto_id} error: {e}")
+                    errors += 1
+                automation["last_run"] = datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
 
-            _log(f"[gsheet_sync] running: {auto_id} — {automation.get('name', '')}")
-            try:
-                run_gsheet_sync(automation)
-                ran += 1
-            except Exception as e:
-                _log(f"[gsheet_sync] {auto_id} error: {e}")
-                errors += 1
-
-            automation["last_run"] = datetime.datetime.utcnow().strftime(
-                "%Y-%m-%dT%H:%M:%SZ")
+            # ── Enrichment ────────────────────────────────────
+            elif delivery_type == "enrichment":
+                _log(f"[sync_gsheet] running enrichment: {auto_id} — {automation.get('name', '')}")
+                try:
+                    run_enrichment(automation, sent_cache)
+                    ran += 1
+                except Exception as e:
+                    _log(f"[sync_gsheet] {auto_id} error: {e}")
+                    errors += 1
+                automation["last_run"] = datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
 
         save_automations(all_automations)
 
         result = {"ran": ran, "skipped": skipped, "errors": errors}
-        _log(f"[gsheet_sync] done: {result}")
+        _log(f"[sync_gsheet] done: {result}")
         self._json(200, result)
 
     def _json(self, status, data):
