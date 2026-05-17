@@ -1605,6 +1605,11 @@ async function editAutomation(id) {
     document.getElementById('gs-default-stage').value      = a.default_stage||'';
     onObjectTypeChange();
     if (a.clay_webhook_url) { const ctid=document.getElementById('clay-webhook-url'); if(ctid) ctid.value=a.clay_webhook_url; }
+    hsSelectedClay = { id: a.clay_hubspot_list_id||'', name: a.clay_hubspot_list_name||'' };
+    const clayHsInp = document.getElementById('hs-search-clay');
+    if (clayHsInp) { clayHsInp.value=a.clay_hubspot_list_name||''; clayHsInp.classList.toggle('has-value', !!a.clay_hubspot_list_id); }
+    clayMappings = a.clay_column_mappings ? JSON.parse(JSON.stringify(a.clay_column_mappings)) : [];
+    renderClayMappings();
     if (a.clay_column_mappings && a.clay_column_mappings.length) { clayMappings=JSON.parse(JSON.stringify(a.clay_column_mappings)); if(a.clay_table_id) loadClayColumns().then(()=>renderClayMappings()); else renderClayMappings(); } else { clayMappings=[]; renderClayMappings(); }
     gsMappings = JSON.parse(JSON.stringify(a.column_mappings||[]));
     renderGsMappings();
