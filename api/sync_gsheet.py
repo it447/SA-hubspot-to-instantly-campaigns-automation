@@ -455,7 +455,7 @@ def run_clay_push(automation, sent_cache):
     """Push unsent HubSpot contacts to Clay table."""
     auto_name     = automation.get("name", "?")
     auto_id       = automation.get("id", "")
-    list_id       = automation.get("hubspot_list_id", "")
+    list_id       = automation.get("clay_hubspot_list_id", "") or automation.get("hubspot_list_id", "")
     table_id      = automation.get("clay_table_id", "")
     col_mappings  = automation.get("clay_column_mappings", [])
     slack_channel = automation.get("slack_channel", "")
@@ -672,19 +672,45 @@ class handler(BaseHTTPRequestHandler):
             auto_id       = automation.get("id", "")
             delivery_type = automation.get("delivery_type")
 
-            # ── GSheet sync ───────────────────────────────────
+            # ── GSheet sync (may also include Clay push) ─────
             if delivery_type == "gsheet_sync":
-                if not should_run_gsheet(automation):
-                    _log(f"[sync_gsheet] {auto_id}: not scheduled yet, skip")
+                clay_enabled   = automation.get("clay_enabled", False)
+                gsheet_enabled = automation.get("gsheet_enabled", False)
+                did_something  = False
+
+                # Clay push runs every cycle (no schedule, just dedup)
+                if clay_enabled:
+                    _log(f"[sync_gsheet] running clay push: {auto_id} — {automation.get('name', '')}")
+                    try:
+                        run_clay_push(automation, sent_cache)
+                        did_something = True
+                    except Exception as e:
+                        _log(f"[sync_gsheet] {auto_id} clay error: {e}")
+                        errors += 1
+
+                # GSheet pull respects its own schedule
+                if gsheet_enabled:
+                    if not should_run_gsheet(automation):
+                        _log(f"[sync_gsheet] {auto_id}: gsheet not scheduled yet, skip")
+                    else:
+                        _log(f"[sync_gsheet] running gsheet pull: {auto_id} — {automation.get('name', '')}")
+                        try:
+                            run_gsheet_sync(automation)
+                            did_something = True
+                        except Exception as e:
+                            _log(f"[sync_gsheet] {auto_id} gsheet error: {e}")
+                            errors += 1
+
+                if not clay_enabled and not gsheet_enabled:
+                    _log(f"[sync_gsheet] {auto_id}: neither clay nor gsheet enabled, skipping")
                     skipped += 1
                     continue
-                _log(f"[sync_gsheet] running gsheet_sync: {auto_id} — {automation.get('name', '')}")
-                try:
-                    run_gsheet_sync(automation)
+
+                if did_something:
                     ran += 1
-                except Exception as e:
-                    _log(f"[sync_gsheet] {auto_id} error: {e}")
-                    errors += 1
+                else:
+                    skipped += 1
+
                 automation["last_run"] = datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
 
             # ── Enrichment ────────────────────────────────────
