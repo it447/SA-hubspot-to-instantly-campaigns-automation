@@ -431,7 +431,7 @@
       <div class="tab-bar">
         <button class="tab-btn active"  id="tab-btn-instantly"    onclick="switchTab('instantly')">Instantly Automation</button>
         <button class="tab-btn teal"    id="tab-btn-hubspot_form" onclick="switchTab('hubspot_form')">HS Form Fill Sequence</button>
-        <button class="tab-btn gs-tab"  id="tab-btn-gsheet_sync"  onclick="switchTab('gsheet_sync')">GSheet → HubSpot Sync</button>
+        <button class="tab-btn gs-tab"  id="tab-btn-gsheet_sync"  onclick="switchTab('gsheet_sync')">Enrichment Pipeline</button>
       </div>
 
       <div class="edit-grid">
@@ -564,201 +564,226 @@
         </div>
       </div>
 
-      <!-- ── Tab: GSheet → HubSpot Sync ── -->
+      <!-- ── Tab: Enrichment Pipeline ── -->
       <div class="tab-panel" id="tab-gsheet_sync">
-        <div class="form-card">
-          <h3>GSheet → HubSpot Sync</h3>
-          <p class="form-desc">Rows in a Google Sheet are upserted into HubSpot CRM objects (contacts, companies, or deals) on a schedule. Column headers map directly to HubSpot property names.</p>
 
-          <!-- Step 1: Clay push toggle -->
-          <div style="border:1px solid rgba(167,139,250,0.2);border-radius:var(--radius-sm);padding:1.1rem 1.25rem;margin-bottom:1.5rem;background:rgba(167,139,250,0.04);">
-            <div style="display:flex;align-items:center;justify-content:space-between;">
-              <div style="display:flex;align-items:center;gap:8px;">
-                <span style="font-size:15px;">⬡</span>
-                <div>
-                  <div style="font-size:14px;font-weight:500;color:var(--cream);">Step 1 — Push to Clay <span style="font-size:11px;color:var(--muted);font-weight:400;">(optional)</span></div>
-                  <div style="font-size:11px;color:var(--muted);margin-top:1px;">Send HubSpot contacts to a Clay table for enrichment</div>
-                </div>
-              </div>
-              <label class="toggle"><input type="checkbox" id="clay-enabled" onchange="toggleClaySection(this.checked)"><span class="toggle-slider"></span></label>
-            </div>
-            <div id="clay-body" style="display:none;margin-top:1rem;">
-
-              <!-- Instructions box -->
-              <div style="background:rgba(167,139,250,0.08);border:1px solid rgba(167,139,250,0.2);border-radius:8px;padding:1rem 1.1rem;margin-bottom:1.25rem;font-size:13px;line-height:1.7;color:var(--muted);">
-                <div style="font-weight:600;color:#c4b5fd;margin-bottom:0.5rem;">📋 How to set this up</div>
-                <ol style="margin:0;padding-left:1.2rem;">
-                  <li>In Clay, open your table and click <strong style="color:var(--cream);">HTTP API</strong> (left sidebar) → copy your <strong style="color:var(--cream);">Table ID</strong> from the URL or the API panel — it starts with <code style="font-size:11px;background:rgba(255,255,255,0.07);padding:1px 5px;border-radius:3px;">t_</code></li>
-                  <li>For each mapping below, enter the <strong style="color:var(--cream);">exact column name</strong> as it appears in your Clay table header (case-sensitive)</li>
-                  <li>Map the HubSpot property on the left to the Clay column name on the right — at minimum map <strong style="color:var(--cream);">Email</strong></li>
-                  <li>Clay will receive a new row for each contact that hasn't been pushed before, triggering your enrichment waterfall</li>
-                </ol>
-              </div>
-
-              <div class="form-row" style="margin-bottom:0.75rem;">
-                <label>Clay table ID</label>
-                <input type="text" id="clay-table-id" placeholder="e.g. t_0t6aw763PBK3Xsczix4" style="width:100%;">
-                <div class="token-hint" style="margin-top:5px;">Find it in your Clay table URL: app.clay.com/…/tables/<strong>TABLE_ID</strong>/…</div>
-              </div>
-
-              <div class="form-row" style="margin-bottom:0;">
-                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
-                  <label style="margin-bottom:0;">Column mappings <span style="font-size:11px;opacity:0.6;">(HubSpot property → Clay column name)</span></label>
-                  <button type="button" class="btn btn-cream" onclick="addClayMapping()" style="font-size:12px;padding:5px 10px;">+ Add mapping</button>
-                </div>
-                <div class="gs-mapping-header"><span>HubSpot property name</span><span>Clay column name (exact)</span><span></span></div>
-                <div id="clay-mappings-container"><div style="font-size:13px;color:var(--muted);padding:6px 0;">No mappings yet — add at least one (start with email).</div></div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Step 2: GSheet → HubSpot (existing) -->
-          <!-- Step 2 share reminder banner -->
-          <div class="gs-email-banner">
-            <div class="gs-email-banner-icon">📋</div>
-            <div class="gs-email-banner-content">
-              <div class="gs-email-banner-title">Before connecting — share your sheet first</div>
-              <div class="gs-email-banner-row">
-                <code id="gs-service-email">scalearmy-sheets-sync@core-sprite-496011-q2.iam.gserviceaccount.com</code>
-                <button class="gs-copy-btn" onclick="copyServiceEmail()">
-                  <svg width="11" height="11" viewBox="0 0 11 11" fill="none"><rect x="3.5" y="3.5" width="6" height="6" rx="1" stroke="currentColor" stroke-width="1.2"/><path d="M1.5 7.5V2a.5.5 0 01.5-.5H7" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
-                  Copy
-                </button>
-              </div>
-              <div class="gs-email-banner-hint">Open your Google Sheet → Share → paste the email above → Viewer → Done</div>
-            </div>
-          </div>
-
-          <div class="form-row">
-            <label>Automation name</label>
-            <input type="text" id="auto-name-gsheet_sync" placeholder="e.g. Leads Sheet → HubSpot Contacts">
-          </div>
-
-          <div class="form-row">
-            <label>Google Sheet URL</label>
-            <input type="url" id="gs-sheet-url" placeholder="https://docs.google.com/spreadsheets/d/…">
-            <div class="token-hint" style="margin-top:5px;">Must be shared with the service account email above (Viewer access).</div>
-          </div>
-
-          <div class="form-row">
-            <label>Sheet tab name <span style="font-size:11px;opacity:0.6;">(leave blank for first tab)</span></label>
-            <input type="text" id="gs-sheet-tab" placeholder="e.g. Sheet1">
-          </div>
-
-          <div class="form-row">
-            <label>HubSpot object type</label>
-            <select id="gs-object-type" onchange="onObjectTypeChange()">
-              <option value="contact">Contact</option>
-              <option value="company">Company</option>
-              <option value="deal">Deal</option>
-            </select>
-          </div>
-
-          <div class="form-row">
-            <label>Primary key — sheet column header</label>
-            <input type="text" id="gs-pk-column" placeholder="e.g. Email">
-            <div class="token-hint" style="margin-top:5px;">The column whose value uniquely identifies the record (case-sensitive, must match the sheet header exactly).</div>
-          </div>
-
-          <div class="form-row">
-            <label>Primary key type</label>
-            <select id="gs-pk-type">
-              <option value="email">Email (contact)</option>
-              <option value="domain">Domain (company)</option>
-              <option value="id">HubSpot object ID</option>
-            </select>
-          </div>
-
-          <!-- Deal-specific defaults (hidden unless deal selected) -->
-          <div id="gs-deal-fields" style="display:none;">
-            <div class="form-row">
-              <label>Default pipeline ID <span style="font-size:11px;opacity:0.6;">(optional)</span></label>
-              <input type="text" id="gs-default-pipeline" placeholder="e.g. default">
-            </div>
-            <div class="form-row">
-              <label>Default deal stage ID <span style="font-size:11px;opacity:0.6;">(optional)</span></label>
-              <input type="text" id="gs-default-stage" placeholder="e.g. appointmentscheduled">
-            </div>
-          </div>
-
-          <!-- Column mappings -->
-          <div class="form-row">
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
-              <label style="margin-bottom:0;">Column mappings</label>
-              <button type="button" class="btn btn-cream" onclick="addGsMapping()" style="font-size:12px;padding:5px 10px;">+ Add mapping</button>
-            </div>
-            <div class="gs-mapping-header">
-              <span>Sheet column header</span>
-              <span>HubSpot property name</span>
-              <span></span>
-            </div>
-            <div id="gs-mappings-container"></div>
-            <div class="token-hint" style="margin-top:6px;">Enter the exact column header from the sheet and the internal HubSpot property name (e.g. <em>firstname</em>, <em>company</em>, <em>dealname</em>). Both are case-sensitive.</div>
-          </div>
-
-          <!-- Schedule -->
-          <div class="form-row">
-            <label>Sync schedule</label>
-            <div class="gs-sched-toggle">
-              <button type="button" class="gs-sched-btn active" id="gs-sched-btn-interval" onclick="selectGsSchedule('interval')">Interval</button>
-              <button type="button" class="gs-sched-btn" id="gs-sched-btn-daily"    onclick="selectGsSchedule('daily')">Daily</button>
-              <button type="button" class="gs-sched-btn" id="gs-sched-btn-weekly"   onclick="selectGsSchedule('weekly')">Weekly</button>
-            </div>
-            <div class="gs-sched-details" id="gs-sched-interval-details">
-              <div style="flex:1;">
-                <label>Run every</label>
-                <select id="gs-interval-minutes">
-                  <option value="15">15 minutes</option>
-                  <option value="30">30 minutes</option>
-                  <option value="60" selected>1 hour</option>
-                  <option value="180">3 hours</option>
-                  <option value="360">6 hours</option>
-                  <option value="720">12 hours</option>
-                </select>
-              </div>
-            </div>
-            <div class="gs-sched-details" id="gs-sched-daily-details" style="display:none;">
-              <div style="flex:1;">
-                <label>Run time (EST)</label>
-                <input type="time" id="gs-daily-time" value="08:00">
-              </div>
-            </div>
-            <div class="gs-sched-details" id="gs-sched-weekly-details" style="display:none;">
-              <div style="flex:1;">
-                <label>Day of week</label>
-                <select id="gs-weekly-day">
-                  <option value="0">Monday</option>
-                  <option value="1">Tuesday</option>
-                  <option value="2">Wednesday</option>
-                  <option value="3">Thursday</option>
-                  <option value="4">Friday</option>
-                  <option value="5">Saturday</option>
-                  <option value="6">Sunday</option>
-                </select>
-              </div>
-              <div style="flex:1;">
-                <label>Run time (EST)</label>
-                <input type="time" id="gs-weekly-time" value="08:00">
-              </div>
-            </div>
-          </div>
-
-          <hr class="slack-divider">
-          <div class="slack-toggle-row">
-            <span class="slack-toggle-label"><span class="slack-icon"><svg width="16" height="16" viewBox="0 0 54 54" xmlns="http://www.w3.org/2000/svg"><path d="M19.7 32.2c0 2.9-2.4 5.3-5.3 5.3s-5.3-2.4-5.3-5.3 2.4-5.3 5.3-5.3H19.7v5.3z" fill="#E01E5A"/><path d="M22.3 32.2c0-2.9 2.4-5.3 5.3-5.3s5.3 2.4 5.3 5.3v13.3c0 2.9-2.4 5.3-5.3 5.3s-5.3-2.4-5.3-5.3V32.2z" fill="#E01E5A"/><path d="M27.6 19.7c-2.9 0-5.3-2.4-5.3-5.3s2.4-5.3 5.3-5.3 5.3 2.4 5.3 5.3V19.7H27.6z" fill="#36C5F0"/><path d="M27.6 22.3c2.9 0 5.3 2.4 5.3 5.3s-2.4 5.3-5.3 5.3H14.4c-2.9 0-5.3-2.4-5.3-5.3s2.4-5.3 5.3-5.3H27.6z" fill="#36C5F0"/><path d="M40.1 27.6c0-2.9 2.4-5.3 5.3-5.3s5.3 2.4 5.3 5.3-2.4 5.3-5.3 5.3H40.1V27.6z" fill="#2EB67D"/><path d="M37.4 27.6c0 2.9-2.4 5.3-5.3 5.3s-5.3-2.4-5.3-5.3V14.4c0-2.9 2.4-5.3 5.3-5.3s5.3 2.4 5.3 5.3V27.6z" fill="#2EB67D"/><path d="M32.1 40.1c2.9 0 5.3 2.4 5.3 5.3s-2.4 5.3-5.3 5.3-5.3-2.4-5.3-5.3V40.1h5.3z" fill="#ECB22E"/><path d="M32.1 37.4c-2.9 0-5.3-2.4-5.3-5.3s2.4-5.3 5.3-5.3h13.3c2.9 0 5.3 2.4 5.3 5.3s-2.4 5.3-5.3 5.3H32.1z" fill="#ECB22E"/></svg></span> Slack notification</span>
-            <label class="toggle"><input type="checkbox" id="slack-enabled-gsheet_sync" onchange="toggleSlackSection('gsheet_sync',this.checked)"><span class="toggle-slider"></span></label>
-          </div>
-          <div id="slack-body-gsheet_sync" class="slack-body" style="display:none;">
-            <div><label>Channel</label><div class="search-select"><input type="text" id="slack-ch-search-gsheet_sync" placeholder="Search channels…" autocomplete="off"><div class="search-dropdown" id="slack-ch-dropdown-gsheet_sync"></div></div></div>
-            <div><label>Message template</label><textarea id="slack-msg-gsheet_sync" rows="3" placeholder="e.g. ✅ Sheet sync complete for {{automation_name}}"></textarea><div class="token-hint">Tokens: {{automation_name}}</div></div>
-          </div>
-
-          <div class="form-footer">
-            <button class="btn btn-cream" onclick="cancelEdit()">Cancel</button>
-            <button class="btn btn-primary" onclick="createAutomation('gsheet_sync')" id="create-btn-gsheet_sync">Create automation</button>
-          </div>
-          <div class="error-msg" id="form-error-gsheet_sync"></div>
+        <!-- ─── PAGE HEADER ─────────────────────────── -->
+        <div style="margin-bottom:1.75rem;">
+          <h3 style="margin:0 0 0.3rem;">Enrichment Pipeline</h3>
+          <p class="form-desc" style="margin:0;">Two independent steps — toggle each one on or off. Step 1 pushes HubSpot contacts to Clay for enrichment. Step 2 pulls the enriched data from a Google Sheet back into HubSpot.</p>
         </div>
+
+        <!-- Automation name (shared) -->
+        <div class="form-row" style="max-width:560px;">
+          <label>Automation name</label>
+          <input type="text" id="auto-name-gsheet_sync" placeholder="e.g. TOF Lead Enrichment">
+        </div>
+
+        <!-- ─── STEP 1: CLAY PUSH ────────────────────── -->
+        <div style="border:1px solid rgba(167,139,250,0.25);border-radius:var(--radius-sm);padding:1.5rem;margin-bottom:1.5rem;background:rgba(167,139,250,0.04);">
+
+          <!-- Step header -->
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.25rem;">
+            <div style="display:flex;align-items:center;gap:10px;">
+              <span style="font-size:18px;">⬡</span>
+              <div>
+                <div style="font-size:15px;font-weight:600;color:var(--cream);">Step 1 — Push contacts to Clay</div>
+                <div style="font-size:12px;color:var(--muted);margin-top:2px;">Sends new HubSpot contacts to a Clay table to trigger enrichment</div>
+              </div>
+            </div>
+            <label class="toggle"><input type="checkbox" id="clay-enabled" onchange="toggleClaySection(this.checked)"><span class="toggle-slider"></span></label>
+          </div>
+
+          <div id="clay-body" style="display:none;margin-top:1.25rem;">
+
+            <!-- How-to instructions -->
+            <div style="background:rgba(167,139,250,0.08);border:1px solid rgba(167,139,250,0.18);border-radius:8px;padding:0.9rem 1rem;margin-bottom:1.25rem;font-size:12.5px;line-height:1.75;color:var(--muted);">
+              <div style="font-weight:600;color:#c4b5fd;margin-bottom:0.4rem;">📋 Setup instructions</div>
+              <ol style="margin:0;padding-left:1.1rem;display:flex;flex-direction:column;gap:3px;">
+                <li>In Clay open your table → look at the URL: <code style="font-size:11px;background:rgba(255,255,255,0.07);padding:1px 5px;border-radius:3px;">app.clay.com/…/tables/<strong>t_xxxxxxx</strong>/…</code> — that's your Table ID</li>
+                <li>For each mapping, enter the <strong style="color:var(--cream);">exact HubSpot property name</strong> (e.g. <code style="font-size:11px;background:rgba(255,255,255,0.07);padding:1px 5px;border-radius:3px;">email</code>, <code style="font-size:11px;background:rgba(255,255,255,0.07);padding:1px 5px;border-radius:3px;">firstname</code>) and the <strong style="color:var(--cream);">exact Clay column name</strong> as it appears in the table header</li>
+                <li>At minimum map <strong style="color:var(--cream);">email</strong> — Clay uses it to deduplicate rows</li>
+              </ol>
+            </div>
+
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem;">
+              <div class="form-row" style="margin-bottom:0;">
+                <label>HubSpot list</label>
+                <div class="search-select">
+                  <input type="text" id="hs-search-clay" placeholder="Search lists…" autocomplete="off">
+                  <div class="search-dropdown" id="hs-dropdown-clay"></div>
+                </div>
+              </div>
+              <div class="form-row" style="margin-bottom:0;">
+                <label>Clay table ID</label>
+                <input type="text" id="clay-table-id" placeholder="e.g. t_0t6aw763PBK3Xsczix4">
+              </div>
+            </div>
+
+            <div class="form-row" style="margin-bottom:0;">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+                <label style="margin-bottom:0;">Column mappings <span style="font-size:11px;opacity:0.55;">(HubSpot property → Clay column name, case-sensitive)</span></label>
+                <button type="button" class="btn btn-cream" onclick="addClayMapping()" style="font-size:12px;padding:5px 10px;">+ Add</button>
+              </div>
+              <div class="gs-mapping-header"><span>HubSpot property</span><span>Clay column name (exact)</span><span></span></div>
+              <div id="clay-mappings-container"><div style="font-size:13px;color:var(--muted);padding:6px 0;">No mappings yet — add at least one (start with email).</div></div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- ─── STEP 2: GSHEET PULL ──────────────────── -->
+        <div style="border:1px solid rgba(45,212,191,0.2);border-radius:var(--radius-sm);padding:1.5rem;margin-bottom:1.5rem;background:rgba(45,212,191,0.03);">
+
+          <!-- Step header -->
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.25rem;">
+            <div style="display:flex;align-items:center;gap:10px;">
+              <span style="font-size:18px;">▦</span>
+              <div>
+                <div style="font-size:15px;font-weight:600;color:var(--cream);">Step 2 — Pull enriched data from Google Sheet → HubSpot</div>
+                <div style="font-size:12px;color:var(--muted);margin-top:2px;">Reads enriched rows from a Google Sheet and upserts them into HubSpot CRM</div>
+              </div>
+            </div>
+            <label class="toggle"><input type="checkbox" id="gsheet-enabled" onchange="toggleGsheetSection(this.checked)"><span class="toggle-slider"></span></label>
+          </div>
+
+          <div id="gsheet-body" style="display:none;margin-top:1.25rem;">
+
+            <!-- Share banner -->
+            <div class="gs-email-banner" style="margin-bottom:1.25rem;">
+              <div class="gs-email-banner-icon">📋</div>
+              <div class="gs-email-banner-content">
+                <div class="gs-email-banner-title">Before connecting — share your sheet first</div>
+                <div class="gs-email-banner-row">
+                  <code id="gs-service-email">scalearmy-sheets-sync@core-sprite-496011-q2.iam.gserviceaccount.com</code>
+                  <button class="gs-copy-btn" onclick="copyServiceEmail()">
+                    <svg width="11" height="11" viewBox="0 0 11 11" fill="none"><rect x="3.5" y="3.5" width="6" height="6" rx="1" stroke="currentColor" stroke-width="1.2"/><path d="M1.5 7.5V2a.5.5 0 01.5-.5H7" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
+                    Copy
+                  </button>
+                </div>
+                <div class="gs-email-banner-hint">Open your Google Sheet → Share → paste the email above → Viewer → Done</div>
+              </div>
+            </div>
+
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem;">
+              <div class="form-row" style="margin-bottom:0;">
+                <label>Google Sheet URL</label>
+                <input type="url" id="gs-sheet-url" placeholder="https://docs.google.com/spreadsheets/d/…">
+              </div>
+              <div class="form-row" style="margin-bottom:0;">
+                <label>Sheet tab name <span style="font-size:11px;opacity:0.6;">(blank = first tab)</span></label>
+                <input type="text" id="gs-sheet-tab" placeholder="e.g. Sheet1">
+              </div>
+            </div>
+
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem;margin-bottom:1rem;">
+              <div class="form-row" style="margin-bottom:0;">
+                <label>HubSpot object type</label>
+                <select id="gs-object-type" onchange="onObjectTypeChange()">
+                  <option value="contact">Contact</option>
+                  <option value="company">Company</option>
+                  <option value="deal">Deal</option>
+                </select>
+              </div>
+              <div class="form-row" style="margin-bottom:0;">
+                <label>Primary key column</label>
+                <input type="text" id="gs-pk-column" placeholder="e.g. Email">
+              </div>
+              <div class="form-row" style="margin-bottom:0;">
+                <label>Primary key type</label>
+                <select id="gs-pk-type">
+                  <option value="email">Email (contact)</option>
+                  <option value="domain">Domain (company)</option>
+                  <option value="id">HubSpot object ID</option>
+                </select>
+              </div>
+            </div>
+
+            <div id="gs-deal-fields" style="display:none;margin-bottom:1rem;">
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
+                <div class="form-row" style="margin-bottom:0;">
+                  <label>Default pipeline <span style="font-size:11px;opacity:0.6;">(optional)</span></label>
+                  <div class="search-select"><input type="text" id="gs-pipeline-search" placeholder="Search pipelines…" autocomplete="off"><div class="search-dropdown" id="gs-pipeline-dropdown"></div></div>
+                </div>
+                <div class="form-row" style="margin-bottom:0;">
+                  <label>Default stage <span style="font-size:11px;opacity:0.6;">(optional)</span></label>
+                  <div class="search-select"><input type="text" id="gs-stage-search" placeholder="Select pipeline first…" autocomplete="off" disabled><div class="search-dropdown" id="gs-stage-dropdown"></div></div>
+                </div>
+              </div>
+            </div>
+
+            <div class="form-row" style="margin-bottom:1rem;">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+                <label style="margin-bottom:0;">Column mappings <span style="font-size:11px;opacity:0.55;">(Sheet column header → HubSpot property name)</span></label>
+                <button type="button" class="btn btn-cream" onclick="addGsMapping()" style="font-size:12px;padding:5px 10px;">+ Add</button>
+              </div>
+              <div class="gs-mapping-header"><span>Sheet column header</span><span>HubSpot property name</span><span></span></div>
+              <div id="gs-mappings-container"></div>
+              <div class="token-hint" style="margin-top:6px;">Enter the exact column header from the sheet and the internal HubSpot property name (e.g. <em>firstname</em>, <em>phone</em>). Both are case-sensitive.</div>
+            </div>
+
+            <div class="form-row" style="margin-bottom:0;">
+              <label>Sync schedule</label>
+              <div class="gs-sched-toggle">
+                <button type="button" class="gs-sched-btn active" id="gs-sched-btn-interval" onclick="selectGsSchedule('interval')">Interval</button>
+                <button type="button" class="gs-sched-btn" id="gs-sched-btn-daily"    onclick="selectGsSchedule('daily')">Daily</button>
+                <button type="button" class="gs-sched-btn" id="gs-sched-btn-weekly"   onclick="selectGsSchedule('weekly')">Weekly</button>
+              </div>
+              <div class="gs-sched-details" id="gs-sched-interval-details">
+                <div style="flex:1;"><label>Run every</label>
+                  <select id="gs-interval-minutes">
+                    <option value="15">15 minutes</option>
+                    <option value="30">30 minutes</option>
+                    <option value="60" selected>1 hour</option>
+                    <option value="180">3 hours</option>
+                    <option value="360">6 hours</option>
+                    <option value="720">12 hours</option>
+                  </select>
+                </div>
+              </div>
+              <div class="gs-sched-details" id="gs-sched-daily-details" style="display:none;">
+                <div style="flex:1;"><label>Run time (EST)</label><input type="time" id="gs-daily-time" value="08:00"></div>
+              </div>
+              <div class="gs-sched-details" id="gs-sched-weekly-details" style="display:none;">
+                <div style="flex:1;"><label>Day of week</label>
+                  <select id="gs-weekly-day">
+                    <option value="0">Monday</option><option value="1">Tuesday</option><option value="2">Wednesday</option>
+                    <option value="3">Thursday</option><option value="4">Friday</option><option value="5">Saturday</option><option value="6">Sunday</option>
+                  </select>
+                </div>
+                <div style="flex:1;"><label>Run time (EST)</label><input type="time" id="gs-weekly-time" value="08:00"></div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- ─── SLACK ────────────────────────────────── -->
+        <hr class="slack-divider">
+        <div class="slack-toggle-row">
+          <span class="slack-toggle-label">
+            <span class="slack-icon"><svg width="16" height="16" viewBox="0 0 54 54" xmlns="http://www.w3.org/2000/svg"><path d="M19.7 32.2c0 2.9-2.4 5.3-5.3 5.3s-5.3-2.4-5.3-5.3 2.4-5.3 5.3-5.3H19.7v5.3z" fill="#E01E5A"/><path d="M22.3 32.2c0-2.9 2.4-5.3 5.3-5.3s5.3 2.4 5.3 5.3v13.3c0 2.9-2.4 5.3-5.3 5.3s-5.3-2.4-5.3-5.3V32.2z" fill="#E01E5A"/><path d="M27.6 19.7c-2.9 0-5.3-2.4-5.3-5.3s2.4-5.3 5.3-5.3 5.3 2.4 5.3 5.3V19.7H27.6z" fill="#36C5F0"/><path d="M27.6 22.3c2.9 0 5.3 2.4 5.3 5.3s-2.4 5.3-5.3 5.3H14.4c-2.9 0-5.3-2.4-5.3-5.3s2.4-5.3 5.3-5.3H27.6z" fill="#36C5F0"/><path d="M40.1 27.6c0-2.9 2.4-5.3 5.3-5.3s5.3 2.4 5.3 5.3-2.4 5.3-5.3 5.3H40.1V27.6z" fill="#2EB67D"/><path d="M37.4 27.6c0 2.9-2.4 5.3-5.3 5.3s-5.3-2.4-5.3-5.3V14.4c0-2.9 2.4-5.3 5.3-5.3s5.3 2.4 5.3 5.3V27.6z" fill="#2EB67D"/><path d="M32.1 40.1c2.9 0 5.3 2.4 5.3 5.3s-2.4 5.3-5.3 5.3-5.3-2.4-5.3-5.3V40.1h5.3z" fill="#ECB22E"/><path d="M32.1 37.4c-2.9 0-5.3-2.4-5.3-5.3s2.4-5.3 5.3-5.3h13.3c2.9 0 5.3 2.4 5.3 5.3s-2.4 5.3-5.3 5.3H32.1z" fill="#ECB22E"/></svg></span>
+            Slack notification
+          </span>
+          <label class="toggle"><input type="checkbox" id="slack-enabled-gsheet_sync" onchange="toggleSlackSection('gsheet_sync',this.checked)"><span class="toggle-slider"></span></label>
+        </div>
+        <div id="slack-body-gsheet_sync" class="slack-body" style="display:none;">
+          <div>
+            <label>Channel</label>
+            <div class="search-select"><input type="text" id="slack-ch-search-gsheet_sync" placeholder="Search channels…" autocomplete="off"><div class="search-dropdown" id="slack-ch-dropdown-gsheet_sync"></div></div>
+          </div>
+          <div>
+            <label>Message template</label>
+            <textarea id="slack-msg-gsheet_sync" rows="3" placeholder="e.g. ✅ Enrichment sync complete — {{count}} records updated"></textarea>
+          </div>
+        </div>
+
+        <div class="form-footer">
+          <button class="btn btn-cream" onclick="cancelEdit()">Cancel</button>
+          <button class="btn btn-primary" onclick="createAutomation('gsheet_sync')" id="create-btn-gsheet_sync">Create automation</button>
+        </div>
+        <div class="error-msg" id="form-error-gsheet_sync"></div>
+
       </div>
 
       </div><!-- close form col -->
@@ -1395,6 +1420,7 @@ async function loadDropdowns() {
       hsList = l.data;
       initSearchSelect('hs-search-instantly',   'hs-dropdown-instantly',   hsList,hsSelectedInstantly,'Search HubSpot lists…');
       initSearchSelect('hs-search-hubspot_form','hs-dropdown-hubspot_form',hsList,hsSelectedForm,     'Search HubSpot lists…');
+      initSearchSelect('hs-search-clay',           'hs-dropdown-clay',          hsList,hsSelectedClay,  'Search lists…');
     } else { ['hs-search-instantly','hs-search-hubspot_form'].forEach(id=>{const el=document.getElementById(id);if(el)el.placeholder=`Error: ${(l.data&&l.data.error)||'failed'}`;}); }
     if (c.ok && Array.isArray(c.data)) {
       campList = c.data;
@@ -1455,8 +1481,11 @@ async function createAutomation(deliveryType) {
       default_pipeline:     document.getElementById('gs-default-pipeline').value.trim(),
       default_stage:        document.getElementById('gs-default-stage').value.trim(),
       clay_enabled:         document.getElementById('clay-enabled')?.checked || false,
-      clay_table_id:        document.getElementById('clay-table-id')?.value.trim() || '',
-      clay_column_mappings: clayMappings.filter(m => m.hs_property && m.clay_column),
+      clay_hubspot_list_id:  hsSelectedClay.id || '',
+      clay_hubspot_list_name: hsSelectedClay.name || '',
+      clay_table_id:         document.getElementById('clay-table-id')?.value.trim() || '',
+      clay_column_mappings:  clayMappings.filter(m => m.hs_property && m.clay_column),
+      gsheet_enabled:        document.getElementById('gsheet-enabled')?.checked || false,
     };
 
     const slackEnabled = document.getElementById('slack-enabled-gsheet_sync')?.checked;
@@ -1703,9 +1732,15 @@ function esc(str) {
 // ── Clay state ────────────────────────────────────────────────
 let clayMappings = [];
 let clayColumnsCache = [];
+let hsSelectedClay = { id:'', name:'' };
+let gsheetSectionEnabled = false;
 
 function toggleClaySection(enabled) {
   document.getElementById('clay-body').style.display = enabled ? 'block' : 'none';
+}
+function toggleGsheetSection(enabled) {
+  gsheetSectionEnabled = enabled;
+  document.getElementById('gsheet-body').style.display = enabled ? 'block' : 'none';
 }
 
 function loadClayColumns() {
@@ -1728,12 +1763,45 @@ function renderClayMappings() {
   }
   container.innerHTML = clayMappings.map((m, i) => `
     <div class="gs-mapping-row">
-      <input type="text" value="${esc(m.hs_property)}" placeholder="HubSpot property (e.g. email)" oninput="clayMappings[${i}].hs_property=this.value" style="font-size:13px;padding:8px 10px;">
+      <div class="search-select" style="min-width:0;">
+        <input type="text" id="clay-hs-prop-${i}" placeholder="Search HubSpot property…" autocomplete="off" style="font-size:13px;padding:8px 10px;" class="${m.hs_property?'has-value':''}">
+        <div class="search-dropdown" id="clay-hs-dd-${i}"></div>
+      </div>
       <input type="text" value="${esc(m.clay_column)}" placeholder="Clay column name (exact)" oninput="clayMappings[${i}].clay_column=this.value" style="font-size:13px;padding:8px 10px;">
       <button type="button" class="btn-trash" onclick="removeClayMapping(${i})" title="Remove">
         <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M1.5 3h10M4.5 3V2a.5.5 0 01.5-.5h2.5a.5.5 0 01.5.5v1M5.5 5.5v4M7.5 5.5v4M2.5 3l.5 7.5a.5.5 0 00.5.5h6a.5.5 0 00.5-.5L10.5 3" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
       </button>
     </div>`).join('');
+  clayMappings.forEach((m, i) => initClayHsPropSearch(i, m.hs_property, m.hs_label));
+}
+
+function initClayHsPropSearch(index, currentProp, currentLabel) {
+  const input    = document.getElementById('clay-hs-prop-' + index);
+  const dropdown = document.getElementById('clay-hs-dd-' + index);
+  if (!input || !dropdown) return;
+  const propList = hsPropList || [];
+  if (currentProp) { input.value = currentLabel || currentProp; input.classList.add('has-value'); }
+  function renderOptions(q) {
+    const matches = q ? propList.filter(p => p.label.toLowerCase().includes(q) || p.name.toLowerCase().includes(q)) : propList;
+    dropdown.innerHTML = matches.length
+      ? matches.map(p => `<div class="search-option${currentProp===p.name?' selected':''}" data-name="${esc(p.name)}" data-label="${esc(p.label)}">${esc(p.label)}<span style="font-size:10px;opacity:.4;margin-left:6px;">${esc(p.name)}</span></div>`).join('')
+      : '<div class="search-option-empty">No properties found</div>';
+    dropdown.querySelectorAll('.search-option').forEach(el => {
+      el.addEventListener('mousedown', e => {
+        e.preventDefault();
+        clayMappings[index].hs_property = el.dataset.name;
+        clayMappings[index].hs_label    = el.dataset.label;
+        input.value = el.dataset.label;
+        input.classList.add('has-value');
+        dropdown.classList.remove('open');
+        currentProp = el.dataset.name;
+      });
+    });
+    dropdown.classList.add('open');
+  }
+  input.addEventListener('focus', () => renderOptions(''));
+  input.addEventListener('input', () => { input.classList.remove('has-value'); clayMappings[index].hs_property=''; renderOptions(input.value.toLowerCase()); });
+  input.addEventListener('blur',  () => { setTimeout(() => dropdown.classList.remove('open'), 150); if (!clayMappings[index].hs_property) { input.value=''; input.classList.remove('has-value'); } else { input.value = clayMappings[index].hs_label||clayMappings[index].hs_property; input.classList.add('has-value'); } });
 }
 
 
@@ -1745,6 +1813,9 @@ function resetClayFields() {
   if (tid) tid.value = '';
   clayMappings = []; clayColumnsCache = [];
   renderClayMappings();
+  resetSearchSelect('hs-search-clay','hs-dropdown-clay', hsSelectedClay);
+  const gsCb = document.getElementById('gsheet-enabled');
+  if (gsCb) { gsCb.checked = false; toggleGsheetSection(false); }
 }
 
 </script>
