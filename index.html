@@ -1439,9 +1439,22 @@ async function createAutomation(deliveryType) {
     const pkType    = document.getElementById('gs-pk-type').value;
     const validMaps = gsMappings.filter(m => m.column.trim() && m.property.trim());
 
-    if (!sheetUrl)     { errEl.textContent='Please enter the Google Sheet URL.'; errEl.style.display='block'; return; }
-    if (!pkCol)        { errEl.textContent='Please enter the primary key column header.'; errEl.style.display='block'; return; }
-    if (!validMaps.length) { errEl.textContent='Please add at least one column mapping.'; errEl.style.display='block'; return; }
+    const clayOn   = document.getElementById('clay-enabled')?.checked;
+    const gsheetOn = document.getElementById('gsheet-enabled')?.checked;
+
+    if (!clayOn && !gsheetOn) { errEl.textContent='Please enable at least one automation (Clay or GSheet).'; errEl.style.display='block'; return; }
+
+    if (clayOn) {
+      if (!hsSelectedClay.id)  { errEl.textContent='Clay: please select a HubSpot list.'; errEl.style.display='block'; return; }
+      if (!document.getElementById('clay-table-id').value.trim()) { errEl.textContent='Clay: please enter the Clay table ID.'; errEl.style.display='block'; return; }
+      if (!clayMappings.filter(m => m.hs_property && m.clay_column).length) { errEl.textContent='Clay: please add at least one column mapping.'; errEl.style.display='block'; return; }
+    }
+
+    if (gsheetOn) {
+      if (!sheetUrl)         { errEl.textContent='GSheet: please enter the Google Sheet URL.'; errEl.style.display='block'; return; }
+      if (!pkCol)            { errEl.textContent='GSheet: please enter the primary key column header.'; errEl.style.display='block'; return; }
+      if (!validMaps.length) { errEl.textContent='GSheet: please add at least one column mapping.'; errEl.style.display='block'; return; }
+    }
 
     let payload = {
       name,
@@ -1456,8 +1469,8 @@ async function createAutomation(deliveryType) {
       gsheet_interval_minutes: parseInt(document.getElementById('gs-interval-minutes').value) || 60,
       gsheet_run_time:      gsScheduleType==='daily' ? document.getElementById('gs-daily-time').value : document.getElementById('gs-weekly-time').value,
       gsheet_run_day:       parseInt(document.getElementById('gs-weekly-day').value) || 0,
-      default_pipeline:     document.getElementById('gs-default-pipeline').value.trim(),
-      default_stage:        document.getElementById('gs-default-stage').value.trim(),
+      default_pipeline:     document.getElementById('gs-default-pipeline')?.value.trim() || '',
+      default_stage:        document.getElementById('gs-default-stage')?.value.trim() || '',
       clay_enabled:         document.getElementById('clay-enabled')?.checked || false,
       clay_hubspot_list_id:  hsSelectedClay.id || '',
       clay_hubspot_list_name: hsSelectedClay.name || '',
