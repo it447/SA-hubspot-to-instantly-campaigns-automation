@@ -1063,8 +1063,9 @@ function resetGsForm() {
   document.getElementById('gs-object-type').value = 'contact';
   document.getElementById('gs-pk-column').value = '';
   document.getElementById('gs-pk-type').value = 'email';
-  document.getElementById('gs-default-pipeline').value = '';
-  document.getElementById('gs-default-stage').value = '';
+  const gsDp = document.getElementById('gs-default-pipeline'); if(gsDp) gsDp.value = '';
+  const gsDpSearch = document.getElementById('gs-pipeline-search'); if(gsDpSearch) gsDpSearch.value = '';
+  const gsDsSearch = document.getElementById('gs-stage-search'); if(gsDsSearch) { gsDsSearch.value = ''; gsDsSearch.disabled = true; }
   document.getElementById('gs-deal-fields').style.display = 'none';
   gsMappings = [];
   renderGsMappings();
