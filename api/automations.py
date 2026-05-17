@@ -358,7 +358,7 @@ def _apply_clay_fields(target, body):
     target["clay_enabled"]           = bool(body.get("clay_enabled", False))
     target["clay_hubspot_list_id"]   = body.get("clay_hubspot_list_id", "").strip()
     target["clay_hubspot_list_name"] = body.get("clay_hubspot_list_name", "").strip()
-    target["clay_table_id"]          = body.get("clay_table_id", "").strip()
+    target["clay_webhook_url"]       = body.get("clay_webhook_url", "").strip()
     target["clay_column_mappings"]   = [
         m for m in body.get("clay_column_mappings", [])
         if isinstance(m, dict) and m.get("hs_property") and m.get("clay_column")
@@ -558,8 +558,8 @@ class handler(BaseHTTPRequestHandler):
                 if not body.get("clay_hubspot_list_id", "").strip():
                     self._json(400, {"error": "Clay: please select a HubSpot list"})
                     return
-                if not body.get("clay_table_id", "").strip():
-                    self._json(400, {"error": "Clay: please enter the Clay table ID"})
+                if not body.get("clay_webhook_url", "").strip():
+                    self._json(400, {"error": "Clay: please enter the Clay webhook URL"})
                     return
                 clay_maps = [m for m in body.get("clay_column_mappings", []) if isinstance(m, dict) and m.get("hs_property") and m.get("clay_column")]
                 if not clay_maps:
@@ -586,7 +586,9 @@ class handler(BaseHTTPRequestHandler):
                 match   = re.search(r'/spreadsheets/d/([a-zA-Z0-9-_]+)', sheet_url)
                 sheet_id = match.group(1) if match else "unknown"
             else:
-                sheet_id = body.get("clay_table_id", "clay").strip()
+                import hashlib
+                wh = body.get("clay_webhook_url", "clay").strip()
+                sheet_id = hashlib.md5(wh.encode()).hexdigest()[:12]
 
             new_auto = {
                 "id":            f"gs_{sheet_id}_{object_type}",
