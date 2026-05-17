@@ -596,7 +596,7 @@
               <div style="background:rgba(167,139,250,0.08);border:1px solid rgba(167,139,250,0.18);border-radius:7px;padding:0.75rem 0.9rem;margin-bottom:1rem;font-size:12px;line-height:1.7;color:var(--muted);">
                 <div style="font-weight:600;color:#c4b5fd;margin-bottom:0.35rem;">📋 How to set up</div>
                 <ol style="margin:0;padding-left:1rem;display:flex;flex-direction:column;gap:2px;">
-                  <li>Open your Clay table → find the Table ID in the URL after <code style="font-size:11px;background:rgba(255,255,255,0.07);padding:1px 4px;border-radius:3px;">/tables/</code> — starts with <code style="font-size:11px;background:rgba(255,255,255,0.07);padding:1px 4px;border-radius:3px;">t_</code></li>
+                  <li>In Clay open your table → click <strong style="color:var(--cream);">Tools</strong> (top right) → <strong style="color:var(--cream);">Import</strong> → <strong style="color:var(--cream);">Webhook</strong> → copy the Webhook URL shown</li>
                   <li>Map HubSpot properties to Clay column names exactly as they appear in the table header</li>
                   <li>Always include <strong style="color:var(--cream);">email</strong> as a mapping</li>
                 </ol>
@@ -609,9 +609,9 @@
                 </div>
               </div>
               <div class="form-row">
-                <label>Clay table ID</label>
-                <input type="text" id="clay-table-id" placeholder="e.g. t_0t6aw763PBK3Xsczix4">
-                <div class="token-hint" style="margin-top:4px;">app.clay.com/…/tables/<strong>TABLE_ID</strong>/…</div>
+                <label>Clay webhook URL</label>
+                <input type="text" id="clay-webhook-url" placeholder="https://api.clay.com/v3/sources/webhook/pull-in-data-…">
+                <div class="token-hint" style="margin-top:4px;">In Clay: Tools → Import → Webhook → copy the URL shown</div>
               </div>
               <div class="form-row" style="margin-bottom:0;">
                 <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:7px;">
@@ -1446,7 +1446,7 @@ async function createAutomation(deliveryType) {
 
     if (clayOn) {
       if (!hsSelectedClay.id)  { errEl.textContent='Clay: please select a HubSpot list.'; errEl.style.display='block'; return; }
-      if (!document.getElementById('clay-table-id').value.trim()) { errEl.textContent='Clay: please enter the Clay table ID.'; errEl.style.display='block'; return; }
+      if (!document.getElementById('clay-webhook-url').value.trim()) { errEl.textContent='Clay: please enter the Clay webhook URL.'; errEl.style.display='block'; return; }
       if (!clayMappings.filter(m => m.hs_property && m.clay_column).length) { errEl.textContent='Clay: please add at least one column mapping.'; errEl.style.display='block'; return; }
     }
 
@@ -1474,7 +1474,7 @@ async function createAutomation(deliveryType) {
       clay_enabled:         document.getElementById('clay-enabled')?.checked || false,
       clay_hubspot_list_id:  hsSelectedClay.id || '',
       clay_hubspot_list_name: hsSelectedClay.name || '',
-      clay_table_id:         document.getElementById('clay-table-id')?.value.trim() || '',
+      clay_webhook_url:      document.getElementById('clay-webhook-url')?.value.trim() || '',
       clay_column_mappings:  clayMappings.filter(m => m.hs_property && m.clay_column),
       gsheet_enabled:        document.getElementById('gsheet-enabled')?.checked || false,
     };
@@ -1599,7 +1599,7 @@ async function editAutomation(id) {
     // Restore clay fields
     const clayCb = document.getElementById('clay-enabled');
     if (clayCb) { clayCb.checked=!!a.clay_enabled; toggleClaySection(!!a.clay_enabled); }
-    if (a.clay_table_id) { const ctid=document.getElementById('clay-table-id'); if(ctid) ctid.value=a.clay_table_id; }
+    if (a.clay_webhook_url) { const ctid=document.getElementById('clay-webhook-url'); if(ctid) ctid.value=a.clay_webhook_url; }
     if (a.clay_column_mappings && a.clay_column_mappings.length) { clayMappings=JSON.parse(JSON.stringify(a.clay_column_mappings)); if(a.clay_table_id) loadClayColumns().then(()=>renderClayMappings()); else renderClayMappings(); } else { clayMappings=[]; renderClayMappings(); }
     gsMappings = JSON.parse(JSON.stringify(a.column_mappings||[]));
     renderGsMappings();
@@ -1800,7 +1800,7 @@ function initClayHsPropSearch(index, currentProp, currentLabel) {
 function resetClayFields() {
   const cb = document.getElementById('clay-enabled');
   if (cb) { cb.checked = false; toggleClaySection(false); }
-  const tid = document.getElementById('clay-table-id');
+  const tid = document.getElementById('clay-webhook-url');
   if (tid) tid.value = '';
   clayMappings = []; clayColumnsCache = [];
   renderClayMappings();
