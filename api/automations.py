@@ -355,12 +355,15 @@ def _apply_gsheet_fields(target, body):
     target["default_stage_label"]     = body.get("default_stage_label", "").strip()
 
 def _apply_clay_fields(target, body):
-    target["clay_enabled"]         = bool(body.get("clay_enabled", False))
-    target["clay_table_id"]        = body.get("clay_table_id", "").strip()
-    target["clay_column_mappings"] = [
+    target["clay_enabled"]           = bool(body.get("clay_enabled", False))
+    target["clay_hubspot_list_id"]   = body.get("clay_hubspot_list_id", "").strip()
+    target["clay_hubspot_list_name"] = body.get("clay_hubspot_list_name", "").strip()
+    target["clay_table_id"]          = body.get("clay_table_id", "").strip()
+    target["clay_column_mappings"]   = [
         m for m in body.get("clay_column_mappings", [])
         if isinstance(m, dict) and m.get("hs_property") and m.get("clay_column")
     ]
+    target["gsheet_enabled"]         = bool(body.get("gsheet_enabled", False))
 
 def _apply_enrichment_gsheet_fields(target, body):
     target["enrichment_gsheet_enabled"] = bool(body.get("enrichment_gsheet_enabled", False))
@@ -592,6 +595,7 @@ class handler(BaseHTTPRequestHandler):
                 "active":        True,
             }
             _apply_gsheet_fields(new_auto, body)
+            _apply_clay_fields(new_auto, body)
             _apply_slack_fields(new_auto, body)
             existing.append(new_auto)
             save_automations(existing)
@@ -760,6 +764,7 @@ class handler(BaseHTTPRequestHandler):
                     }
                     if gsheet_keys & body.keys():
                         _apply_gsheet_fields(a, body)
+                        _apply_clay_fields(a, body)
                     if "slack_enabled" in body:
                         _apply_slack_fields(a, body)
 
