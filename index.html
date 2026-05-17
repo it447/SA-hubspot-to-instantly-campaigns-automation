@@ -1588,6 +1588,14 @@ async function editAutomation(id) {
 
   if (isGsheet) {
     document.getElementById('auto-name-gsheet_sync').value = a.name||'';
+    // Restore gsheet toggle — default true if sheet_url exists (old automations)
+    const gsheetCb = document.getElementById('gsheet-enabled');
+    const gsheetOn = a.gsheet_enabled !== undefined ? !!a.gsheet_enabled : !!a.sheet_url;
+    if (gsheetCb) { gsheetCb.checked = gsheetOn; toggleGsheetSection(gsheetOn); }
+    // Restore clay toggle
+    const clayCb2 = document.getElementById('clay-enabled');
+    const clayOn2 = !!a.clay_enabled;
+    if (clayCb2) { clayCb2.checked = clayOn2; toggleClaySection(clayOn2); }
     document.getElementById('gs-sheet-url').value          = a.sheet_url||'';
     document.getElementById('gs-sheet-tab').value          = a.sheet_tab||'';
     document.getElementById('gs-object-type').value        = a.object_type||'contact';
@@ -1596,9 +1604,6 @@ async function editAutomation(id) {
     document.getElementById('gs-default-pipeline').value   = a.default_pipeline||'';
     document.getElementById('gs-default-stage').value      = a.default_stage||'';
     onObjectTypeChange();
-    // Restore clay fields
-    const clayCb = document.getElementById('clay-enabled');
-    if (clayCb) { clayCb.checked=!!a.clay_enabled; toggleClaySection(!!a.clay_enabled); }
     if (a.clay_webhook_url) { const ctid=document.getElementById('clay-webhook-url'); if(ctid) ctid.value=a.clay_webhook_url; }
     if (a.clay_column_mappings && a.clay_column_mappings.length) { clayMappings=JSON.parse(JSON.stringify(a.clay_column_mappings)); if(a.clay_table_id) loadClayColumns().then(()=>renderClayMappings()); else renderClayMappings(); } else { clayMappings=[]; renderClayMappings(); }
     gsMappings = JSON.parse(JSON.stringify(a.column_mappings||[]));
