@@ -535,38 +535,55 @@ class handler(BaseHTTPRequestHandler):
 
         existing = get_automations()
 
-        # ── GSheet → HubSpot sync ─────────────────────────────
+        # ── GSheet → HubSpot sync / Clay + GSheet ────────────
         if delivery_type == "gsheet_sync":
-            sheet_url       = body.get("sheet_url", "").strip()
-            object_type     = body.get("object_type", "contact")
-            pk_column       = body.get("primary_key_column", "").strip()
+            clay_enabled   = bool(body.get("clay_enabled", False))
+            gsheet_enabled = bool(body.get("gsheet_enabled", False))
+            sheet_url      = body.get("sheet_url", "").strip()
+            object_type    = body.get("object_type", "contact")
+            pk_column      = body.get("primary_key_column", "").strip()
             column_mappings = [
                 m for m in body.get("column_mappings", [])
                 if isinstance(m, dict) and m.get("column") and m.get("property")
             ]
 
-            if not sheet_url:
-                self._json(400, {"error": "Missing Google Sheet URL"})
-                return
-            if not pk_column:
-                self._json(400, {"error": "Missing primary key column"})
-                return
-            if not column_mappings:
-                self._json(400, {"error": "At least one column mapping is required"})
+            if not clay_enabled and not gsheet_enabled:
+                self._json(400, {"error": "Please enable at least one automation (Clay or GSheet)"})
                 return
 
-            match = re.search(r'/spreadsheets/d/([a-zA-Z0-9-_]+)', sheet_url)
-            if not match:
-                self._json(400, {"error": "Invalid Google Sheet URL"})
-                return
-            sheet_id = match.group(1)
-
-            for a in existing:
-                if a.get("delivery_type") == "gsheet_sync" and \
-                   a.get("sheet_url") == sheet_url and \
-                   a.get("object_type") == object_type:
-                    self._json(409, {"error": "A GSheet sync for this sheet and object type already exists"})
+            if clay_enabled:
+                if not body.get("clay_hubspot_list_id", "").strip():
+                    self._json(400, {"error": "Clay: please select a HubSpot list"})
                     return
+                if not body.get("clay_table_id", "").strip():
+                    self._json(400, {"error": "Clay: please enter the Clay table ID"})
+                    return
+                clay_maps = [m for m in body.get("clay_column_mappings", []) if isinstance(m, dict) and m.get("hs_property") and m.get("clay_column")]
+                if not clay_maps:
+                    self._json(400, {"error": "Clay: please add at least one column mapping"})
+                    return
+
+            if gsheet_enabled:
+                if not sheet_url:
+                    self._json(400, {"error": "GSheet: please enter the Google Sheet URL"})
+                    return
+                if not pk_column:
+                    self._json(400, {"error": "GSheet: please enter the primary key column"})
+                    return
+                if not column_mappings:
+                    self._json(400, {"error": "GSheet: at least one column mapping is required"})
+                    return
+                match = re.search(r'/spreadsheets/d/([a-zA-Z0-9-_]+)', sheet_url)
+                if not match:
+                    self._json(400, {"error": "GSheet: invalid Google Sheet URL"})
+                    return
+
+            # Use sheet_id for auto id if gsheet enabled, else use clay table id
+            if gsheet_enabled:
+                match   = re.search(r'/spreadsheets/d/([a-zA-Z0-9-_]+)', sheet_url)
+                sheet_id = match.group(1) if match else "unknown"
+            else:
+                sheet_id = body.get("clay_table_id", "clay").strip()
 
             new_auto = {
                 "id":            f"gs_{sheet_id}_{object_type}",
