@@ -1489,7 +1489,7 @@ async function createAutomation(deliveryType) {
     const objType   = document.getElementById('gs-object-type').value;
     const pkCol     = document.getElementById('gs-pk-column').value.trim();
     const pkType    = document.getElementById('gs-pk-type').value;
-    const validMaps = gsMappings.filter(m => m.column.trim() && m.property.trim());
+    const validMaps = gsMappings.filter(m => m.column && m.column.trim() && m.property && m.property.trim());
 
     const clayOn   = document.getElementById('clay-enabled')?.checked;
     const gsheetOn = document.getElementById('gsheet-enabled')?.checked;
@@ -1662,7 +1662,6 @@ async function editAutomation(id) {
     if (clayHsInp) { clayHsInp.value=a.clay_hubspot_list_name||''; clayHsInp.classList.toggle('has-value', !!a.clay_hubspot_list_id); }
     clayMappings = a.clay_column_mappings ? JSON.parse(JSON.stringify(a.clay_column_mappings)) : [];
     renderClayMappings();
-    if (a.clay_column_mappings && a.clay_column_mappings.length) { clayMappings=JSON.parse(JSON.stringify(a.clay_column_mappings)); if(a.clay_table_id) loadClayColumns().then(()=>renderClayMappings()); else renderClayMappings(); } else { clayMappings=[]; renderClayMappings(); }
     gsMappings = JSON.parse(JSON.stringify((a.column_mappings||[]).map(m=>({...m, propertyLabel: m.propertyLabel||m.property}))));
     renderGsMappings();
     selectGsSchedule(a.gsheet_schedule_type||'interval');
