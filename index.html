@@ -345,14 +345,33 @@
     <button class="nav-item active" onclick="showPage('dashboard');setFilter('all')" id="nav-dashboard">
       <span class="nav-icon">◻</span> Dashboard
     </button>
-    <button class="nav-item" id="nav-filter-instantly" onclick="showPage('dashboard');setFilter('instantly')" style="padding-left:28px;font-size:13px;">
-      <span class="nav-icon" style="font-size:12px;">⚡</span> Instantly
+    <button class="nav-item" id="nav-filter-instantly" onclick="showPage('dashboard');setFilter('instantly')" style="padding-left:28px;font-size:13px;display:flex;align-items:center;gap:7px;">
+      <svg width="14" height="14" viewBox="0 0 100 100" fill="none" style="flex-shrink:0;">
+  <circle cx="50" cy="50" r="50" fill="#2563EB"/>
+  <polygon points="58,10 30,55 50,55 42,90 70,45 50,45" fill="white"/>
+</svg> Instantly
     </button>
-    <button class="nav-item" id="nav-filter-hubspot_form" onclick="showPage('dashboard');setFilter('hubspot_form')" style="padding-left:28px;font-size:13px;">
-      <span class="nav-icon" style="font-size:12px;">◈</span> HS Form
+    <button class="nav-item" id="nav-filter-hubspot_form" onclick="showPage('dashboard');setFilter('hubspot_form')" style="padding-left:28px;font-size:13px;display:flex;align-items:center;gap:7px;">
+      <svg width="14" height="14" viewBox="0 0 100 100" fill="none" style="flex-shrink:0;">
+  <circle cx="62" cy="50" r="18" fill="#FF7A59"/>
+  <circle cx="62" cy="50" r="9" fill="white"/>
+  <circle cx="25" cy="28" r="8" fill="#FF7A59"/>
+  <circle cx="25" cy="72" r="8" fill="#FF7A59"/>
+  <circle cx="78" cy="18" r="7" fill="#FF7A59"/>
+  <line x1="25" y1="28" x2="50" y2="45" stroke="#FF7A59" stroke-width="8" stroke-linecap="round"/>
+  <line x1="25" y1="72" x2="50" y2="57" stroke="#FF7A59" stroke-width="8" stroke-linecap="round"/>
+  <line x1="78" y1="18" x2="68" y2="35" stroke="#FF7A59" stroke-width="8" stroke-linecap="round"/>
+</svg> HubSpot Form
     </button>
-    <button class="nav-item" id="nav-filter-gsheet_sync" onclick="showPage('dashboard');setFilter('gsheet_sync')" style="padding-left:28px;font-size:13px;">
-      <span class="nav-icon" style="font-size:12px;">▦</span> GSheet Sync
+    <button class="nav-item" id="nav-filter-gsheet_sync" onclick="showPage('dashboard');setFilter('gsheet_sync')" style="padding-left:28px;font-size:13px;display:flex;align-items:center;gap:7px;">
+      <svg width="14" height="14" viewBox="0 0 100 100" fill="none" style="flex-shrink:0;">
+  <path d="M80 50 A35 35 0 1 1 80 50.01Z" fill="#38BDF8" clip-path="url(#cl1)"/>
+  <clipPath id="cl1"><rect x="0" y="0" width="70" height="100"/></clipPath>
+  <path d="M75 50 A28 28 0 1 1 75 50.01Z" fill="#EC4899" clip-path="url(#cl2)"/>
+  <clipPath id="cl2"><rect x="0" y="0" width="68" height="100"/></clipPath>
+  <path d="M68 50 A18 18 0 1 1 68 50.01Z" fill="#FBBF24" clip-path="url(#cl3)"/>
+  <clipPath id="cl3"><rect x="0" y="0" width="65" height="100"/></clipPath>
+</svg> Clay / HubSpot Enrichment
     </button>
     <button class="nav-item" onclick="newAutomation()" id="nav-add" style="margin-top:4px;">
       <span class="nav-icon">+</span> New automation
