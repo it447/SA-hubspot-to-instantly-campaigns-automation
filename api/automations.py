@@ -407,7 +407,10 @@ class handler(BaseHTTPRequestHandler):
                                 ts = entry.get("ts", 0)
                                 if not ts:
                                     continue
-                                dt = datetime.datetime.fromtimestamp(float(ts), tz=datetime.timezone.utc)
+                                try:
+                                    dt = datetime.datetime.fromtimestamp(float(ts), tz=datetime.timezone.utc)
+                                except (ValueError, TypeError):
+                                    dt = datetime.datetime.fromisoformat(str(ts).replace("Z", "+00:00"))
                                 day_key = dt.astimezone(est).date().isoformat()
                                 day_totals[day_key] = day_totals.get(day_key, 0) + 1
                                 if dt >= cutoff_24h:
