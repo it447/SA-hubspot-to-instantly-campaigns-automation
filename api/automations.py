@@ -13,7 +13,6 @@ DASHBOARD_PASSWORD = os.environ.get("DASHBOARD_PASSWORD", "changeme")
 INSTANTLY_API_KEY  = os.environ.get("INSTANTLY_API_KEY", "")
 HUBSPOT_API_KEY    = os.environ.get("HUBSPOT_API_KEY", "")
 SLACK_BOT_TOKEN    = os.environ.get("SLACK_BOT_TOKEN", "")
-CLAY_API_KEY       = os.environ.get("CLAY_API_KEY", "")
 
 def _log(msg):
     print(msg, file=sys.stderr, flush=True)
@@ -73,11 +72,14 @@ def get_list_contacts(list_id):
 def get_hs_lists():
     headers = {"Authorization": f"Bearer {HUBSPOT_API_KEY}"}
     seen = {}
+
     offset = 0
     while True:
         url = f"https://api.hubapi.com/contacts/v1/lists?count=250&offset={offset}"
+        _log(f"[HubSpot v1] GET offset={offset}")
         try:
             resp = requests.get(url, headers=headers, timeout=10)
+            _log(f"[HubSpot v1] status={resp.status_code}")
             resp.raise_for_status()
             body = resp.json()
             for l in body.get("lists", []):
@@ -90,17 +92,20 @@ def get_hs_lists():
         except Exception as e:
             _log(f"[HubSpot v1] error: {e}")
             break
+
     after = None
     while True:
         url = "https://api.hubapi.com/crm/v3/lists?objectTypeId=0-1&limit=100"
         if after:
             url += f"&after={after}"
+        _log(f"[HubSpot v3] GET after={after}")
         try:
             resp = requests.get(url, headers=headers, timeout=10)
+            _log(f"[HubSpot v3] status={resp.status_code} body={resp.text[:300]}")
             resp.raise_for_status()
             body = resp.json()
             for l in body.get("lists", []):
-                lid  = str(l.get("listId") or l.get("id", ""))
+                lid = str(l.get("listId") or l.get("id", ""))
                 name = l.get("name", "")
                 if lid and lid not in seen:
                     seen[lid] = name
@@ -110,6 +115,8 @@ def get_hs_lists():
         except Exception as e:
             _log(f"[HubSpot v3] error: {e}")
             break
+
+    _log(f"[HubSpot] total unique lists={len(seen)}")
     return sorted(
         [{"id": lid, "name": name} for lid, name in seen.items()],
         key=lambda x: x["name"].lower()
@@ -123,12 +130,14 @@ def get_hs_forms():
         url = "https://api.hubapi.com/marketing/v3/forms?limit=100"
         if after:
             url += f"&after={after}"
+        _log(f"[HubSpot forms] GET after={after}")
         try:
             resp = requests.get(url, headers=headers, timeout=10)
+            _log(f"[HubSpot forms] status={resp.status_code}")
             resp.raise_for_status()
             body = resp.json()
             for f in body.get("results", []):
-                fid  = f.get("id", "")
+                fid = f.get("id", "")
                 name = f.get("name", "")
                 if fid:
                     forms.append({"id": fid, "name": name})
@@ -138,23 +147,15 @@ def get_hs_forms():
         except Exception as e:
             _log(f"[HubSpot forms] error: {e}")
             break
+    _log(f"[HubSpot forms] total={len(forms)}")
     return sorted(forms, key=lambda x: x["name"].lower())
 
-def get_hs_properties(object_type="contacts"):
-    hs_object = {
-        "contact":   "contacts",
-        "contacts":  "contacts",
-        "company":   "companies",
-        "companies": "companies",
-        "deal":      "deals",
-        "deals":     "deals",
-    }.get(object_type, "contacts")
-
+def get_hs_contact_properties():
     headers = {"Authorization": f"Bearer {HUBSPOT_API_KEY}"}
     props = []
     after = None
     while True:
-        url = f"https://api.hubapi.com/crm/v3/properties/{hs_object}?limit=500"
+        url = "https://api.hubapi.com/crm/v3/properties/contacts?limit=500"
         if after:
             url += f"&after={after}"
         try:
@@ -173,52 +174,22 @@ def get_hs_properties(object_type="contacts"):
                         for o in p.get("options", []) if o.get("value")
                     ]
                 if name:
-                    props.append({
-                        "name": name, "label": label,
-                        "type": prop_type, "fieldType": field_type,
-                        "options": options
-                    })
+                    props.append({"name": name, "label": label, "type": prop_type, "fieldType": field_type, "options": options})
             after = body.get("paging", {}).get("next", {}).get("after")
             if not after:
                 break
         except Exception as e:
-            _log(f"[HubSpot properties/{hs_object}] error: {e}")
+            _log(f"[HubSpot properties] error: {e}")
             break
-    _log(f"[HubSpot properties/{hs_object}] total={len(props)}")
+    _log(f"[HubSpot properties] total={len(props)}")
     return sorted(props, key=lambda x: x["label"].lower())
-
-def get_deal_pipelines():
-    headers = {"Authorization": f"Bearer {HUBSPOT_API_KEY}"}
-    try:
-        resp = requests.get(
-            "https://api.hubapi.com/crm/v3/pipelines/deals",
-            headers=headers, timeout=10
-        )
-        resp.raise_for_status()
-        pipelines = []
-        for p in resp.json().get("results", []):
-            stages = sorted(
-                [{"id": s.get("id", ""), "label": s.get("label", "")}
-                 for s in p.get("stages", [])],
-                key=lambda s: s["label"].lower()
-            )
-            pipelines.append({
-                "id":     p.get("id", ""),
-                "label":  p.get("label", ""),
-                "stages": stages,
-            })
-        _log(f"[HubSpot pipelines] total={len(pipelines)}")
-        return sorted(pipelines, key=lambda x: x["label"].lower())
-    except Exception as e:
-        _log(f"[HubSpot pipelines] error: {e}")
-        return []
 
 def get_slack_channels():
     if not SLACK_BOT_TOKEN:
         return []
-    headers  = {"Authorization": f"Bearer {SLACK_BOT_TOKEN}"}
+    headers = {"Authorization": f"Bearer {SLACK_BOT_TOKEN}"}
     channels = []
-    cursor   = None
+    cursor = None
     while True:
         url = "https://slack.com/api/conversations.list?types=public_channel,private_channel&limit=200&exclude_archived=true"
         if cursor:
@@ -241,10 +212,12 @@ def get_slack_channels():
     return sorted(channels, key=lambda x: x["name"].lower())
 
 def get_instantly_campaigns():
-    url     = "https://api.instantly.ai/api/v2/campaigns?limit=100"
+    url = "https://api.instantly.ai/api/v2/campaigns?limit=100"
     headers = {"Authorization": f"Bearer {INSTANTLY_API_KEY}"}
+    _log(f"[Instantly] GET {url} (key present: {bool(INSTANTLY_API_KEY)})")
     try:
         resp = requests.get(url, headers=headers, timeout=10)
+        _log(f"[Instantly] status={resp.status_code} body={resp.text[:300]}")
         resp.raise_for_status()
         data = resp.json()
         if isinstance(data, list):
@@ -253,6 +226,7 @@ def get_instantly_campaigns():
             campaigns = data.get("items", data.get("campaigns", data.get("data", [])))
         else:
             campaigns = []
+        _log(f"[Instantly] returned {len(campaigns)} campaigns")
         return [{"id": c.get("id", ""), "name": c.get("name", "")} for c in campaigns]
     except requests.HTTPError as e:
         raise Exception(f"Instantly HTTP {e.response.status_code}: {e.response.text[:400]}")
@@ -260,6 +234,7 @@ def get_instantly_campaigns():
         raise Exception(f"Instantly request failed: {e}")
 
 def get_service_account_email():
+    """Extract client_email from GOOGLE_SERVICE_ACCOUNT_JSON env var."""
     sa_json = os.environ.get("GOOGLE_SERVICE_ACCOUNT_JSON", "")
     if not sa_json:
         return None
@@ -267,39 +242,6 @@ def get_service_account_email():
         return json.loads(sa_json).get("client_email")
     except Exception:
         return None
-
-# ── Clay API helpers ──────────────────────────────────────────
-
-def get_clay_table_columns(table_id, api_key=None):
-    """Fetch column definitions for a Clay table."""
-    key = api_key or CLAY_API_KEY
-    if not key:
-        raise ValueError("CLAY_API_KEY not configured")
-    headers = {
-        "Authorization": f"Bearer {key}",
-        "Content-Type":  "application/json"
-    }
-    url  = f"https://api.clay.com/v1/sources/{table_id}/columns"
-    resp = requests.get(url, headers=headers, timeout=10)
-    if resp.status_code == 401:
-        raise ValueError("Invalid Clay API key")
-    if resp.status_code == 404:
-        raise ValueError(f"Clay table '{table_id}' not found")
-    resp.raise_for_status()
-    data    = resp.json()
-    columns = []
-    for col in data.get("columns", data.get("data", [])):
-        col_id   = col.get("id",   col.get("slug",  ""))
-        col_name = col.get("name", col.get("label", col_id))
-        if col_id:
-            columns.append({"id": col_id, "name": col_name})
-    return sorted(columns, key=lambda x: x["name"].lower())
-
-def validate_clay_key(api_key):
-    """Quick check that the Clay API key is valid."""
-    headers = {"Authorization": f"Bearer {api_key}"}
-    resp    = requests.get("https://api.clay.com/v1/me", headers=headers, timeout=10)
-    return resp.status_code == 200
 
 # ── Field helpers ─────────────────────────────────────────────
 
@@ -336,6 +278,7 @@ def _apply_alert_fields(target, body):
         target["alert_message"]            = ""
 
 def _apply_gsheet_fields(target, body):
+    """Copy all GSheet-specific fields from request body onto the automation record."""
     target["sheet_url"]          = body.get("sheet_url", "").strip()
     target["sheet_tab"]          = body.get("sheet_tab", "").strip()
     target["object_type"]        = body.get("object_type", "contact")
@@ -345,41 +288,14 @@ def _apply_gsheet_fields(target, body):
         m for m in body.get("column_mappings", [])
         if isinstance(m, dict) and m.get("column") and m.get("property")
     ]
+    # Schedule
     target["gsheet_schedule_type"]    = body.get("gsheet_schedule_type", "interval")
     target["gsheet_interval_minutes"] = int(body.get("gsheet_interval_minutes", 60))
     target["gsheet_run_time"]         = body.get("gsheet_run_time", "08:00")
     target["gsheet_run_day"]          = int(body.get("gsheet_run_day", 0))
-    target["default_pipeline"]        = body.get("default_pipeline", "").strip()
-    target["default_pipeline_label"]  = body.get("default_pipeline_label", "").strip()
-    target["default_stage"]           = body.get("default_stage", "").strip()
-    target["default_stage_label"]     = body.get("default_stage_label", "").strip()
-
-def _apply_clay_fields(target, body):
-    target["clay_enabled"]           = bool(body.get("clay_enabled", False))
-    target["clay_hubspot_list_id"]   = body.get("clay_hubspot_list_id", "").strip()
-    target["clay_hubspot_list_name"] = body.get("clay_hubspot_list_name", "").strip()
-    target["clay_webhook_url"]       = body.get("clay_webhook_url", "").strip()
-    target["clay_column_mappings"]   = [
-        m for m in body.get("clay_column_mappings", [])
-        if isinstance(m, dict) and m.get("hs_property") and m.get("clay_column")
-    ]
-    target["gsheet_enabled"]         = bool(body.get("gsheet_enabled", False))
-
-def _apply_enrichment_gsheet_fields(target, body):
-    target["enrichment_gsheet_enabled"] = bool(body.get("enrichment_gsheet_enabled", False))
-    target["sheet_url"]                 = body.get("sheet_url", "").strip()
-    target["sheet_tab"]                 = body.get("sheet_tab", "").strip()
-    target["object_type"]               = body.get("object_type", "contact")
-    target["primary_key_column"]        = body.get("primary_key_column", "").strip()
-    target["primary_key_type"]          = body.get("primary_key_type", "email")
-    target["column_mappings"]           = [
-        m for m in body.get("column_mappings", [])
-        if isinstance(m, dict) and m.get("column") and m.get("property")
-    ]
-    target["gsheet_schedule_type"]    = body.get("gsheet_schedule_type", "interval")
-    target["gsheet_interval_minutes"] = int(body.get("gsheet_interval_minutes", 60))
-    target["gsheet_run_time"]         = body.get("gsheet_run_time", "08:00")
-    target["gsheet_run_day"]          = int(body.get("gsheet_run_day", 0))
+    # Deal-specific defaults
+    target["default_pipeline"] = body.get("default_pipeline", "").strip()
+    target["default_stage"]    = body.get("default_stage", "").strip()
 
 
 class handler(BaseHTTPRequestHandler):
@@ -405,8 +321,7 @@ class handler(BaseHTTPRequestHandler):
         self.end_headers()
 
     def do_GET(self):
-        path  = self.path.split("?")[0]
-        query = self.path.split("?")[1] if "?" in self.path else ""
+        path = self.path.split("?")[0]
         token = self.headers.get("X-Auth-Token", "")
         if token != DASHBOARD_PASSWORD:
             self._json(401, {"error": "Unauthorized"})
@@ -417,101 +332,50 @@ class handler(BaseHTTPRequestHandler):
                 self._json(200, get_hs_lists())
             except Exception as e:
                 self._json(500, {"error": str(e)})
-
         elif path.endswith("/campaigns"):
             try:
                 self._json(200, get_instantly_campaigns())
             except Exception as e:
                 self._json(500, {"error": str(e)})
-
         elif path.endswith("/forms"):
             try:
                 self._json(200, get_hs_forms())
             except Exception as e:
                 self._json(500, {"error": str(e)})
-
         elif path.endswith("/properties"):
-            object_type = "contacts"
-            for part in query.split("&"):
-                if part.startswith("object="):
-                    object_type = part.split("=", 1)[1]
             try:
-                self._json(200, get_hs_properties(object_type))
+                self._json(200, get_hs_contact_properties())
             except Exception as e:
                 self._json(500, {"error": str(e)})
-
-        elif path.endswith("/pipelines"):
-            try:
-                self._json(200, get_deal_pipelines())
-            except Exception as e:
-                self._json(500, {"error": str(e)})
-
         elif path.endswith("/slack/channels"):
             try:
                 self._json(200, get_slack_channels())
             except Exception as e:
                 self._json(500, {"error": str(e)})
-
         elif path.endswith("/automations"):
             try:
                 self._json(200, get_automations())
             except Exception as e:
                 self._json(500, {"error": str(e)})
-
         elif path.endswith("/google/service-account-email"):
             email = get_service_account_email()
             if email:
                 self._json(200, {"email": email})
             else:
                 self._json(404, {"error": "GOOGLE_SERVICE_ACCOUNT_JSON not configured"})
-
         elif "/contacts/" in path:
             list_id = path.split("/contacts/")[-1].strip("/")
             try:
                 self._json(200, get_list_contacts(list_id))
             except Exception as e:
                 self._json(500, {"error": str(e)})
-
-        # ── Clay endpoints ────────────────────────────────────
-        elif path.endswith("/clay/columns"):
-            # ?table_id=xxx
-            table_id = ""
-            for part in query.split("&"):
-                if part.startswith("table_id="):
-                    table_id = part.split("=", 1)[1]
-            if not table_id:
-                self._json(400, {"error": "Missing table_id"})
-                return
-            try:
-                columns = get_clay_table_columns(table_id)
-                self._json(200, columns)
-            except ValueError as e:
-                self._json(400, {"error": str(e)})
-            except Exception as e:
-                self._json(500, {"error": str(e)})
-
-        elif path.endswith("/clay/validate"):
-            # ?api_key=xxx  — validate a Clay API key
-            api_key = ""
-            for part in query.split("&"):
-                if part.startswith("api_key="):
-                    api_key = part.split("=", 1)[1]
-            if not api_key:
-                self._json(400, {"error": "Missing api_key"})
-                return
-            try:
-                valid = validate_clay_key(api_key)
-                self._json(200, {"valid": valid})
-            except Exception as e:
-                self._json(500, {"error": str(e)})
-
         else:
             self._json(404, {"error": "Not found"})
 
     def do_POST(self):
-        path   = self.path.split("?")[0]
+        path = self.path.split("?")[0]
         length = int(self.headers.get("Content-Length", 0))
-        body   = json.loads(self.rfile.read(length)) if length else {}
+        body = json.loads(self.rfile.read(length)) if length else {}
 
         if path.endswith("/login"):
             if body.get("password") == DASHBOARD_PASSWORD:
@@ -538,57 +402,39 @@ class handler(BaseHTTPRequestHandler):
 
         existing = get_automations()
 
-        # ── GSheet → HubSpot sync / Clay + GSheet ────────────
+        # ── GSheet → HubSpot sync ─────────────────────────────
         if delivery_type == "gsheet_sync":
-            clay_enabled   = bool(body.get("clay_enabled", False))
-            gsheet_enabled = bool(body.get("gsheet_enabled", False))
-            sheet_url      = body.get("sheet_url", "").strip()
-            object_type    = body.get("object_type", "contact")
-            pk_column      = body.get("primary_key_column", "").strip()
+            sheet_url       = body.get("sheet_url", "").strip()
+            object_type     = body.get("object_type", "contact")
+            pk_column       = body.get("primary_key_column", "").strip()
             column_mappings = [
                 m for m in body.get("column_mappings", [])
                 if isinstance(m, dict) and m.get("column") and m.get("property")
             ]
 
-            if not clay_enabled and not gsheet_enabled:
-                self._json(400, {"error": "Please enable at least one automation (Clay or GSheet)"})
+            if not sheet_url:
+                self._json(400, {"error": "Missing Google Sheet URL"})
+                return
+            if not pk_column:
+                self._json(400, {"error": "Missing primary key column"})
+                return
+            if not column_mappings:
+                self._json(400, {"error": "At least one column mapping is required"})
                 return
 
-            if clay_enabled:
-                if not body.get("clay_hubspot_list_id", "").strip():
-                    self._json(400, {"error": "Clay: please select a HubSpot list"})
-                    return
-                if not body.get("clay_webhook_url", "").strip():
-                    self._json(400, {"error": "Clay: please enter the Clay webhook URL"})
-                    return
-                clay_maps = [m for m in body.get("clay_column_mappings", []) if isinstance(m, dict) and m.get("hs_property") and m.get("clay_column")]
-                if not clay_maps:
-                    self._json(400, {"error": "Clay: please add at least one column mapping"})
-                    return
+            match = re.search(r'/spreadsheets/d/([a-zA-Z0-9-_]+)', sheet_url)
+            if not match:
+                self._json(400, {"error": "Invalid Google Sheet URL"})
+                return
+            sheet_id = match.group(1)
 
-            if gsheet_enabled:
-                if not sheet_url:
-                    self._json(400, {"error": "GSheet: please enter the Google Sheet URL"})
+            # Duplicate check: same sheet URL + object type
+            for a in existing:
+                if a.get("delivery_type") == "gsheet_sync" and \
+                   a.get("sheet_url") == sheet_url and \
+                   a.get("object_type") == object_type:
+                    self._json(409, {"error": "A GSheet sync for this sheet and object type already exists"})
                     return
-                if not pk_column:
-                    self._json(400, {"error": "GSheet: please enter the primary key column"})
-                    return
-                if not column_mappings:
-                    self._json(400, {"error": "GSheet: at least one column mapping is required"})
-                    return
-                match = re.search(r'/spreadsheets/d/([a-zA-Z0-9-_]+)', sheet_url)
-                if not match:
-                    self._json(400, {"error": "GSheet: invalid Google Sheet URL"})
-                    return
-
-            # Use sheet_id for auto id if gsheet enabled, else use clay table id
-            if gsheet_enabled:
-                match   = re.search(r'/spreadsheets/d/([a-zA-Z0-9-_]+)', sheet_url)
-                sheet_id = match.group(1) if match else "unknown"
-            else:
-                import hashlib
-                wh = body.get("clay_webhook_url", "clay").strip()
-                sheet_id = hashlib.md5(wh.encode()).hexdigest()[:12]
 
             new_auto = {
                 "id":            f"gs_{sheet_id}_{object_type}",
@@ -597,76 +443,14 @@ class handler(BaseHTTPRequestHandler):
                 "active":        True,
             }
             _apply_gsheet_fields(new_auto, body)
-            _apply_clay_fields(new_auto, body)
             _apply_slack_fields(new_auto, body)
+            # GSheet syncs don't use the enrollment alert
             existing.append(new_auto)
             save_automations(existing)
             self._json(200, new_auto)
             return
 
-        # ── Enrichment (HubSpot → Clay + GSheet → HubSpot) ───
-        if delivery_type == "enrichment":
-            list_id   = str(body.get("hubspot_list_id", "")).strip()
-            list_name = body.get("hubspot_list_name", "").strip()
-
-            if not list_id:
-                self._json(400, {"error": "Missing HubSpot list"})
-                return
-
-            clay_enabled  = bool(body.get("clay_enabled", False))
-            gsheet_enabled = bool(body.get("enrichment_gsheet_enabled", False))
-
-            if not clay_enabled and not gsheet_enabled:
-                self._json(400, {"error": "At least one of Clay push or GSheet pull must be enabled"})
-                return
-
-            if clay_enabled:
-                clay_table_id      = body.get("clay_table_id", "").strip()
-                clay_col_mappings  = [
-                    m for m in body.get("clay_column_mappings", [])
-                    if isinstance(m, dict) and m.get("hs_property") and m.get("clay_column")
-                ]
-                if not clay_table_id:
-                    self._json(400, {"error": "Missing Clay table ID"})
-                    return
-                if not clay_col_mappings:
-                    self._json(400, {"error": "At least one Clay column mapping is required"})
-                    return
-
-            if gsheet_enabled:
-                sheet_url = body.get("sheet_url", "").strip()
-                pk_column = body.get("primary_key_column", "").strip()
-                col_maps  = [
-                    m for m in body.get("column_mappings", [])
-                    if isinstance(m, dict) and m.get("column") and m.get("property")
-                ]
-                if not sheet_url:
-                    self._json(400, {"error": "Missing Google Sheet URL for GSheet pull"})
-                    return
-                if not pk_column:
-                    self._json(400, {"error": "Missing primary key column for GSheet pull"})
-                    return
-                if not col_maps:
-                    self._json(400, {"error": "At least one GSheet column mapping is required"})
-                    return
-
-            new_auto = {
-                "id":                f"enrich_{list_id}",
-                "name":              name,
-                "delivery_type":     "enrichment",
-                "hubspot_list_id":   list_id,
-                "hubspot_list_name": list_name,
-                "active":            True,
-            }
-            _apply_clay_fields(new_auto, body)
-            _apply_enrichment_gsheet_fields(new_auto, body)
-            _apply_slack_fields(new_auto, body)
-            existing.append(new_auto)
-            save_automations(existing)
-            self._json(200, new_auto)
-            return
-
-        # ── Instantly + HS Form ───────────────────────────────
+        # ── Instantly + HS Form: both require a HubSpot list ─
         list_id   = str(body.get("hubspot_list_id", "")).strip()
         list_name = body.get("hubspot_list_name", "").strip()
 
@@ -688,7 +472,7 @@ class handler(BaseHTTPRequestHandler):
             if action not in ("enroll", "unenroll"):
                 action = "enroll"
             delay_hours = int(body.get("delay_hours", 0))
-            filters     = [f for f in body.get("filters", []) if isinstance(f, dict) and f.get("property")]
+            filters = [f for f in body.get("filters", []) if isinstance(f, dict) and f.get("property")]
             new_auto = {
                 "id":                      f"{list_id}_{camp_id}",
                 "name":                    name,
@@ -713,7 +497,7 @@ class handler(BaseHTTPRequestHandler):
                 if a.get("hubspot_list_id") == list_id and a.get("hubspot_form_id") == form_id:
                     self._json(409, {"error": "Automation already exists"})
                     return
-            filters  = [f for f in body.get("filters", []) if isinstance(f, dict) and f.get("property")]
+            filters = [f for f in body.get("filters", []) if isinstance(f, dict) and f.get("property")]
             new_auto = {
                 "id":                f"{list_id}_form_{form_id}",
                 "name":              name,
@@ -741,23 +525,23 @@ class handler(BaseHTTPRequestHandler):
             self._json(401, {"error": "Unauthorized"})
             return
 
-        parts   = self.path.strip("/").split("/")
+        parts = self.path.strip("/").split("/")
         auto_id = parts[-1] if parts else ""
-        length  = int(self.headers.get("Content-Length", 0))
-        body    = json.loads(self.rfile.read(length)) if length else {}
+        length = int(self.headers.get("Content-Length", 0))
+        body = json.loads(self.rfile.read(length)) if length else {}
 
         existing = get_automations()
-        found    = False
+        found = False
         for a in existing:
             if a.get("id") == auto_id:
+                # Fields common to all types
                 if "active" in body:
                     a["active"] = bool(body["active"])
                 if "name" in body:
                     a["name"] = str(body["name"]).strip()
 
-                dt = a.get("delivery_type")
-
-                if dt == "gsheet_sync":
+                if a.get("delivery_type") == "gsheet_sync":
+                    # Re-apply all gsheet fields if any gsheet key is present
                     gsheet_keys = {
                         "sheet_url", "sheet_tab", "object_type", "primary_key_column",
                         "primary_key_type", "column_mappings", "gsheet_schedule_type",
@@ -766,24 +550,6 @@ class handler(BaseHTTPRequestHandler):
                     }
                     if gsheet_keys & body.keys():
                         _apply_gsheet_fields(a, body)
-                        _apply_clay_fields(a, body)
-                    if "slack_enabled" in body:
-                        _apply_slack_fields(a, body)
-
-                elif dt == "enrichment":
-                    if "clay_enabled" in body or "clay_table_id" in body or "clay_column_mappings" in body:
-                        _apply_clay_fields(a, body)
-                    enrichment_gsheet_keys = {
-                        "enrichment_gsheet_enabled", "sheet_url", "sheet_tab",
-                        "object_type", "primary_key_column", "primary_key_type",
-                        "column_mappings", "gsheet_schedule_type",
-                        "gsheet_interval_minutes", "gsheet_run_time", "gsheet_run_day"
-                    }
-                    if enrichment_gsheet_keys & body.keys():
-                        _apply_enrichment_gsheet_fields(a, body)
-                    if "hubspot_list_id" in body:
-                        a["hubspot_list_id"]   = str(body["hubspot_list_id"]).strip()
-                        a["hubspot_list_name"] = body.get("hubspot_list_name", "")
                     if "slack_enabled" in body:
                         _apply_slack_fields(a, body)
 
@@ -798,7 +564,7 @@ class handler(BaseHTTPRequestHandler):
                         a["hubspot_form_id"]   = str(body["hubspot_form_id"]).strip()
                         a["hubspot_form_name"] = body.get("hubspot_form_name", "")
                     if "action" in body:
-                        action    = body["action"]
+                        action = body["action"]
                         a["action"] = action if action in ("enroll", "unenroll") else "enroll"
                     if "delay_hours" in body:
                         a["delay_hours"] = int(body["delay_hours"])
@@ -824,10 +590,10 @@ class handler(BaseHTTPRequestHandler):
             self._json(401, {"error": "Unauthorized"})
             return
 
-        parts    = self.path.strip("/").split("/")
-        auto_id  = parts[-1] if parts else ""
+        parts = self.path.strip("/").split("/")
+        auto_id = parts[-1] if parts else ""
         existing = get_automations()
-        updated  = [a for a in existing if a.get("id") != auto_id]
+        updated = [a for a in existing if a.get("id") != auto_id]
         if len(updated) == len(existing):
             self._json(404, {"error": "Not found"})
             return
