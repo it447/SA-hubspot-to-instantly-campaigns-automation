@@ -3,6 +3,7 @@ import os
 import sys
 import datetime
 import requests
+import time
 from http.server import BaseHTTPRequestHandler
 from urllib.request import urlopen, Request
 
@@ -43,6 +44,25 @@ def _redis_set_raw(key, value):
     req = Request(url, headers={"Authorization": f"Bearer {UPSTASH_TOKEN}"})
     with urlopen(req, timeout=5) as r:
         r.read()
+
+def log_enrollment(auto_id, email, delivery_type, ts):
+    """Log a processed contact to Redis for activity reporting."""
+    try:
+        entry = json.dumps({"email": email, "type": delivery_type, "ts": ts})
+        url   = f"{UPSTASH_URL}/lpush/logs:{auto_id}/{entry}"
+        # URL-encode the entry
+        from urllib.parse import quote
+        url = f"{UPSTASH_URL}/lpush/logs:{auto_id}/{quote(entry, safe='')}"
+        req = Request(url, headers={"Authorization": f"Bearer {UPSTASH_TOKEN}"})
+        with urlopen(req, timeout=5) as r:
+            r.read()
+        # Trim to last 10000 entries
+        trim_url = f"{UPSTASH_URL}/ltrim/logs:{auto_id}/0/9999"
+        req2 = Request(trim_url, headers={"Authorization": f"Bearer {UPSTASH_TOKEN}"})
+        with urlopen(req2, timeout=5) as r:
+            r.read()
+    except Exception as e:
+        _log(f"[log_enrollment] {auto_id} {email}: {e}")
 
 def get_automations():
     data = _redis_get("automations_config")
@@ -436,6 +456,16 @@ def run_gsheet_sync(automation):
                 f"{len(upsert_inputs)} upserted, {len(create_inputs)} created.")
 
     _log(f"[gsheet] {auto_name}: done. errors={len(all_errors)}")
+    # Log each upserted contact for activity reporting
+    if not all_errors:
+        auto_id = automation.get("id", "")
+        for inp in upsert_inputs:
+            pk = inp.get("id", "")
+            if pk:
+                try:
+                    log_enrollment(auto_id, pk, "gsheet_sync", time.time())
+                except Exception:
+                    pass
 
 # ── Clay helpers (enrichment type) ───────────────────────────
 
