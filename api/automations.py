@@ -432,6 +432,39 @@ class handler(BaseHTTPRequestHandler):
             except Exception as e:
                 self._json(500, {'error': str(e)})
 
+        elif "/logs/" in path:
+            auto_id = path.split("/logs/")[-1].strip("/")
+            try:
+                from urllib.parse import unquote
+                auto_id = unquote(auto_id)
+                log_url = f"{UPSTASH_URL}/lrange/logs:{auto_id}/0/999"
+                log_req = Request(log_url, headers={"Authorization": f"Bearer {UPSTASH_TOKEN}"})
+                with urlopen(log_req, timeout=8) as r:
+                    log_data = json.loads(r.read())
+                entries = log_data.get("result", [])
+                rows = []
+                for entry_str in entries:
+                    try:
+                        entry = json.loads(entry_str)
+                        ts = entry.get("ts", 0)
+                        created = ""
+                        if ts:
+                            try:
+                                created = datetime.datetime.fromtimestamp(float(ts), tz=datetime.timezone.utc).isoformat()
+                            except Exception:
+                                created = str(ts)
+                        rows.append({
+                            "email":   entry.get("email", ""),
+                            "name":    entry.get("email", ""),
+                            "created": created,
+                            "type":    entry.get("type", "")
+                        })
+                    except Exception:
+                        continue
+                self._json(200, rows)
+            except Exception as e:
+                self._json(500, {"error": str(e)})
+
         elif "/contacts/" in path:
             list_id = path.split("/contacts/")[-1].strip("/")
             try:
