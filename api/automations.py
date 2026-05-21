@@ -35,6 +35,14 @@ def _redis_set(key, value):
     with urlopen(req, timeout=5) as r:
         return json.loads(r.read())
 
+def _redis_get_int(key):
+    url = f"{UPSTASH_URL}/get/{key}"
+    req = Request(url, headers={"Authorization": f"Bearer {UPSTASH_TOKEN}"})
+    with urlopen(req, timeout=5) as r:
+        data = json.loads(r.read())
+    val = data.get("result")
+    return int(val) if val else 0
+
 def get_automations():
     data = _redis_get("automations_config")
     return data if isinstance(data, list) else []
