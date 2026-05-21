@@ -1,4 +1,5 @@
 import json
+import datetime
 import os
 import sys
 import re
@@ -55,7 +56,7 @@ def get_list_contacts(list_id):
     contacts = []
     vid_offset = None
     while True:
-        url = f"https://api.hubapi.com/contacts/v1/lists/{list_id}/contacts/all?count=100&property=email&property=firstname&property=lastname"
+        url = f"https://api.hubapi.com/contacts/v1/lists/{list_id}/contacts/all?count=100&property=email&property=firstname&property=lastname&property=createdate"
         if vid_offset:
             url += f"&vidOffset={vid_offset}"
         try:
@@ -71,7 +72,16 @@ def get_list_contacts(list_id):
             first = props.get("firstname", {}).get("value", "")
             last  = props.get("lastname",  {}).get("value", "")
             if email:
-                contacts.append({"email": email, "name": f"{first} {last}".strip()})
+                created_ms = props.get("createdate", {}).get("value", "")
+                created_iso = ""
+                if created_ms:
+                    try:
+                        created_iso = datetime.datetime.fromtimestamp(
+                            int(created_ms)/1000, tz=datetime.timezone.utc
+                        ).isoformat()
+                    except Exception:
+                        pass
+                contacts.append({"email": email, "name": f"{first} {last}".strip(), "created": created_iso})
         if not body.get("has-more", False):
             break
         vid_offset = body.get("vid-offset")
@@ -371,6 +381,54 @@ class handler(BaseHTTPRequestHandler):
                 self._json(200, {"email": email})
             else:
                 self._json(404, {"error": "GOOGLE_SERVICE_ACCOUNT_JSON not configured"})
+        elif path.endswith('/activity'):
+            try:
+                automations_list = get_automations()
+                est = datetime.timezone(datetime.timedelta(hours=-5))
+                est_now = datetime.datetime.now(est)
+                now_utc = datetime.datetime.now(datetime.timezone.utc)
+                cutoff_24h = now_utc - datetime.timedelta(hours=24)
+                day_totals = {}
+                daily = {}
+                for a in automations_list:
+                    auto_id = a.get('id','')
+                    if not auto_id:
+                        continue
+                    try:
+                        log_url = f"{UPSTASH_URL}/lrange/logs:{auto_id}/0/999"
+                        log_req = Request(log_url, headers={"Authorization": f"Bearer {UPSTASH_TOKEN}"})
+                        with urlopen(log_req, timeout=8) as r:
+                            log_data = json.loads(r.read())
+                        entries = log_data.get("result", [])
+                        count_24h = 0
+                        for entry_str in entries:
+                            try:
+                                entry = json.loads(entry_str)
+                                ts = entry.get("ts", 0)
+                                if not ts:
+                                    continue
+                                dt = datetime.datetime.fromtimestamp(float(ts), tz=datetime.timezone.utc)
+                                day_key = dt.astimezone(est).date().isoformat()
+                                day_totals[day_key] = day_totals.get(day_key, 0) + 1
+                                if dt >= cutoff_24h:
+                                    count_24h += 1
+                            except Exception:
+                                continue
+                        if count_24h > 0:
+                            daily[auto_id] = count_24h
+                    except Exception:
+                        today_str = est_now.date().isoformat()
+                        c = _redis_get_int(f'enroll_count:{auto_id}:{today_str}')
+                        if c:
+                            daily[auto_id] = c
+                monthly = []
+                for i in range(29, -1, -1):
+                    day = (est_now - datetime.timedelta(days=i)).date().isoformat()
+                    monthly.append(day_totals.get(day, 0))
+                self._json(200, {'daily': daily, 'monthly': monthly})
+            except Exception as e:
+                self._json(500, {'error': str(e)})
+
         elif "/contacts/" in path:
             list_id = path.split("/contacts/")[-1].strip("/")
             try:
