@@ -1569,7 +1569,7 @@ async function editAutomation(id) {
   const isGsheet = a.delivery_type==='gsheet_sync';
   document.getElementById('add-page-title').textContent='Edit automation';
   document.querySelector('.tab-bar').style.display='none';
-  document.getElementById('view-logs-btn').style.display = isGsheet ? 'none' : 'flex';
+  document.getElementById('view-logs-btn').style.display = 'flex';
   showPage('add');
   switchTab(isGsheet?'gsheet_sync':isForm?'hubspot_form':'instantly');
 
@@ -1671,20 +1671,37 @@ async function viewLogs(id) {
   const a=automations.find(x=>x.id===id); if(!a) return;
   const modal=document.getElementById('logs-modal');
   const countEl=document.getElementById('logs-modal-count');
-  document.getElementById('logs-modal-title').textContent=`List contacts · ${a.name}`;
+  const searchEl=document.getElementById('logs-search');
+  const isGsheet=a.delivery_type==='gsheet_sync';
+  document.getElementById('logs-modal-title').textContent=`${isGsheet?'Processed contacts':'List contacts'} · ${a.name}`;
   countEl.style.display='none';
+  if(searchEl) searchEl.value='';
+  logsData=[];
   document.getElementById('logs-body').innerHTML='<div class="empty-state"><p>Loading…</p></div>';
   modal.style.display='flex';
   try {
-    const {ok,data}=await api('GET',`/contacts/${a.hubspot_list_id}`);
-    if(ok&&Array.isArray(data)&&data.length){
-      countEl.textContent=data.length; countEl.style.display='';
-      document.getElementById('logs-body').innerHTML=data.map(e=>`<div class="log-row"><span class="log-email">${esc(e.email)}</span><span class="log-meta">${esc(e.name)}</span></div>`).join('');
-    } else if(ok){
-      countEl.textContent='0'; countEl.style.display='';
-      document.getElementById('logs-body').innerHTML='<div class="empty-state"><div class="empty-icon">📋</div><p>No contacts in this list yet.</p></div>';
+    if(isGsheet) {
+      const {ok,data}=await api('GET',`/logs/${encodeURIComponent(a.id)}`);
+      if(ok&&Array.isArray(data)&&data.length){
+        logsData=data; countEl.textContent=data.length; countEl.style.display='';
+        renderLogRows(data);
+      } else if(ok){
+        countEl.textContent='0'; countEl.style.display='';
+        document.getElementById('logs-body').innerHTML='<div class="empty-state"><div class="empty-icon">📋</div><p>No contacts processed yet — logs appear after the first sync run.</p></div>';
+      } else {
+        document.getElementById('logs-body').innerHTML='<div class="empty-state"><p>Error loading logs.</p></div>';
+      }
     } else {
-      document.getElementById('logs-body').innerHTML=`<div class="empty-state"><p>Error: ${esc((data&&data.error)||'Failed to load contacts.')}</p></div>`;
+      const {ok,data}=await api('GET',`/contacts/${a.hubspot_list_id}`);
+      if(ok&&Array.isArray(data)&&data.length){
+        logsData=data; countEl.textContent=data.length; countEl.style.display='';
+        renderLogRows(data);
+      } else if(ok){
+        logsData=[]; countEl.textContent='0'; countEl.style.display='';
+        document.getElementById('logs-body').innerHTML='<div class="empty-state"><div class="empty-icon">📋</div><p>No contacts in this list yet.</p></div>';
+      } else {
+        document.getElementById('logs-body').innerHTML=`<div class="empty-state"><p>Error: ${esc((data&&data.error)||'Failed to load contacts.')}</p></div>`;
+      }
     }
   } catch(e) { document.getElementById('logs-body').innerHTML='<div class="empty-state"><p>Network error.</p></div>'; }
 }
