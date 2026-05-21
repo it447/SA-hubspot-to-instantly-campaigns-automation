@@ -247,6 +247,7 @@
   .log-row:last-child { border-bottom:none; }
   .log-email { color:var(--cream); font-weight:500; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .log-meta { color:var(--muted); font-size:11px; white-space:nowrap; flex-shrink:0; text-align:right; }
+  .log-date { color:var(--muted); font-size:11px; white-space:nowrap; flex-shrink:0; }
 
   .slack-divider { border:none; border-top:1px solid var(--border); margin:1.5rem 0 1.25rem; }
   .slack-toggle-row { display:flex; align-items:center; justify-content:space-between; }
@@ -345,19 +346,23 @@
     <button class="nav-item active" onclick="showPage('dashboard');setFilter('all')" id="nav-dashboard">
       <span class="nav-icon">◻</span> Dashboard
     </button>
-    <button class="nav-item" id="nav-filter-instantly" onclick="showPage('dashboard');setFilter('instantly')" style="padding-left:28px;font-size:13px;">
-      <span class="nav-icon" style="font-size:12px;">⚡</span> Instantly
-    </button>
-    <button class="nav-item" id="nav-filter-hubspot_form" onclick="showPage('dashboard');setFilter('hubspot_form')" style="padding-left:28px;font-size:13px;">
-      <span class="nav-icon" style="font-size:12px;">◈</span> HS Form
-    </button>
-    <button class="nav-item" id="nav-filter-gsheet_sync" onclick="showPage('dashboard');setFilter('gsheet_sync')" style="padding-left:28px;font-size:13px;">
-      <span class="nav-icon" style="font-size:12px;">▦</span> GSheet Sync
-    </button>
+    <button class="nav-item" id="nav-filter-instantly" onclick="showPage('dashboard');setFilter('instantly')" style="padding-left:28px;font-size:13px;display:flex;align-items:center;gap:7px;"><svg width="14" height="14" viewBox="0 0 100 100" fill="none" style="flex-shrink:0;"><circle cx="50" cy="50" r="50" fill="#2563EB"/><polygon points="58,10 30,55 50,55 42,90 70,45 50,45" fill="white"/></svg> Instantly</button>
+    <button class="nav-item" id="nav-filter-hubspot_form" onclick="showPage('dashboard');setFilter('hubspot_form')" style="padding-left:28px;font-size:13px;display:flex;align-items:center;gap:7px;"><svg width="14" height="14" viewBox="0 0 100 100" fill="none" style="flex-shrink:0;"><circle cx="62" cy="50" r="18" fill="#FF7A59"/><circle cx="62" cy="50" r="9" fill="white"/><circle cx="25" cy="28" r="8" fill="#FF7A59"/><circle cx="25" cy="72" r="8" fill="#FF7A59"/><circle cx="78" cy="18" r="7" fill="#FF7A59"/><line x1="25" y1="28" x2="50" y2="45" stroke="#FF7A59" stroke-width="8" stroke-linecap="round"/><line x1="25" y1="72" x2="50" y2="57" stroke="#FF7A59" stroke-width="8" stroke-linecap="round"/><line x1="78" y1="18" x2="68" y2="35" stroke="#FF7A59" stroke-width="8" stroke-linecap="round"/></svg> HubSpot Form</button>
+    <button class="nav-item" id="nav-filter-gsheet_sync" onclick="showPage('dashboard');setFilter('gsheet_sync')" style="padding-left:28px;font-size:13px;display:flex;align-items:center;gap:7px;"><svg width="14" height="14" viewBox="0 0 100 100" fill="none" style="flex-shrink:0;"><rect x="15" y="5" width="55" height="70" rx="4" fill="#0F9D58"/><rect x="30" y="5" width="40" height="18" rx="2" fill="#0F9D58"/><path d="M70 5 L85 20 L70 20 Z" fill="#087447"/><rect x="70" y="5" width="15" height="15" rx="2" fill="#34A853"/><rect x="22" y="35" width="56" height="4" rx="2" fill="white" opacity="0.7"/><rect x="22" y="47" width="56" height="4" rx="2" fill="white" opacity="0.7"/><rect x="22" y="59" width="40" height="4" rx="2" fill="white" opacity="0.7"/></svg> GSheet Sync</button>
     <button class="nav-item" onclick="newAutomation()" id="nav-add" style="margin-top:4px;">
       <span class="nav-icon">+</span> New automation
     </button>
     <div class="sidebar-footer">
+      <!-- Activity bar -->
+      <div style="padding:0.75rem 0.75rem 0.5rem;border-top:1px solid rgba(254,242,222,0.08);">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+          <span style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:0.07em;font-weight:500;">Activity · 30d</span>
+          <span style="font-size:11px;color:var(--orange);font-weight:600;" id="nav-total-runs">—</span>
+        </div>
+        <div id="nav-activity-bars" style="display:flex;align-items:flex-end;gap:2px;height:28px;">
+          <span style="font-size:10px;color:var(--muted);">Loading…</span>
+        </div>
+      </div>
       <button class="nav-item" id="theme-toggle-btn" onclick="toggleTheme()">
         <span class="nav-icon" id="theme-icon">
           <svg width="15" height="15" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -385,10 +390,14 @@
         <button class="btn btn-primary" style="width:auto;padding:11px 20px;margin-top:4px;" onclick="newAutomation()">+ New automation</button>
       </div>
 
-      <div class="stats-row" style="grid-template-columns:200px;">
+      <div class="stats-row" style="grid-template-columns:200px 200px;">
         <div class="stat-card" style="cursor:default;">
           <div class="stat-label">Total automations</div>
           <div class="stat-value orange" id="stat-total">—</div>
+        </div>
+        <div class="stat-card" style="cursor:default;">
+          <div class="stat-label">Contacts processed · 24h</div>
+          <div class="stat-value" id="stat-24h">—</div>
         </div>
       </div>
       <span id="stat-instantly" style="display:none;"></span>
@@ -793,6 +802,10 @@
       </div>
       <button class="btn btn-cream" onclick="closeLogs()" style="padding:5px 11px;font-size:13px;">✕</button>
     </div>
+    <div style="padding:0.75rem 1.5rem;border-bottom:1px solid var(--border);">
+      <input type="text" id="logs-search" placeholder="Search by email…" oninput="filterLogs(this.value)"
+        style="width:100%;font-size:13px;padding:8px 12px;background:rgba(254,242,222,0.05);border:1px solid var(--border2);border-radius:var(--radius-sm);color:var(--cream);">
+    </div>
     <div class="modal-body" id="logs-body"></div>
   </div>
 </div>
@@ -829,6 +842,8 @@ let slackChSelectedGsheet    = { id:'', name:'' };
 let alertSlackChSelected     = { id:'', name:'' };
 let filtersInstantly = [];
 let filtersForm      = [];
+let dailyCounts      = {};
+let logsData         = [];  // full list for search
 let gsMappings       = []; // [{column:'', property:''}]
 let gsScheduleType   = 'interval';
 let dropdownsLoaded  = false;
@@ -1207,6 +1222,7 @@ async function loadAutomations() {
     const { data } = await api('GET', '/automations');
     automations = Array.isArray(data) ? data : [];
     renderAutomations();
+    loadActivityData();
   } catch(e) {
     list.innerHTML = '<div class="empty-state"><p>Failed to load. Check your deployment.</p></div>';
   }
@@ -1291,6 +1307,10 @@ function renderAutomations() {
     const lastRunLabel = a.last_run
       ? `<span style="font-size:11px;color:var(--muted);">Last run: ${timeAgo(a.last_run)}</span>`
       : `<span style="font-size:11px;color:var(--muted);">Never run</span>`;
+    const count24h = dailyCounts[a.id] || 0;
+    const count24hChip = count24h > 0
+      ? `<span style="font-size:11px;font-weight:600;color:#86efac;background:rgba(134,239,172,0.1);border:1px solid rgba(134,239,172,0.25);border-radius:100px;padding:2px 8px;">${count24h} today</span>`
+      : '';
 
     return `<div class="automation-row" onclick="editAutomation('${esc(a.id)}')" id="row-${esc(a.id)}">
       <div style="flex:1;min-width:0;">
@@ -1298,6 +1318,7 @@ function renderAutomations() {
         <div class="auto-meta">${sourceChip}${deliveryChip}${actionChip}${delayLabel}${slackChip}${alertChip}</div>
       </div>
       <div class="auto-actions" style="display:flex;align-items:center;gap:10px;" onclick="event.stopPropagation()">
+        ${count24hChip}
         ${lastRunLabel}
         <label class="toggle" title="${active?'Pause':'Activate'}" onclick="event.stopPropagation()">
           <input type="checkbox" ${active?'checked':''} onchange="toggleAutomation('${esc(a.id)}',this.checked)">
@@ -1680,6 +1701,49 @@ function timeAgo(isoStr) {
 function esc(str) {
   return String(str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
+
+// ── Activity data ─────────────────────────────────────────────
+async function loadActivityData() {
+  try {
+    const { ok, data } = await api('GET', '/activity');
+    if (!ok || !data) return;
+
+    // Per-automation 24h counts
+    dailyCounts = data.daily || {};
+    renderAutomations(); // re-render to show chips
+
+    // Total 24h stat card
+    const total24h = Object.values(dailyCounts).reduce((s, v) => s + v, 0);
+    const el24h = document.getElementById('stat-24h');
+    if (el24h) el24h.textContent = total24h || '0';
+
+    // 30-day activity bar in sidebar
+    const monthly = data.monthly || [];  // array of 30 daily totals, oldest first
+    renderActivityBar(monthly);
+
+    // Total 30d label
+    const total30 = monthly.reduce((s, v) => s + v, 0);
+    const navTotal = document.getElementById('nav-total-runs');
+    if (navTotal) navTotal.textContent = total30.toLocaleString();
+
+  } catch(e) {
+    // Non-critical, fail silently
+  }
+}
+
+function renderActivityBar(monthly) {
+  const container = document.getElementById('nav-activity-bars');
+  if (!container) return;
+  if (!monthly.length) { container.innerHTML = '<span style="font-size:10px;color:var(--muted);">No data yet</span>'; return; }
+  const max = Math.max(...monthly, 1);
+  container.innerHTML = monthly.map((v, i) => {
+    const h = Math.max(2, Math.round((v / max) * 28));
+    const today = i === monthly.length - 1;
+    const color = today ? 'var(--orange)' : v > 0 ? 'rgba(255,100,50,0.45)' : 'rgba(254,242,222,0.08)';
+    return `<div title="${v} runs" style="flex:1;height:${h}px;background:${color};border-radius:2px;transition:opacity 0.1s;" onmouseenter="this.style.opacity=0.7" onmouseleave="this.style.opacity=1"></div>`;
+  }).join('');
+}
+
 </script>
 </body>
 </html>
