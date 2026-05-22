@@ -49,23 +49,16 @@ def log_enrollment(auto_id, email, delivery_type, ts):
     """Log a processed contact to Redis for activity reporting."""
     try:
         entry = json.dumps({"email": email, "type": delivery_type, "ts": ts})
-        # Use POST with JSON body for LPUSH
-        url  = f"{UPSTASH_URL}/lpush/logs:{auto_id}"
-        body = json.dumps([entry]).encode()
-        req  = Request(url, data=body, headers={
+        pipeline = [
+            ["LPUSH", f"logs:{auto_id}", entry],
+            ["LTRIM", f"logs:{auto_id}", 0, 9999]
+        ]
+        body = json.dumps(pipeline).encode()
+        req  = Request(f"{UPSTASH_URL}/pipeline", data=body, headers={
             "Authorization": f"Bearer {UPSTASH_TOKEN}",
             "Content-Type":  "application/json"
         }, method="POST")
         with urlopen(req, timeout=5) as r:
-            r.read()
-        # Trim to last 10000 entries
-        trim_url  = f"{UPSTASH_URL}/ltrim/logs:{auto_id}/0/9999"
-        trim_body = json.dumps([0, 9999]).encode()
-        req2 = Request(trim_url, data=trim_body, headers={
-            "Authorization": f"Bearer {UPSTASH_TOKEN}",
-            "Content-Type":  "application/json"
-        }, method="POST")
-        with urlopen(req2, timeout=5) as r:
             r.read()
     except Exception as e:
         _log(f"[log_enrollment] {auto_id} {email}: {e}")
@@ -437,6 +430,12 @@ def run_gsheet_sync(automation):
             upsert_inputs.append({"id": pk_value, "idProperty": pk_type, "properties": properties})
         else:
             upsert_inputs.append({"id": pk_value, "properties": properties})
+
+    # Deduplicate by primary key — keep last occurrence (latest data wins)
+    seen = {}
+    for inp in upsert_inputs:
+        seen[inp["id"]] = inp
+    upsert_inputs = list(seen.values())
 
     _log(f"[gsheet] {auto_name}: {len(upsert_inputs)} upserts, {len(create_inputs)} creates for {hs_object}")
 
