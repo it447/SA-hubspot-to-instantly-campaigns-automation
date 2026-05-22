@@ -1681,30 +1681,42 @@ async function viewLogs(id) {
   document.getElementById('logs-body').innerHTML='<div class="empty-state"><p>Loading…</p></div>';
   modal.style.display='flex';
   try {
-    if(isGsheet) {
-      const {ok,data}=await api('GET',`/logs/${encodeURIComponent(a.id)}`);
-      if(ok&&Array.isArray(data)&&data.length){
-        logsData=data; countEl.textContent=data.length; countEl.style.display='';
-        renderLogRows(data);
-      } else if(ok){
-        countEl.textContent='0'; countEl.style.display='';
-        document.getElementById('logs-body').innerHTML='<div class="empty-state"><div class="empty-icon">📋</div><p>No contacts processed yet — logs appear after the next sync run.</p></div>';
-      } else {
-        document.getElementById('logs-body').innerHTML=`<div class="empty-state"><p>Error: ${esc((data&&data.error)||'Failed to load logs.')}</p></div>`;
-      }
+    const endpoint = isGsheet ? `/logs/${encodeURIComponent(a.id)}` : `/contacts/${a.hubspot_list_id}`;
+    const {ok,data}=await api('GET', endpoint);
+    if(ok&&Array.isArray(data)&&data.length){
+      logsData=data; countEl.textContent=data.length; countEl.style.display='';
+      renderLogRows(data);
+    } else if(ok){
+      logsData=[]; countEl.textContent='0'; countEl.style.display='';
+      document.getElementById('logs-body').innerHTML='<div class="empty-state"><div class="empty-icon">📋</div><p>No contacts found.</p></div>';
     } else {
-      const {ok,data}=await api('GET',`/contacts/${a.hubspot_list_id}`);
-      if(ok&&Array.isArray(data)&&data.length){
-        logsData=data; countEl.textContent=data.length; countEl.style.display='';
-        renderLogRows(data);
-      } else if(ok){
-        logsData=[]; countEl.textContent='0'; countEl.style.display='';
-        document.getElementById('logs-body').innerHTML='<div class="empty-state"><div class="empty-icon">📋</div><p>No contacts in this list yet.</p></div>';
-      } else {
-        document.getElementById('logs-body').innerHTML=`<div class="empty-state"><p>Error: ${esc((data&&data.error)||'Failed to load contacts.')}</p></div>`;
-      }
+      document.getElementById('logs-body').innerHTML=`<div class="empty-state"><p>Error: ${esc((data&&data.error)||'Failed to load.')}</p></div>`;
     }
   } catch(e) { document.getElementById('logs-body').innerHTML='<div class="empty-state"><p>Network error.</p></div>'; }
+}
+function renderLogRows(rows) {
+  const body = document.getElementById('logs-body');
+  if (!rows || !rows.length) {
+    body.innerHTML='<div class="empty-state"><div class="empty-icon">🔍</div><p>No contacts match your search.</p></div>';
+    return;
+  }
+  body.innerHTML = rows.map(e =>
+    `<div class="log-row">
+      <span class="log-email">${esc(e.email||'')}</span>
+      ${e.created ? `<span style="font-size:11px;color:var(--muted);flex-shrink:0;">${formatLogDate(e.created)}</span>` : ''}
+      <span class="log-meta">${esc(e.name||'')}</span>
+    </div>`
+  ).join('');
+}
+function filterLogs(query) {
+  const q = query.trim().toLowerCase();
+  const filtered = q ? logsData.filter(e => (e.email||'').toLowerCase().includes(q) || (e.name||'').toLowerCase().includes(q)) : logsData;
+  document.getElementById('logs-modal-count').textContent = filtered.length;
+  renderLogRows(filtered);
+}
+function formatLogDate(isoStr) {
+  try { return new Date(isoStr).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}); }
+  catch(e) { return ''; }
 }
 function closeLogs() { document.getElementById('logs-modal').style.display='none'; }
 
