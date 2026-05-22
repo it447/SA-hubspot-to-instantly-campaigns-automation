@@ -244,11 +244,11 @@
   .modal-body { overflow-y:auto; flex:1; }
   .modal-body::-webkit-scrollbar { width:4px; }
   .modal-body::-webkit-scrollbar-thumb { background:rgba(254,242,222,0.15); border-radius:2px; }
-  .log-row { display:flex; align-items:center; justify-content:space-between; padding:0.75rem 1.5rem; border-bottom:1px solid var(--border); font-size:13px; gap:1rem; }
+  .log-row { display:grid; grid-template-columns:1fr 120px 150px; align-items:center; padding:0.75rem 1.5rem; border-bottom:1px solid var(--border); font-size:13px; gap:1rem; }
   .log-row:last-child { border-bottom:none; }
   .log-email { color:var(--cream); font-weight:500; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-  .log-meta { color:var(--muted); font-size:11px; white-space:nowrap; flex-shrink:0; text-align:right; }
-  .log-date { color:var(--muted); font-size:11px; white-space:nowrap; flex-shrink:0; }
+  .log-meta { color:var(--muted); font-size:12px; white-space:nowrap; text-align:right; }
+  .log-date { color:var(--muted); font-size:12px; white-space:nowrap; text-align:left; }
 
   .slack-divider { border:none; border-top:1px solid var(--border); margin:1.5rem 0 1.25rem; }
   .slack-toggle-row { display:flex; align-items:center; justify-content:space-between; }
@@ -806,6 +806,11 @@
     <div style="padding:0.75rem 1.5rem;border-bottom:1px solid var(--border);">
       <input type="text" id="logs-search" placeholder="Search by email…" oninput="filterLogs(this.value)"
         style="width:100%;font-size:13px;padding:8px 12px;background:rgba(254,242,222,0.05);border:1px solid var(--border2);border-radius:var(--radius-sm);color:var(--cream);">
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 120px 150px;padding:0.5rem 1.5rem;border-bottom:1px solid var(--border);gap:1rem;">
+      <span style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:var(--muted);">Email</span>
+      <span style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:var(--muted);">Date added</span>
+      <span style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:var(--muted);text-align:right;">Name</span>
     </div>
     <div class="modal-body" id="logs-body"></div>
   </div>
@@ -1703,7 +1708,7 @@ function renderLogRows(rows) {
   body.innerHTML = rows.map(e =>
     `<div class="log-row">
       <span class="log-email">${esc(e.email||'')}</span>
-      ${e.created ? `<span style="font-size:11px;color:var(--muted);flex-shrink:0;">${formatLogDate(e.created)}</span>` : ''}
+      <span class="log-date">${e.created ? formatLogDate(e.created) : '—'}</span>
       <span class="log-meta">${esc(e.name||'')}</span>
     </div>`
   ).join('');
