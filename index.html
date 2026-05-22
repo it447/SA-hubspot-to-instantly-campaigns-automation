@@ -359,7 +359,7 @@
           <span style="font-size:11px;color:rgba(254,242,222,0.5);text-transform:uppercase;letter-spacing:0.07em;font-weight:500;">Activity · 30d</span>
           <span style="font-size:11px;color:#ff6432;font-weight:600;" id="nav-total-runs">—</span>
         </div>
-        <div id="nav-activity-bars" style="display:flex;align-items:flex-end;gap:2px;height:28px;">
+        <div id="nav-activity-bars" style="display:flex;align-items:flex-end;gap:2px;height:28px;cursor:pointer;" onclick="openActivityModal()" title="Click to expand">
           <span style="font-size:10px;color:rgba(254,242,222,0.35);">Loading…</span>
         </div>
       </div>
@@ -1687,9 +1687,9 @@ async function viewLogs(id) {
         renderLogRows(data);
       } else if(ok){
         countEl.textContent='0'; countEl.style.display='';
-        document.getElementById('logs-body').innerHTML='<div class="empty-state"><div class="empty-icon">📋</div><p>No contacts processed yet — logs appear after the first sync run.</p></div>';
+        document.getElementById('logs-body').innerHTML='<div class="empty-state"><div class="empty-icon">📋</div><p>No contacts processed yet — logs appear after the next sync run.</p></div>';
       } else {
-        document.getElementById('logs-body').innerHTML='<div class="empty-state"><p>Error loading logs.</p></div>';
+        document.getElementById('logs-body').innerHTML=`<div class="empty-state"><p>Error: ${esc((data&&data.error)||'Failed to load logs.')}</p></div>`;
       }
     } else {
       const {ok,data}=await api('GET',`/contacts/${a.hubspot_list_id}`);
@@ -1736,6 +1736,7 @@ async function loadActivityData() {
 
     // 30-day activity bar in sidebar
     const monthly = data.monthly || [];  // array of 30 daily totals, oldest first
+    activityMonthlyData = monthly;
     renderActivityBar(monthly);
 
     // Total 30d label
@@ -1761,6 +1762,60 @@ function renderActivityBar(monthly) {
   }).join('');
 }
 
+
+// ── Activity modal ────────────────────────────────────────────
+let activityMonthlyData = [];
+
+function openActivityModal() {
+  if (!activityMonthlyData.length) return;
+  const modal = document.getElementById('activity-modal');
+  const total = activityMonthlyData.reduce((s, v) => s + v, 0);
+  document.getElementById('activity-modal-total').textContent = `${total.toLocaleString()} total contacts processed`;
+  renderActivityModalBars(activityMonthlyData);
+  modal.style.display = 'flex';
+  modal.onclick = e => { if (e.target === modal) modal.style.display = 'none'; };
+}
+
+function renderActivityModalBars(monthly) {
+  const container = document.getElementById('activity-modal-bars');
+  if (!container) return;
+  const max = Math.max(...monthly, 1);
+  const today = new Date();
+  container.innerHTML = monthly.map((v, i) => {
+    const daysAgo = monthly.length - 1 - i;
+    const d = new Date(today);
+    d.setDate(d.getDate() - daysAgo);
+    const label = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    const isToday = daysAgo === 0;
+    const h = Math.max(3, Math.round((v / max) * 120));
+    const color = isToday ? '#ff6432' : v > 0 ? 'rgba(255,100,50,0.5)' : 'rgba(254,242,222,0.08)';
+    return `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;position:relative;height:100%;justify-content:flex-end;">
+      <div class="activity-bar-tooltip" style="display:none;position:absolute;bottom:calc(100% + 4px);left:50%;transform:translateX(-50%);background:var(--card);border:1px solid var(--border2);border-radius:6px;padding:4px 8px;font-size:11px;white-space:nowrap;z-index:10;color:var(--cream);">
+        <strong>${v}</strong> · ${label}
+      </div>
+      <div style="width:100%;height:${h}px;background:${color};border-radius:3px;"
+        onmouseenter="this.previousElementSibling.style.display='block'"
+        onmouseleave="this.previousElementSibling.style.display='none'">
+      </div>
+      ${daysAgo % 7 === 0 || isToday ? `<div style="font-size:9px;color:var(--muted);position:absolute;bottom:0;transform:translateY(16px);white-space:nowrap;">${label}</div>` : ''}
+    </div>`;
+  }).join('');
+}
+
 </script>
+
+  <!-- Activity graph modal -->
+  <div id="activity-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:1000;align-items:center;justify-content:center;">
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:2rem;width:680px;max-width:95vw;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem;">
+        <div>
+          <h3 style="margin:0 0 3px;">Activity — Last 30 days</h3>
+          <div style="font-size:12px;color:var(--muted);" id="activity-modal-total"></div>
+        </div>
+        <button onclick="document.getElementById('activity-modal').style.display='none'" style="background:rgba(254,242,222,0.08);border:1px solid var(--border2);border-radius:8px;color:var(--cream);width:32px;height:32px;cursor:pointer;font-size:16px;">✕</button>
+      </div>
+      <div id="activity-modal-bars" style="display:flex;align-items:flex-end;gap:4px;height:140px;padding-bottom:24px;position:relative;"></div>
+    </div>
+  </div>
 </body>
 </html>
