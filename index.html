@@ -1793,9 +1793,9 @@ function renderActivityModalBars(monthly) {
       <div class="activity-bar-tooltip" style="display:none;position:absolute;bottom:calc(100% + 4px);left:50%;transform:translateX(-50%);background:var(--card);border:1px solid var(--border2);border-radius:6px;padding:4px 8px;font-size:11px;white-space:nowrap;z-index:10;color:var(--cream);">
         <strong>${v}</strong> · ${label}
       </div>
-      <div style="width:100%;height:${h}px;background:${color};border-radius:3px;"
-        onmouseenter="this.previousElementSibling.style.display='block'"
-        onmouseleave="this.previousElementSibling.style.display='none'">
+      <div style="width:100%;height:${h}px;background:${color};border-radius:3px;transition:background 0.15s,transform 0.15s;cursor:pointer;"
+        onmouseenter="this.previousElementSibling.style.display='block';this.style.background='#ff6432';this.style.transform='scaleY(1.08)';this.style.transformOrigin='bottom';"
+        onmouseleave="this.previousElementSibling.style.display='none';this.style.background='${color}';this.style.transform='scaleY(1)';">
       </div>
       ${daysAgo % 7 === 0 || isToday ? `<div style="font-size:9px;color:var(--muted);position:absolute;bottom:0;transform:translateY(16px);white-space:nowrap;">${label}</div>` : ''}
     </div>`;
