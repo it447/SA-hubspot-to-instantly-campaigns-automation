@@ -350,7 +350,7 @@ def should_run_gsheet(automation, last_run_key="last_run"):
 
 # ── GSheet sync (existing gsheet_sync type) ───────────────────
 
-def run_gsheet_sync(automation):
+def run_gsheet_sync(automation, sent_cache=None):
     auto_name        = automation.get("name", "?")
     sheet_url        = automation.get("sheet_url", "")
     sheet_tab        = automation.get("sheet_tab", "")
@@ -427,6 +427,11 @@ def run_gsheet_sync(automation):
         if not pk_value:
             continue
 
+        # Skip if already synced before (deduplication)
+        auto_id = automation.get("id", "")
+        if already_sent_cached(pk_value.lower(), auto_id, sent_cache):
+            continue
+
         if pk_type in ("email", "domain"):
             upsert_inputs.append({"id": pk_value, "idProperty": pk_type, "properties": properties})
         else:
@@ -462,13 +467,14 @@ def run_gsheet_sync(automation):
                 f"{len(upsert_inputs)} upserted, {len(create_inputs)} created.")
 
     _log(f"[gsheet] {auto_name}: done. errors={len(all_errors)}")
-    # Log each upserted contact for activity reporting regardless of errors
+    # Mark as sent + log each upserted contact for activity reporting
     auto_id = automation.get("id", "")
     if auto_id:
         for inp in upsert_inputs:
             pk = inp.get("id", "")
             if pk:
                 try:
+                    mark_as_sent(pk.lower(), auto_id, sent_cache)
                     log_enrollment(auto_id, pk, "gsheet_sync", time.time())
                 except Exception:
                     pass
@@ -729,7 +735,7 @@ class handler(BaseHTTPRequestHandler):
                     else:
                         _log(f"[sync_gsheet] running gsheet pull: {auto_id} — {automation.get('name', '')}")
                         try:
-                            run_gsheet_sync(automation)
+                            run_gsheet_sync(automation, sent_cache)
                             did_something = True
                         except Exception as e:
                             _log(f"[sync_gsheet] {auto_id} gsheet error: {e}")
