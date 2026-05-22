@@ -1,922 +1,1821 @@
-import json
-import os
-import sys
-import time
-import datetime
-import requests
-from http.server import BaseHTTPRequestHandler
-from urllib.request import urlopen, Request
-from urllib.parse import quote
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Automation Hub · Scalearmy</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-UPSTASH_URL       = os.environ.get("UPSTASH_REDIS_REST_URL", "")
-UPSTASH_TOKEN     = os.environ.get("UPSTASH_REDIS_REST_TOKEN", "")
-INSTANTLY_API_KEY = os.environ.get("INSTANTLY_API_KEY", "")
-HUBSPOT_API_KEY   = os.environ.get("HUBSPOT_API_KEY", "")
-HUBSPOT_PORTAL_ID = os.environ.get("HUBSPOT_PORTAL_ID", "22650739")
-SYNC_SECRET       = os.environ.get("SYNC_SECRET", "")
-SLACK_BOT_TOKEN   = os.environ.get("SLACK_BOT_TOKEN", "")
-CLAY_API_KEY      = os.environ.get("CLAY_API_KEY", "")
+  :root {
+    --navy:      #162b3e;
+    --navy-deep: #0f1f2e;
+    --navy-soft: #1e3a50;
+    --cream:     #fef2de;
+    --cream-dim: #e8d9c0;
+    --orange:    #ff6432;
+    --teal:      #2dd4bf;
+    --muted:     rgba(254,242,222,0.5);
+    --border:    rgba(254,242,222,0.1);
+    --border2:   rgba(254,242,222,0.2);
+    --radius:    14px;
+    --radius-sm: 9px;
+  }
 
-EST = datetime.timezone(datetime.timedelta(hours=-5))
+  /* ── LIGHT MODE ─────────────────────────────────────────── */
+  body.light-mode {
+    --navy:      #efe3cc;
+    --navy-deep: #fef2de;
+    --navy-soft: #ffffff;
+    --cream:     #162b3e;
+    --cream-dim: #243d52;
+    --muted:     rgba(22,43,62,0.5);
+    --border:    rgba(22,43,62,0.1);
+    --border2:   rgba(22,43,62,0.2);
+  }
+  body.light-mode input,
+  body.light-mode select,
+  body.light-mode textarea {
+    background: rgba(22,43,62,0.05);
+    border-color: rgba(22,43,62,0.2);
+    color: #162b3e;
+  }
+  body.light-mode input::placeholder,
+  body.light-mode textarea::placeholder { color: rgba(22,43,62,0.4); }
+  body.light-mode input:focus,
+  body.light-mode textarea:focus { border-color: var(--orange); background: rgba(255,100,50,0.04); }
+  body.light-mode .search-select input {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23162b3e' opacity='0.4' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 14px center;
+  }
+  body.light-mode .sidebar { background: #0f1f2e !important; border-right-color: rgba(254,242,222,0.1) !important; }
+  body.light-mode .sidebar .nav-item { color: rgba(254,242,222,0.5); }
+  body.light-mode .sidebar .nav-item:hover { background: rgba(254,242,222,0.05); color: #fef2de; }
+  body.light-mode .sidebar .nav-item.active { background: rgba(255,100,50,0.12); color: #ff6432; }
+  body.light-mode .sidebar-footer { border-top-color: rgba(254,242,222,0.1); }
+  body.light-mode .sidebar .brand-name { color: #fef2de; }
+  body.light-mode .sidebar .brand-s { color: #fef2de; }
+  body.light-mode .tab-bar { background: rgba(22,43,62,0.05); border-color: rgba(22,43,62,0.12); }
+  body.light-mode .toggle-slider { background: rgba(22,43,62,0.15); }
+  body.light-mode .toggle-slider::before { background: rgba(22,43,62,0.45); }
+  body.light-mode .toggle input:checked + .toggle-slider { background: var(--orange); }
+  body.light-mode .toggle input:checked + .toggle-slider::before { background: #fff; }
+  body.light-mode .chip-hs { color: #1e3a50; border-color: rgba(22,43,62,0.2); background: rgba(22,43,62,0.06); }
+  body.light-mode .chip-inactive { border-color: rgba(22,43,62,0.12); background: rgba(22,43,62,0.04); }
+  body.light-mode .search-dropdown { background: #fff; box-shadow: 0 8px 24px rgba(22,43,62,0.15); }
+  body.light-mode .search-option { color: #162b3e; border-bottom-color: rgba(22,43,62,0.06); }
+  body.light-mode .search-option:hover { background: rgba(255,100,50,0.08); }
+  body.light-mode .search-option.selected { background: rgba(255,100,50,0.12); color: var(--orange); }
+  body.light-mode .search-option-empty { color: rgba(22,43,62,0.4); }
+  body.light-mode .search-bar input { background: rgba(22,43,62,0.05); border-color: rgba(22,43,62,0.12); }
+  body.light-mode .modal-overlay { background: rgba(22,43,62,0.55); }
+  body.light-mode .toast { border-color: rgba(22,43,62,0.2); }
+  body.light-mode #login-screen::before { background: rgba(255,100,50,0.09); }
+  body.light-mode #login-screen::after  { background: rgba(22,43,62,0.04); }
+  body.light-mode .btn-icon { color: #162b3e; border-color: rgba(22,43,62,0.2); }
+  body.light-mode .btn-icon:hover { background: rgba(22,43,62,0.07); }
+  body.light-mode .btn-trash { color: rgba(22,43,62,0.35); border-color: rgba(22,43,62,0.15); }
+  body.light-mode .btn-trash:hover { border-color: var(--orange); color: var(--orange); background: rgba(255,100,50,0.08); }
+  body.light-mode .sched-btn { background: rgba(22,43,62,0.05); border-color: rgba(22,43,62,0.18); color: rgba(22,43,62,0.5); }
+  body.light-mode .sched-btn.active { background: var(--orange); color: #fff; border-color: var(--orange); }
+  body.light-mode .sched-btn:not(.active):hover { background: rgba(22,43,62,0.09); color: #162b3e; }
+  body.light-mode .gs-email-banner { background: rgba(45,212,191,0.05); border-color: rgba(45,212,191,0.2); }
+  body.light-mode .gs-email-banner code { background: rgba(45,212,191,0.1); color: #0d9488; }
+  body.light-mode .gs-copy-btn { background: rgba(45,212,191,0.1); border-color: rgba(45,212,191,0.25); color: #0d9488; }
+  body.light-mode .gs-copy-btn:hover { background: rgba(45,212,191,0.2); }
+  body.light-mode .gs-mapping-row { border-color: rgba(22,43,62,0.12); background: rgba(22,43,62,0.02); }
 
-INSTANTLY_TERMINAL_STATUSES = {"completed", "unsubscribed", "bounced", "finished", "out_of_sequence"}
+  body { font-family: 'DM Sans', sans-serif; background: var(--navy); color: var(--cream); min-height: 100vh; font-size: 15px; line-height: 1.6; transition: background 0.2s, color 0.2s; }
 
-def _log(msg):
-    print(msg, file=sys.stderr, flush=True)
+  #login-screen {
+    min-height: 100vh; display: flex; align-items: center; justify-content: center;
+    background: var(--navy-deep); position: relative; overflow: hidden;
+  }
+  #login-screen::before { content:''; position:absolute; top:-120px; right:-120px; width:420px; height:420px; border-radius:50%; background:rgba(255,100,50,0.07); pointer-events:none; }
+  #login-screen::after  { content:''; position:absolute; bottom:-80px; left:-80px;  width:300px; height:300px; border-radius:50%; background:rgba(254,242,222,0.04); pointer-events:none; }
 
-# ── Redis helpers ─────────────────────────────────────────────
+  .login-card { width:100%; max-width:400px; background:var(--navy-soft); border:1px solid var(--border2); border-radius:var(--radius); padding:2.75rem 2.25rem; position:relative; z-index:1; }
+  .brand-mark { display:flex; align-items:center; gap:10px; margin-bottom:2rem; }
+  .brand-s { width:38px; height:38px; background:var(--orange); border-radius:9px; display:flex; align-items:center; justify-content:center; font-family:'Playfair Display',serif; font-size:20px; font-weight:800; color:#fef2de; letter-spacing:-1px; flex-shrink:0; }
+  .brand-name { font-size:17px; font-weight:500; color:var(--cream); letter-spacing:-0.01em; }
+  .login-card h1 { font-family:'Playfair Display',serif; font-size:26px; font-weight:700; color:var(--cream); margin-bottom:0.35rem; line-height:1.2; }
+  .login-card > p { color:var(--muted); font-size:14px; margin-bottom:2rem; }
 
-def _redis_get(key):
-    url = f"{UPSTASH_URL}/get/{key}"
-    req = Request(url, headers={"Authorization": f"Bearer {UPSTASH_TOKEN}"})
-    with urlopen(req, timeout=5) as r:
-        data = json.loads(r.read())
-    val = data.get("result")
-    return json.loads(val) if val else None
+  label { display:block; font-size:12px; font-weight:500; color:var(--muted); margin-bottom:7px; text-transform:uppercase; letter-spacing:0.08em; }
 
-def _redis_set_raw(key, value):
-    url = f"{UPSTASH_URL}/set/{key}/{value}"
-    req = Request(url, headers={"Authorization": f"Bearer {UPSTASH_TOKEN}"})
-    with urlopen(req, timeout=5) as r:
-        r.read()
+  input, select, textarea {
+    width:100%; background:rgba(254,242,222,0.06); border:1px solid var(--border2); border-radius:var(--radius-sm);
+    color:var(--cream); font-family:'DM Sans',sans-serif; font-size:15px; padding:11px 14px;
+    outline:none; transition:border-color 0.15s,background 0.15s; appearance:none; -webkit-appearance:none;
+  }
+  textarea { resize:vertical; min-height:80px; line-height:1.5; }
+  input::placeholder, textarea::placeholder { color:var(--muted); }
+  input:focus, textarea:focus { border-color:var(--orange); background:rgba(255,100,50,0.06); }
 
-def _redis_set_json(key, value):
-    url = f"{UPSTASH_URL}/set/{key}"
-    body = json.dumps(value).encode()
-    req = Request(url, data=body, headers={
-        "Authorization": f"Bearer {UPSTASH_TOKEN}",
-        "Content-Type": "application/json"
-    }, method="POST")
-    with urlopen(req, timeout=5) as r:
-        r.read()
+  .btn { display:inline-flex; align-items:center; justify-content:center; gap:8px; padding:11px 20px; border-radius:var(--radius-sm); border:none; font-family:'DM Sans',sans-serif; font-size:15px; font-weight:500; cursor:pointer; transition:all 0.15s; letter-spacing:-0.01em; }
+  .btn-primary { background:var(--orange); color:#fef2de; width:100%; padding:13px; }
+  .btn-primary:hover { background:#e8522a; }
+  .btn-primary:active { transform:scale(0.98); }
+  .btn-primary:disabled { opacity:0.45; cursor:not-allowed; }
+  .btn-cream { background:transparent; color:var(--cream); border:1px solid var(--border2); font-size:13px; padding:8px 14px; }
+  .btn-cream:hover { background:rgba(254,242,222,0.07); border-color:var(--cream-dim); }
+  .btn-danger { background:transparent; color:var(--orange); border:1px solid rgba(255,100,50,0.3); font-size:13px; padding:8px 14px; }
+  .btn-danger:hover { background:rgba(255,100,50,0.1); }
 
-def _redis_incr(key):
-    url = f"{UPSTASH_URL}/incr/{key}"
-    req = Request(url, data=b'', headers={"Authorization": f"Bearer {UPSTASH_TOKEN}"}, method="POST")
-    with urlopen(req, timeout=5) as r:
-        data = json.loads(r.read())
-    return data.get("result", 0)
+  .btn-icon { display:inline-flex; align-items:center; justify-content:center; width:36px; height:36px; background:transparent; border:1px solid var(--border2); border-radius:var(--radius-sm); color:var(--cream); cursor:pointer; transition:all 0.15s; flex-shrink:0; position:relative; }
+  .btn-icon:hover { background:rgba(254,242,222,0.07); border-color:var(--cream-dim); }
+  .btn-icon .tooltip { position:absolute; bottom:calc(100% + 6px); left:50%; transform:translateX(-50%); background:var(--navy-deep); border:1px solid var(--border2); color:var(--cream); font-size:11px; font-weight:500; white-space:nowrap; padding:4px 9px; border-radius:6px; opacity:0; pointer-events:none; transition:opacity 0.15s; }
+  .btn-icon:hover .tooltip { opacity:1; }
 
-def _redis_expire(key, seconds):
-    url = f"{UPSTASH_URL}/expire/{key}/{seconds}"
-    req = Request(url, data=b'', headers={"Authorization": f"Bearer {UPSTASH_TOKEN}"}, method="POST")
-    with urlopen(req, timeout=5) as r:
-        r.read()
+  .btn-trash { display:inline-flex; align-items:center; justify-content:center; width:30px; height:30px; background:transparent; border:1px solid rgba(255,100,50,0.2); border-radius:var(--radius-sm); color:var(--muted); cursor:pointer; transition:all 0.15s; flex-shrink:0; }
+  .btn-trash:hover { border-color:var(--orange); color:var(--orange); background:rgba(255,100,50,0.08); }
 
-def _redis_get_int(key):
-    url = f"{UPSTASH_URL}/get/{key}"
-    req = Request(url, headers={"Authorization": f"Bearer {UPSTASH_TOKEN}"})
-    with urlopen(req, timeout=5) as r:
-        data = json.loads(r.read())
-    val = data.get("result")
-    return int(val) if val else 0
+  .error-msg { background:rgba(255,100,50,0.1); border:1px solid rgba(255,100,50,0.3); color:#ffb39a; border-radius:var(--radius-sm); padding:10px 14px; font-size:13px; margin-top:1rem; display:none; }
 
-def get_automations():
-    data = _redis_get("automations_config")
-    return data if isinstance(data, list) else []
+  #app { display:none; min-height:100vh; }
 
-def save_automations(automations):
-    _redis_set_json("automations_config", automations)
+  .sidebar { position:fixed; top:0; left:0; width:224px; height:100vh; background:var(--navy-deep); border-right:1px solid var(--border); padding:1.5rem 1rem; display:flex; flex-direction:column; gap:2px; z-index:10; }
+  .sidebar-brand { display:flex; align-items:center; gap:10px; padding:0.5rem 0.75rem 1.25rem; }
+  .nav-item { display:flex; align-items:center; gap:10px; padding:9px 12px; border-radius:var(--radius-sm); font-size:14px; color:rgba(254,242,222,0.5); cursor:pointer; transition:all 0.12s; border:none; background:none; width:100%; font-family:'DM Sans',sans-serif; text-align:left; }
+  .nav-item:hover { background:rgba(254,242,222,0.05); color:#fef2de; }
+  .nav-item.active { background:rgba(255,100,50,0.12); color:#ff6432; }
+  .nav-icon { font-size:15px; width:20px; text-align:center; }
+  .sidebar-footer { margin-top:auto; padding-top:1rem; border-top:1px solid rgba(254,242,222,0.1); }
 
-# ── Sent cache ────────────────────────────────────────────────
+  .main { margin-left:224px; padding:2.25rem 2.5rem; min-height:100vh; }
+  .page { display:none; }
+  .page.active { display:block; }
 
-def load_sent_cache():
-    """Scan all sent: keys from Redis into a local set. One scan per run."""
-    sent   = set()
-    cursor = 0
-    try:
-        while True:
-            url = f"{UPSTASH_URL}/scan/{cursor}?match=sent:*&count=500"
-            req = Request(url, headers={"Authorization": f"Bearer {UPSTASH_TOKEN}"})
-            with urlopen(req, timeout=10) as r:
-                data = json.loads(r.read())
-            result = data.get("result", [0, []])
-            cursor = int(result[0])
-            keys   = result[1] if len(result) > 1 else []
-            for k in keys:
-                sent.add(k)
-            if cursor == 0:
-                break
-    except Exception as e:
-        _log(f"[sync] sent cache load error (falling back to per-key reads): {e}")
-        return None
-    _log(f"[sync] sent cache loaded: {len(sent)} keys")
-    return sent
+  .page-header { display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:2rem; }
+  .page-header h2 { font-family:'Playfair Display',serif; font-size:26px; font-weight:700; color:var(--cream); letter-spacing:-0.02em; line-height:1.2; }
+  .page-header p { font-size:14px; color:var(--muted); margin-top:3px; }
 
-def already_sent_cached(email, target_id, sent_cache):
-    key = f"sent:{email.lower()}:{target_id}"
-    if sent_cache is None:
-        url = f"{UPSTASH_URL}/get/{key}"
-        req = Request(url, headers={"Authorization": f"Bearer {UPSTASH_TOKEN}"})
-        with urlopen(req, timeout=5) as r:
-            result = json.loads(r.read())
-        return result.get("result") is not None
-    return key in sent_cache
+  .stats-row { display:grid; grid-template-columns:repeat(3,1fr); gap:1rem; margin-bottom:1.75rem; }
+  .stat-card { background:var(--navy-soft); border:1px solid var(--border); border-radius:var(--radius); padding:1.25rem 1.5rem; position:relative; overflow:hidden; cursor:pointer; transition:border-color 0.15s, background 0.15s; }
+  .stat-card:hover { border-color:var(--border2); background:rgba(254,242,222,0.05); }
+  .stat-card.filter-active { border-color:var(--orange); background:rgba(255,100,50,0.07); }
+  .stat-card::after { content:''; position:absolute; top:0; right:0; width:60px; height:60px; border-radius:0 var(--radius) 0 60px; background:rgba(254,242,222,0.03); }
+  .stat-label { font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:0.09em; font-weight:500; margin-bottom:0.6rem; }
+  .stat-value { font-family:'Playfair Display',serif; font-size:36px; font-weight:700; letter-spacing:-0.03em; color:var(--cream); line-height:1; }
+  .stat-value.orange { color:var(--orange); }
 
-def mark_as_sent(email, target_id, sent_cache=None):
-    key = f"sent:{email.lower()}:{target_id}"
-    _redis_set_raw(key, 1)
-    if sent_cache is not None:
-        sent_cache.add(key)
+  .card { background:var(--navy-soft); border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; }
+  .card-header { padding:1.25rem 1.5rem; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; }
+  .card-header h3 { font-size:15px; font-weight:500; color:var(--cream); }
 
-# ── First seen helpers ────────────────────────────────────────
+  .automation-row { display:flex; align-items:center; padding:1rem 1.5rem; border-bottom:1px solid var(--border); gap:1rem; transition:background 0.12s; cursor:pointer; }
+  .automation-row:last-child { border-bottom:none; }
+  .automation-row:hover { background:rgba(255,100,50,0.04); }
+  .auto-name { font-weight:500; font-size:14px; color:var(--cream); }
+  .auto-meta { display:flex; gap:7px; margin-top:5px; flex-wrap:wrap; }
+  .auto-actions { margin-left:auto; flex-shrink:0; }
 
-def get_first_seen(email, target_id):
-    key = f"first_seen:{email.lower()}:{target_id}"
-    url = f"{UPSTASH_URL}/get/{key}"
-    req = Request(url, headers={"Authorization": f"Bearer {UPSTASH_TOKEN}"})
-    with urlopen(req, timeout=5) as r:
-        result = json.loads(r.read())
-    val = result.get("result")
-    return float(val) if val else None
+  .chip { display:inline-flex; align-items:center; gap:5px; font-size:11px; padding:3px 10px; border-radius:100px; font-weight:500; border:1px solid; letter-spacing:0.01em; }
+  .chip-hs      { color:var(--cream-dim); border-color:rgba(254,242,222,0.2); background:rgba(254,242,222,0.06); }
+  .chip-in      { color:var(--orange);    border-color:rgba(255,100,50,0.3);  background:rgba(255,100,50,0.08); }
+  .chip-form    { color:var(--teal);      border-color:rgba(45,212,191,0.3);  background:rgba(45,212,191,0.08); }
+  .chip-gs      { color:var(--teal);      border-color:rgba(45,212,191,0.3);  background:rgba(45,212,191,0.08); }
+  .chip-active  { color:#86efac; border-color:rgba(134,239,172,0.25); background:rgba(134,239,172,0.08); }
+  .chip-inactive{ color:var(--muted); border-color:rgba(254,242,222,0.1); background:rgba(254,242,222,0.03); }
+  .chip-unenroll{ color:#f472b6; border-color:rgba(244,114,182,0.3); background:rgba(244,114,182,0.08); }
+  .chip-alert   { color:#fbbf24; border-color:rgba(251,191,36,0.3); background:rgba(251,191,36,0.08); }
 
-def set_first_seen(email, target_id):
-    _redis_set_raw(f"first_seen:{email.lower()}:{target_id}", time.time())
+  .search-bar { padding:1rem 1.5rem; border-bottom:1px solid var(--border); }
+  .search-bar input { background:rgba(254,242,222,0.05); border:1px solid var(--border); border-radius:var(--radius-sm); color:var(--cream); font-family:'DM Sans',sans-serif; font-size:14px; padding:9px 14px; width:100%; max-width:360px; outline:none; transition:border-color 0.15s; }
+  .search-bar input::placeholder { color:var(--muted); }
+  .search-bar input:focus { border-color:var(--orange); }
 
-def log_enrollment(auto_id, email, delivery_type, ts):
-    entry    = json.dumps({"email": email, "ts": ts, "type": delivery_type})
-    pipeline = [
-        ["LPUSH", f"logs:{auto_id}", entry],
-        ["LTRIM", f"logs:{auto_id}", 0, 9999]
-    ]
-    body = json.dumps(pipeline).encode()
-    req  = Request(f"{UPSTASH_URL}/pipeline", data=body, headers={
-        "Authorization": f"Bearer {UPSTASH_TOKEN}",
-        "Content-Type":  "application/json"
-    }, method="POST")
-    with urlopen(req, timeout=5) as r:
-        r.read()
+  .toggle { position:relative; display:inline-block; width:36px; height:20px; flex-shrink:0; }
+  .toggle input { opacity:0; width:0; height:0; }
+  .toggle-slider { position:absolute; cursor:pointer; inset:0; background:rgba(254,242,222,0.12); border-radius:20px; transition:background 0.2s; }
+  .toggle-slider::before { content:''; position:absolute; width:14px; height:14px; left:3px; top:3px; background:var(--cream-dim); border-radius:50%; transition:transform 0.2s; }
+  .toggle input:checked + .toggle-slider { background:var(--orange); }
+  .toggle input:checked + .toggle-slider::before { transform:translateX(16px); background:var(--cream); }
 
-def increment_enroll_count(auto_id, est_date):
-    key   = f"enroll_count:{auto_id}:{est_date}"
-    count = _redis_incr(key)
-    if count == 1:
-        _redis_expire(key, 30 * 86400)
-    return count
+  .empty-state { padding:3.5rem; text-align:center; color:var(--muted); }
+  .empty-icon { font-size:28px; margin-bottom:0.75rem; }
+  .empty-state p { font-size:14px; }
 
-def get_enroll_count(auto_id, est_date):
-    return _redis_get_int(f"enroll_count:{auto_id}:{est_date}")
+  .tab-bar { display:flex; gap:4px; background:rgba(254,242,222,0.04); border:1px solid var(--border); border-radius:var(--radius-sm); padding:4px; margin-bottom:1.75rem; max-width:680px; }
+  .tab-btn { flex:1; padding:9px 16px; border-radius:7px; border:none; background:transparent; color:var(--muted); font-family:'DM Sans',sans-serif; font-size:13px; font-weight:500; cursor:pointer; transition:all 0.15s; }
+  .tab-btn:hover { color:var(--cream); background:rgba(254,242,222,0.06); }
+  .tab-btn.active { background:var(--navy-soft); color:var(--cream); border:1px solid var(--border2); }
+  .tab-btn.active.teal  { color:var(--orange);  border-color:rgba(255,100,50,0.3); }
+  .tab-btn.active.gs-tab { color:var(--teal); border-color:rgba(45,212,191,0.3); }
+  .tab-panel { display:none; }
+  .tab-panel.active { display:block; }
 
-def get_weekly_enroll_count(auto_id, est_now):
-    total = 0
-    for i in range(7):
-        day = est_now.date() - datetime.timedelta(days=i)
-        total += get_enroll_count(auto_id, day.isoformat())
-    return total
+  .form-card { background:var(--navy-soft); border:1px solid var(--border); border-radius:var(--radius); padding:2.25rem; max-width:600px; }
+  .form-card h3 { font-family:'Playfair Display',serif; font-size:20px; font-weight:700; margin-bottom:0.4rem; color:var(--cream); }
+  .form-desc { color:var(--muted); font-size:14px; margin-bottom:2rem; line-height:1.65; }
+  .form-row { margin-bottom:1.25rem; }
+  .form-footer { display:flex; gap:10px; margin-top:2rem; }
+  .form-footer .btn-primary { flex:1; width:auto; }
 
-def alert_already_sent_today(auto_id, est_date):
-    key = f"alert_sent:{auto_id}:{est_date}"
-    url = f"{UPSTASH_URL}/get/{key}"
-    req = Request(url, headers={"Authorization": f"Bearer {UPSTASH_TOKEN}"})
-    with urlopen(req, timeout=5) as r:
-        data = json.loads(r.read())
-    return data.get("result") is not None
+  .orange-bar { height:3px; background:var(--orange); border-radius:2px; width:36px; margin:0.5rem 0 1.5rem; }
+  .badge-count { background:rgba(255,100,50,0.15); color:var(--orange); font-size:12px; font-weight:600; padding:2px 9px; border-radius:100px; }
 
-def mark_alert_sent_today(auto_id, est_date):
-    key = f"alert_sent:{auto_id}:{est_date}"
-    _redis_set_raw(key, 1)
-    _redis_expire(key, 2 * 86400)
+  .toast { position:fixed; bottom:2rem; right:2rem; background:var(--navy-soft); border:1px solid var(--border2); border-radius:var(--radius-sm); padding:12px 18px; font-size:14px; font-weight:500; z-index:100; transform:translateY(70px); opacity:0; transition:all 0.22s; color:var(--cream); }
+  .toast.show { transform:translateY(0); opacity:1; }
+  .toast.success { border-color:rgba(134,239,172,0.35); }
+  .toast.error   { border-color:rgba(255,100,50,0.4); color:#ffb39a; }
 
-def alert_already_sent_week(auto_id, iso_week):
-    key = f"alert_sent_week:{auto_id}:{iso_week}"
-    url = f"{UPSTASH_URL}/get/{key}"
-    req = Request(url, headers={"Authorization": f"Bearer {UPSTASH_TOKEN}"})
-    with urlopen(req, timeout=5) as r:
-        data = json.loads(r.read())
-    return data.get("result") is not None
+  .search-select { position:relative; }
+  .search-select input { padding-right:36px; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23fef2de' opacity='0.4' d='M6 8L1 3h10z'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 14px center; }
+  .search-select input.has-value { border-color:var(--orange); background-color:rgba(255,100,50,0.06); }
+  .search-dropdown { display:none; position:absolute; top:calc(100% + 4px); left:0; right:0; background:var(--navy-deep); border:1px solid var(--border2); border-radius:var(--radius-sm); max-height:220px; overflow-y:auto; z-index:50; box-shadow:0 8px 24px rgba(0,0,0,0.4); }
+  .search-dropdown.open { display:block; }
+  .search-option { padding:10px 14px; font-size:14px; color:var(--cream); cursor:pointer; transition:background 0.1s; border-bottom:1px solid rgba(254,242,222,0.05); }
+  .search-option:last-child { border-bottom:none; }
+  .search-option:hover { background:rgba(255,100,50,0.1); }
+  .search-option.selected { background:rgba(255,100,50,0.15); color:var(--orange); }
+  .search-option-empty { padding:12px 14px; font-size:13px; color:var(--muted); font-style:italic; }
+  .search-dropdown::-webkit-scrollbar { width:4px; }
+  .search-dropdown::-webkit-scrollbar-thumb { background:rgba(254,242,222,0.15); border-radius:2px; }
 
-def mark_alert_sent_week(auto_id, iso_week):
-    key = f"alert_sent_week:{auto_id}:{iso_week}"
-    _redis_set_raw(key, 1)
-    _redis_expire(key, 8 * 86400)
+  .modal-overlay { position:fixed; inset:0; background:rgba(15,31,46,0.88); z-index:200; display:flex; align-items:center; justify-content:center; padding:1rem; }
+  .modal { background:var(--navy-soft); border:1px solid var(--border2); border-radius:var(--radius); width:100%; max-width:580px; max-height:80vh; display:flex; flex-direction:column; }
+  .modal-header { padding:1.1rem 1.5rem; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; flex-shrink:0; }
+  .modal-header h3 { font-size:15px; font-weight:500; color:var(--cream); }
+  .modal-header span { font-size:12px; color:var(--muted); margin-left:10px; }
+  .modal-body { overflow-y:auto; flex:1; }
+  .modal-body::-webkit-scrollbar { width:4px; }
+  .modal-body::-webkit-scrollbar-thumb { background:rgba(254,242,222,0.15); border-radius:2px; }
+  .log-row { display:flex; align-items:center; justify-content:space-between; padding:0.75rem 1.5rem; border-bottom:1px solid var(--border); font-size:13px; gap:1rem; }
+  .log-row:last-child { border-bottom:none; }
+  .log-email { color:var(--cream); font-weight:500; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .log-meta { color:var(--muted); font-size:11px; white-space:nowrap; flex-shrink:0; text-align:right; }
+  .log-date { color:var(--muted); font-size:11px; white-space:nowrap; flex-shrink:0; }
 
-# ── Slack ─────────────────────────────────────────────────────
+  .slack-divider { border:none; border-top:1px solid var(--border); margin:1.5rem 0 1.25rem; }
+  .slack-toggle-row { display:flex; align-items:center; justify-content:space-between; }
+  .slack-toggle-label { display:flex; align-items:center; gap:8px; font-size:14px; font-weight:500; color:var(--cream); }
+  .slack-icon { display:inline-flex; align-items:center; }
+  .slack-body { margin-top:1rem; display:flex; flex-direction:column; gap:0.9rem; }
+  .token-hint { font-size:11px; color:var(--muted); margin-top:5px; }
 
-def send_slack_message(channel_id, text):
-    if not SLACK_BOT_TOKEN or not channel_id:
-        return
-    payload = json.dumps({"channel": channel_id, "text": text}).encode()
-    req = Request(
-        "https://slack.com/api/chat.postMessage",
-        data=payload,
-        headers={
-            "Authorization": f"Bearer {SLACK_BOT_TOKEN}",
-            "Content-Type": "application/json"
-        },
-        method="POST"
-    )
-    try:
-        with urlopen(req, timeout=10) as r:
-            result = json.loads(r.read())
-        if not result.get("ok"):
-            _log(f"[slack] error: {result.get('error')}")
-    except Exception as e:
-        _log(f"[slack] send error: {e}")
+  .edit-grid { display:flex; gap:2rem; align-items:start; }
+  .edit-grid > :first-child { flex-shrink:0; }
+  #right-column { flex:1; min-width:0; display:flex; flex-direction:column; gap:1.5rem; }
 
-def send_enrollment_notification(automation, email, first_name, last_name, company):
-    if not automation.get("slack_enabled"):
-        return
-    channel_id  = automation.get("slack_channel", "")
-    message_tpl = automation.get("slack_message", "")
-    if not channel_id or not message_tpl:
-        return
-    msg = message_tpl
-    msg = msg.replace("{{email}}", email)
-    msg = msg.replace("{{first_name}}", first_name)
-    msg = msg.replace("{{last_name}}", last_name)
-    msg = msg.replace("{{company}}", company)
-    try:
-        send_slack_message(channel_id, msg)
-    except Exception as e:
-        _log(f"[slack] enrollment notification error: {e}")
+  .action-select-row { display:flex; gap:0.75rem; }
+  .action-option { flex:1; border:1px solid var(--border2); border-radius:var(--radius-sm); padding:12px 14px; cursor:pointer; transition:all 0.15s; display:flex; align-items:center; gap:10px; }
+  .action-option:hover { border-color:rgba(254,242,222,0.35); background:rgba(254,242,222,0.03); }
+  .action-option.selected { border-color:var(--orange); background:rgba(255,100,50,0.08); }
+  .action-dot { width:14px; height:14px; border-radius:50%; border:2px solid var(--border2); flex-shrink:0; transition:all 0.15s; }
+  .action-option.selected .action-dot { border-color:var(--orange); background:var(--orange); }
 
-def check_and_send_alert(automation, auto_id, est_now, est_date):
-    if not automation.get("alert_enabled"):
-        return
-    threshold   = int(automation.get("alert_threshold", 0))
-    schedule    = automation.get("alert_schedule", "daily")
-    alert_time  = automation.get("alert_time", "08:00")
-    channel_id  = automation.get("alert_slack_channel", "")
-    message_tpl = automation.get("alert_message", "")
+  .alert-body-inner { display:flex; flex-direction:column; gap:0.9rem; padding:1.25rem 1.5rem; }
+  .alert-time-grid { display:grid; grid-template-columns:1fr 1fr; gap:0.75rem; }
 
-    if not channel_id or not message_tpl:
-        return
+  .sched-toggle { display:flex; }
+  .sched-btn { flex:1; padding:9px 16px; border:1px solid var(--border2); background:rgba(254,242,222,0.04); color:var(--muted); font-family:'DM Sans',sans-serif; font-size:14px; font-weight:500; cursor:pointer; transition:all 0.15s; }
+  .sched-btn:first-child { border-radius:var(--radius-sm) 0 0 var(--radius-sm); border-right:none; }
+  .sched-btn:last-child  { border-radius:0 var(--radius-sm) var(--radius-sm) 0; }
+  .sched-btn.active { background:var(--orange); color:#fef2de; border-color:var(--orange); }
+  .sched-btn:not(.active):hover { background:rgba(254,242,222,0.08); color:var(--cream); }
 
-    try:
-        alert_hour, alert_min = [int(x) for x in alert_time.split(":")]
-    except Exception:
-        alert_hour, alert_min = 8, 0
+  .delete-modal-inner { max-width:420px; }
+  .delete-modal-body { padding:1.5rem; }
+  .delete-modal-body p { font-size:14px; color:var(--muted); line-height:1.6; margin-bottom:1.5rem; }
+  .delete-modal-footer { display:flex; gap:10px; justify-content:flex-end; }
 
-    if (est_now.hour, est_now.minute) < (alert_hour, alert_min):
-        return
+  /* ── GSheet Sync specific ──────────────────────────────── */
+  .gs-email-banner {
+    display:flex; align-items:flex-start; gap:12px;
+    background:rgba(45,212,191,0.07); border:1px solid rgba(45,212,191,0.2);
+    border-radius:var(--radius-sm); padding:14px 16px; margin-bottom:1.5rem;
+  }
+  .gs-email-banner-icon { font-size:16px; flex-shrink:0; margin-top:1px; }
+  .gs-email-banner-content { flex:1; min-width:0; }
+  .gs-email-banner-title { font-size:12px; font-weight:500; color:var(--teal); text-transform:uppercase; letter-spacing:0.08em; margin-bottom:6px; }
+  .gs-email-banner-row { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+  .gs-email-banner code { font-family:'Courier New',monospace; font-size:12px; background:rgba(45,212,191,0.1); color:#5eead4; border:1px solid rgba(45,212,191,0.2); border-radius:5px; padding:3px 8px; word-break:break-all; }
+  .gs-copy-btn { display:inline-flex; align-items:center; gap:5px; padding:4px 10px; background:rgba(45,212,191,0.12); border:1px solid rgba(45,212,191,0.25); border-radius:6px; color:var(--teal); font-size:11px; font-weight:500; cursor:pointer; transition:all 0.15s; white-space:nowrap; flex-shrink:0; }
+  .gs-copy-btn:hover { background:rgba(45,212,191,0.22); }
+  .gs-email-banner-hint { font-size:11px; color:var(--muted); margin-top:6px; }
 
-    if schedule == "daily":
-        if alert_already_sent_today(auto_id, est_date):
-            return
-        count = get_enroll_count(auto_id, est_date)
-        if count < threshold:
-            msg = message_tpl
-            msg = msg.replace("{{count}}", str(count))
-            msg = msg.replace("{{automation_name}}", automation.get("name", auto_id))
-            msg = msg.replace("{{threshold}}", str(threshold))
-            msg = msg.replace("{{date}}", est_date)
-            send_slack_message(channel_id, msg)
-            mark_alert_sent_today(auto_id, est_date)
-            _log(f"[alert] daily alert sent for {auto_id}: {count} < {threshold}")
+  /* Column mapping table */
+  .gs-mapping-header { display:grid; grid-template-columns:1fr 1fr auto; gap:8px; margin-bottom:6px; }
+  .gs-mapping-header span { font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:0.07em; font-weight:500; }
+  .gs-mapping-row { display:grid; grid-template-columns:1fr 1fr auto; gap:8px; align-items:center; padding:8px 10px; border:1px solid var(--border); border-radius:var(--radius-sm); background:rgba(254,242,222,0.02); margin-bottom:6px; }
+  .gs-mapping-row input { font-size:13px; padding:7px 10px; }
+  .gs-mapping-row select { font-size:13px; padding:7px 10px; }
 
-    elif schedule == "weekly":
-        alert_day = int(automation.get("alert_day", 0))
-        if est_now.weekday() != alert_day:
-            return
-        iso_week = est_now.strftime("%Y-W%W")
-        if alert_already_sent_week(auto_id, iso_week):
-            return
-        count = get_weekly_enroll_count(auto_id, est_now)
-        if count < threshold:
-            msg = message_tpl
-            msg = msg.replace("{{count}}", str(count))
-            msg = msg.replace("{{automation_name}}", automation.get("name", auto_id))
-            msg = msg.replace("{{threshold}}", str(threshold))
-            msg = msg.replace("{{date}}", est_date)
-            send_slack_message(channel_id, msg)
-            mark_alert_sent_week(auto_id, iso_week)
-            _log(f"[alert] weekly alert sent for {auto_id}: {count} < {threshold}")
+  /* Schedule toggle (3-way) */
+  .gs-sched-toggle { display:flex; }
+  .gs-sched-btn { flex:1; padding:9px 12px; border:1px solid var(--border2); background:rgba(254,242,222,0.04); color:var(--muted); font-family:'DM Sans',sans-serif; font-size:13px; font-weight:500; cursor:pointer; transition:all 0.15s; }
+  .gs-sched-btn:first-child { border-radius:var(--radius-sm) 0 0 var(--radius-sm); border-right:none; }
+  .gs-sched-btn:nth-child(2) { border-right:none; }
+  .gs-sched-btn:last-child  { border-radius:0 var(--radius-sm) var(--radius-sm) 0; }
+  .gs-sched-btn.active { background:var(--teal); color:#0f1f2e; border-color:var(--teal); font-weight:600; }
+  .gs-sched-btn:not(.active):hover { background:rgba(254,242,222,0.08); color:var(--cream); }
+  .gs-sched-details { margin-top:0.9rem; display:flex; gap:0.75rem; }
+</style>
+</head>
+<body>
 
-# ── HubSpot list contacts ─────────────────────────────────────
+<!-- LOGIN -->
+<div id="login-screen">
+  <div class="login-card">
+    <div class="brand-mark">
+      <div class="brand-s">S</div>
+      <span class="brand-name">scalearmy</span>
+    </div>
+    <h1>Automation Hub</h1>
+    <div class="orange-bar"></div>
+    <p>Scale Army's internal automations tool</p>
+    <div class="form-row">
+      <label>Team password</label>
+      <input type="password" id="pw-input" placeholder="Enter password" onkeydown="if(event.key==='Enter')login()">
+    </div>
+    <button class="btn btn-primary" onclick="login()" id="login-btn">Sign in</button>
+    <div class="error-msg" id="login-error">Incorrect password. Please try again.</div>
+  </div>
+</div>
 
-def get_list_contacts(list_id, extra_properties=None):
-    headers    = {"Authorization": f"Bearer {HUBSPOT_API_KEY}"}
-    contacts   = []
-    vid_offset = None
+<!-- APP -->
+<div id="app">
+  <nav class="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-s">S</div>
+      <span class="brand-name">scalearmy</span>
+    </div>
+    <button class="nav-item active" onclick="showPage('dashboard');setFilter('all')" id="nav-dashboard">
+      <span class="nav-icon">◻</span> Dashboard
+    </button>
+    <button class="nav-item" id="nav-filter-instantly" onclick="showPage('dashboard');setFilter('instantly')" style="padding-left:28px;font-size:13px;display:flex;align-items:center;gap:7px;"><svg width="14" height="14" viewBox="0 0 100 100" fill="none" style="flex-shrink:0;"><circle cx="50" cy="50" r="50" fill="#2563EB"/><polygon points="58,10 30,55 50,55 42,90 70,45 50,45" fill="white"/></svg> Instantly</button>
+    <button class="nav-item" id="nav-filter-hubspot_form" onclick="showPage('dashboard');setFilter('hubspot_form')" style="padding-left:28px;font-size:13px;display:flex;align-items:center;gap:7px;"><svg width="14" height="14" viewBox="0 0 100 100" fill="none" style="flex-shrink:0;"><circle cx="62" cy="50" r="18" fill="#FF7A59"/><circle cx="62" cy="50" r="9" fill="white"/><circle cx="25" cy="28" r="8" fill="#FF7A59"/><circle cx="25" cy="72" r="8" fill="#FF7A59"/><circle cx="78" cy="18" r="7" fill="#FF7A59"/><line x1="25" y1="28" x2="50" y2="45" stroke="#FF7A59" stroke-width="8" stroke-linecap="round"/><line x1="25" y1="72" x2="50" y2="57" stroke="#FF7A59" stroke-width="8" stroke-linecap="round"/><line x1="78" y1="18" x2="68" y2="35" stroke="#FF7A59" stroke-width="8" stroke-linecap="round"/></svg> HubSpot Form</button>
+    <button class="nav-item" id="nav-filter-gsheet_sync" onclick="showPage('dashboard');setFilter('gsheet_sync')" style="padding-left:28px;font-size:13px;display:flex;align-items:center;gap:7px;"><svg width="14" height="14" viewBox="0 0 100 100" fill="none" style="flex-shrink:0;"><rect x="15" y="5" width="55" height="70" rx="4" fill="#0F9D58"/><rect x="30" y="5" width="40" height="18" rx="2" fill="#0F9D58"/><path d="M70 5 L85 20 L70 20 Z" fill="#087447"/><rect x="70" y="5" width="15" height="15" rx="2" fill="#34A853"/><rect x="22" y="35" width="56" height="4" rx="2" fill="white" opacity="0.7"/><rect x="22" y="47" width="56" height="4" rx="2" fill="white" opacity="0.7"/><rect x="22" y="59" width="40" height="4" rx="2" fill="white" opacity="0.7"/></svg> GSheet Sync</button>
+    <button class="nav-item" onclick="newAutomation()" id="nav-add" style="margin-top:4px;">
+      <span class="nav-icon">+</span> New automation
+    </button>
+    <div class="sidebar-footer">
+      <!-- Activity bar -->
+      <div style="padding:0.75rem 0.75rem 0.5rem;border-top:1px solid rgba(254,242,222,0.08);">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+          <span style="font-size:11px;color:rgba(254,242,222,0.5);text-transform:uppercase;letter-spacing:0.07em;font-weight:500;">Activity · 30d</span>
+          <span style="font-size:11px;color:#ff6432;font-weight:600;" id="nav-total-runs">—</span>
+        </div>
+        <div id="nav-activity-bars" style="display:flex;align-items:flex-end;gap:2px;height:28px;cursor:pointer;" onclick="openActivityModal()" title="Click to expand">
+          <span style="font-size:10px;color:rgba(254,242,222,0.35);">Loading…</span>
+        </div>
+      </div>
+      <button class="nav-item" id="theme-toggle-btn" onclick="toggleTheme()">
+        <span class="nav-icon" id="theme-icon">
+          <svg width="15" height="15" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="7.5" cy="7.5" r="2.5" stroke="currentColor" stroke-width="1.3"/>
+            <path d="M7.5 1.5V3M7.5 12V13.5M1.5 7.5H3M12 7.5H13.5M3.4 3.4l1.06 1.06M10.54 10.54l1.06 1.06M10.54 4.46l1.06-1.06M3.4 11.6l1.06-1.06" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
+          </svg>
+        </span>
+        <span id="theme-label">Light mode</span>
+      </button>
+      <button class="nav-item" onclick="logout()">
+        <span class="nav-icon">←</span> Sign out
+      </button>
+    </div>
+  </nav>
 
-    base_props = ["email", "firstname", "lastname", "company", "company_domain"]
-    all_props  = base_props + [p for p in (extra_properties or []) if p not in base_props]
-    prop_str   = "&".join(f"property={p}" for p in all_props)
+  <main class="main">
 
-    while True:
-        url = f"https://api.hubapi.com/contacts/v1/lists/{list_id}/contacts/all?count=100&{prop_str}"
-        if vid_offset:
-            url += f"&vidOffset={vid_offset}"
-        try:
-            resp = requests.get(url, headers=headers, timeout=15)
-            resp.raise_for_status()
-            body = resp.json()
-        except Exception as e:
-            _log(f"[sync] HubSpot list {list_id} fetch error: {e}")
-            break
+    <!-- DASHBOARD -->
+    <div class="page active" id="page-dashboard">
+      <div class="page-header">
+        <div>
+          <h2>Automations</h2>
+          <div class="orange-bar" style="margin-top:8px;margin-bottom:0;"></div>
+        </div>
+        <button class="btn btn-primary" style="width:auto;padding:11px 20px;margin-top:4px;" onclick="newAutomation()">+ New automation</button>
+      </div>
 
-        for c in body.get("contacts", []):
-            props = c.get("properties", {})
-            email = props.get("email", {}).get("value", "").strip().lower()
-            if email:
-                contact = {
-                    "email":          email,
-                    "firstname":      props.get("firstname",      {}).get("value", ""),
-                    "lastname":       props.get("lastname",       {}).get("value", ""),
-                    "company":        props.get("company",        {}).get("value", ""),
-                    "company_domain": props.get("company_domain", {}).get("value", ""),
-                }
-                for p in (extra_properties or []):
-                    contact[p] = props.get(p, {}).get("value", "")
-                contacts.append(contact)
+      <div class="stats-row" style="grid-template-columns:200px 200px;">
+        <div class="stat-card" style="cursor:default;">
+          <div class="stat-label">Total automations</div>
+          <div class="stat-value orange" id="stat-total">—</div>
+        </div>
+        <div class="stat-card" style="cursor:default;">
+          <div class="stat-label">Contacts processed · 24h</div>
+          <div class="stat-value orange" id="stat-24h">—</div>
+        </div>
+      </div>
+      <span id="stat-instantly" style="display:none;"></span>
+      <span id="stat-forms" style="display:none;"></span>
 
-        if not body.get("has-more", False):
-            break
-        vid_offset = body.get("vid-offset")
+      <div class="card">
+        <div class="card-header">
+          <h3>All automations <span class="badge-count" id="auto-count">0</span></h3>
+          <button class="btn btn-cream" onclick="loadAutomations()">↻ Refresh</button>
+        </div>
+        <div class="search-bar">
+          <input type="text" id="auto-search" placeholder="Search automations…" oninput="onSearch(this.value)">
+        </div>
+        <div id="automations-list">
+          <div class="empty-state"><p>Loading…</p></div>
+        </div>
+      </div>
+    </div>
 
-    _log(f"[sync] list {list_id} has {len(contacts)} contacts")
-    return contacts
+    <!-- ADD / EDIT -->
+    <div class="page" id="page-add">
+      <div class="page-header">
+        <div>
+          <h2 id="add-page-title">New automation</h2>
+          <div class="orange-bar" style="margin-top:8px;margin-bottom:0;"></div>
+          <p style="margin-top:10px;">Choose how to reach contacts from your HubSpot list</p>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;margin-top:4px;">
+          <button class="btn-icon" id="view-logs-btn" onclick="viewCurrentLogs()" style="display:none;">
+            <svg width="15" height="15" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <circle cx="7.5" cy="7.5" r="6" stroke="currentColor" stroke-width="1.3"/>
+              <path d="M7.5 4.5V7.5l2 2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            <span class="tooltip">Automation Logs</span>
+          </button>
+          <button class="btn btn-cream" onclick="refreshDropdowns()">↻ Refresh lists</button>
+        </div>
+      </div>
 
-def check_filters(contact, filters):
-    if not filters:
-        return True
-    for f in filters:
-        prop        = f.get("property", "")
-        operator    = f.get("operator", "equals")
-        value       = str(f.get("value", "")).strip().lower()
-        contact_val = str(contact.get(prop, "") or "").strip().lower()
-        if operator == "exists":
-            if not contact_val:
-                return False
-        elif operator == "equals":
-            if contact_val != value:
-                return False
-        elif operator == "not_equals":
-            if contact_val == value:
-                return False
-        elif operator == "contains":
-            if value not in contact_val:
-                return False
-        elif operator == "not_contains":
-            if value in contact_val:
-                return False
-    return True
+      <div class="tab-bar">
+        <button class="tab-btn active"  id="tab-btn-instantly"    onclick="switchTab('instantly')">Instantly Automation</button>
+        <button class="tab-btn teal"    id="tab-btn-hubspot_form" onclick="switchTab('hubspot_form')">HS Form Fill Sequence</button>
+        <button class="tab-btn gs-tab"  id="tab-btn-gsheet_sync"  onclick="switchTab('gsheet_sync')">GSheet → HubSpot Sync</button>
+      </div>
 
-# ── Instantly helpers ─────────────────────────────────────────
+      <div class="edit-grid">
+      <div>
 
-def add_to_instantly(email, first_name, last_name, company, campaign_id):
-    headers = {
-        "Authorization": f"Bearer {INSTANTLY_API_KEY}",
-        "Content-Type":  "application/json"
+      <!-- ── Tab: Instantly ── -->
+      <div class="tab-panel active" id="tab-instantly">
+        <div class="form-card">
+          <h3>Instantly Automation</h3>
+          <p class="form-desc">Contacts added to the HubSpot list will be enrolled in or removed from your Instantly email campaign automatically, with duplicate protection.</p>
+          <div class="form-row">
+            <label>Automation name</label>
+            <input type="text" id="auto-name-instantly" placeholder="e.g. Cold UK Leads → Q1 Outreach">
+          </div>
+          <div class="form-row">
+            <label>HubSpot list</label>
+            <div class="search-select">
+              <input type="text" id="hs-search-instantly" placeholder="Search HubSpot lists…" autocomplete="off">
+              <div class="search-dropdown" id="hs-dropdown-instantly"></div>
+            </div>
+          </div>
+          <div class="form-row">
+            <label>Instantly campaign</label>
+            <div class="search-select">
+              <input type="text" id="camp-search" placeholder="Search Instantly campaigns…" autocomplete="off">
+              <div class="search-dropdown" id="camp-dropdown"></div>
+            </div>
+          </div>
+          <div class="form-row">
+            <label>Action</label>
+            <div class="action-select-row">
+              <div class="action-option selected" id="action-enroll" onclick="selectAction('enroll')">
+                <div class="action-dot"></div>
+                <div>
+                  <div style="font-size:14px;font-weight:500;color:var(--cream);">Enroll</div>
+                  <div style="font-size:11px;color:var(--muted);">Add contacts to campaign</div>
+                </div>
+              </div>
+              <div class="action-option" id="action-unenroll" onclick="selectAction('unenroll')">
+                <div class="action-dot"></div>
+                <div>
+                  <div style="font-size:14px;font-weight:500;color:var(--cream);">Unenroll</div>
+                  <div style="font-size:11px;color:var(--muted);">Remove active leads from campaign</div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="form-row">
+            <label>Delay before sending <span style="font-size:11px;opacity:0.6;">(0 = send immediately)</span></label>
+            <div style="display:flex;gap:8px;">
+              <input type="number" id="delay-amount" min="0" value="0" placeholder="0" style="width:100px;flex-shrink:0;">
+              <select id="delay-unit" style="flex:1;">
+                <option value="hours">Hours</option>
+                <option value="days">Days</option>
+              </select>
+            </div>
+          </div>
+          <hr class="slack-divider">
+          <div class="form-row">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.75rem;">
+              <label style="margin-bottom:0;">Filter conditions <span style="font-size:11px;opacity:0.6;">(optional)</span></label>
+              <button type="button" class="btn btn-cream" onclick="addFilter('instantly')" style="font-size:12px;padding:5px 10px;">+ Add condition</button>
+            </div>
+            <div id="filters-instantly"><div style="font-size:13px;color:var(--muted);padding:6px 0;">No conditions — all contacts will be processed.</div></div>
+            <div class="token-hint" style="margin-top:8px;">Properties are loaded from your HubSpot account. Enumeration fields show a value picker automatically.</div>
+          </div>
+          <hr class="slack-divider">
+          <div class="slack-toggle-row">
+            <span class="slack-toggle-label"><span class="slack-icon"><!-- slack svg --><svg width="16" height="16" viewBox="0 0 54 54" xmlns="http://www.w3.org/2000/svg"><path d="M19.7 32.2c0 2.9-2.4 5.3-5.3 5.3s-5.3-2.4-5.3-5.3 2.4-5.3 5.3-5.3H19.7v5.3z" fill="#E01E5A"/><path d="M22.3 32.2c0-2.9 2.4-5.3 5.3-5.3s5.3 2.4 5.3 5.3v13.3c0 2.9-2.4 5.3-5.3 5.3s-5.3-2.4-5.3-5.3V32.2z" fill="#E01E5A"/><path d="M27.6 19.7c-2.9 0-5.3-2.4-5.3-5.3s2.4-5.3 5.3-5.3 5.3 2.4 5.3 5.3V19.7H27.6z" fill="#36C5F0"/><path d="M27.6 22.3c2.9 0 5.3 2.4 5.3 5.3s-2.4 5.3-5.3 5.3H14.4c-2.9 0-5.3-2.4-5.3-5.3s2.4-5.3 5.3-5.3H27.6z" fill="#36C5F0"/><path d="M40.1 27.6c0-2.9 2.4-5.3 5.3-5.3s5.3 2.4 5.3 5.3-2.4 5.3-5.3 5.3H40.1V27.6z" fill="#2EB67D"/><path d="M37.4 27.6c0 2.9-2.4 5.3-5.3 5.3s-5.3-2.4-5.3-5.3V14.4c0-2.9 2.4-5.3 5.3-5.3s5.3 2.4 5.3 5.3V27.6z" fill="#2EB67D"/><path d="M32.1 40.1c2.9 0 5.3 2.4 5.3 5.3s-2.4 5.3-5.3 5.3-5.3-2.4-5.3-5.3V40.1h5.3z" fill="#ECB22E"/><path d="M32.1 37.4c-2.9 0-5.3-2.4-5.3-5.3s2.4-5.3 5.3-5.3h13.3c2.9 0 5.3 2.4 5.3 5.3s-2.4 5.3-5.3 5.3H32.1z" fill="#ECB22E"/></svg></span> Slack notification</span>
+            <label class="toggle"><input type="checkbox" id="slack-enabled-instantly" onchange="toggleSlackSection('instantly',this.checked)"><span class="toggle-slider"></span></label>
+          </div>
+          <div id="slack-body-instantly" class="slack-body" style="display:none;">
+            <div><label>Channel</label><div class="search-select"><input type="text" id="slack-ch-search-instantly" placeholder="Search channels…" autocomplete="off"><div class="search-dropdown" id="slack-ch-dropdown-instantly"></div></div></div>
+            <div><label>Message template</label><textarea id="slack-msg-instantly" rows="3" placeholder="e.g. New lead enrolled: {{first_name}} {{last_name}} ({{email}})"></textarea><div class="token-hint">Available tokens: {{first_name}} {{last_name}} {{email}} {{company}}</div></div>
+          </div>
+          <div class="form-footer">
+            <button class="btn btn-cream" onclick="cancelEdit()">Cancel</button>
+            <button class="btn btn-primary" onclick="createAutomation('instantly')" id="create-btn-instantly">Create automation</button>
+          </div>
+          <div class="error-msg" id="form-error-instantly"></div>
+        </div>
+      </div>
+
+      <!-- ── Tab: HS Form Fill ── -->
+      <div class="tab-panel" id="tab-hubspot_form">
+        <div class="form-card">
+          <h3>HS Form Fill Sequence</h3>
+          <p class="form-desc">Contacts added to the HubSpot list will have a form submitted on their behalf, triggering any HubSpot sequence attached to that form.</p>
+          <div class="form-row">
+            <label>Automation name</label>
+            <input type="text" id="auto-name-hubspot_form" placeholder="e.g. New Leads → Nurture Sequence">
+          </div>
+          <div class="form-row">
+            <label>HubSpot list</label>
+            <div class="search-select">
+              <input type="text" id="hs-search-hubspot_form" placeholder="Search HubSpot lists…" autocomplete="off">
+              <div class="search-dropdown" id="hs-dropdown-hubspot_form"></div>
+            </div>
+          </div>
+          <div class="form-row">
+            <label>HubSpot form</label>
+            <div class="search-select">
+              <input type="text" id="form-search" placeholder="Search HubSpot forms…" autocomplete="off">
+              <div class="search-dropdown" id="form-dropdown"></div>
+            </div>
+          </div>
+          <hr class="slack-divider">
+          <div class="form-row">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.75rem;">
+              <label style="margin-bottom:0;">Filter conditions <span style="font-size:11px;opacity:0.6;">(optional)</span></label>
+              <button type="button" class="btn btn-cream" onclick="addFilter('hubspot_form')" style="font-size:12px;padding:5px 10px;">+ Add condition</button>
+            </div>
+            <div id="filters-hubspot_form"><div style="font-size:13px;color:var(--muted);padding:6px 0;">No conditions — all contacts will be enrolled.</div></div>
+            <div class="token-hint" style="margin-top:8px;">Properties are loaded from your HubSpot account. Enumeration fields show a value picker automatically.</div>
+          </div>
+          <hr class="slack-divider">
+          <div class="slack-toggle-row">
+            <span class="slack-toggle-label"><span class="slack-icon"><svg width="16" height="16" viewBox="0 0 54 54" xmlns="http://www.w3.org/2000/svg"><path d="M19.7 32.2c0 2.9-2.4 5.3-5.3 5.3s-5.3-2.4-5.3-5.3 2.4-5.3 5.3-5.3H19.7v5.3z" fill="#E01E5A"/><path d="M22.3 32.2c0-2.9 2.4-5.3 5.3-5.3s5.3 2.4 5.3 5.3v13.3c0 2.9-2.4 5.3-5.3 5.3s-5.3-2.4-5.3-5.3V32.2z" fill="#E01E5A"/><path d="M27.6 19.7c-2.9 0-5.3-2.4-5.3-5.3s2.4-5.3 5.3-5.3 5.3 2.4 5.3 5.3V19.7H27.6z" fill="#36C5F0"/><path d="M27.6 22.3c2.9 0 5.3 2.4 5.3 5.3s-2.4 5.3-5.3 5.3H14.4c-2.9 0-5.3-2.4-5.3-5.3s2.4-5.3 5.3-5.3H27.6z" fill="#36C5F0"/><path d="M40.1 27.6c0-2.9 2.4-5.3 5.3-5.3s5.3 2.4 5.3 5.3-2.4 5.3-5.3 5.3H40.1V27.6z" fill="#2EB67D"/><path d="M37.4 27.6c0 2.9-2.4 5.3-5.3 5.3s-5.3-2.4-5.3-5.3V14.4c0-2.9 2.4-5.3 5.3-5.3s5.3 2.4 5.3 5.3V27.6z" fill="#2EB67D"/><path d="M32.1 40.1c2.9 0 5.3 2.4 5.3 5.3s-2.4 5.3-5.3 5.3-5.3-2.4-5.3-5.3V40.1h5.3z" fill="#ECB22E"/><path d="M32.1 37.4c-2.9 0-5.3-2.4-5.3-5.3s2.4-5.3 5.3-5.3h13.3c2.9 0 5.3 2.4 5.3 5.3s-2.4 5.3-5.3 5.3H32.1z" fill="#ECB22E"/></svg></span> Slack notification</span>
+            <label class="toggle"><input type="checkbox" id="slack-enabled-hubspot_form" onchange="toggleSlackSection('hubspot_form',this.checked)"><span class="toggle-slider"></span></label>
+          </div>
+          <div id="slack-body-hubspot_form" class="slack-body" style="display:none;">
+            <div><label>Channel</label><div class="search-select"><input type="text" id="slack-ch-search-hubspot_form" placeholder="Search channels…" autocomplete="off"><div class="search-dropdown" id="slack-ch-dropdown-hubspot_form"></div></div></div>
+            <div><label>Message template</label><textarea id="slack-msg-hubspot_form" rows="3" placeholder="e.g. New lead enrolled: {{first_name}} {{last_name}} ({{email}})"></textarea><div class="token-hint">Available tokens: {{first_name}} {{last_name}} {{email}} {{company}}</div></div>
+          </div>
+          <div class="form-footer">
+            <button class="btn btn-cream" onclick="cancelEdit()">Cancel</button>
+            <button class="btn btn-primary" onclick="createAutomation('hubspot_form')" id="create-btn-hubspot_form">Create automation</button>
+          </div>
+          <div class="error-msg" id="form-error-hubspot_form"></div>
+        </div>
+      </div>
+
+      <!-- ── Tab: GSheet → HubSpot Sync ── -->
+      <div class="tab-panel" id="tab-gsheet_sync">
+        <div class="form-card">
+          <h3>GSheet → HubSpot Sync</h3>
+          <p class="form-desc">Rows in a Google Sheet are upserted into HubSpot CRM objects (contacts, companies, or deals) on a schedule. Column headers map directly to HubSpot property names.</p>
+
+          <!-- Share reminder banner -->
+          <div class="gs-email-banner">
+            <div class="gs-email-banner-icon">📋</div>
+            <div class="gs-email-banner-content">
+              <div class="gs-email-banner-title">Before connecting — share your sheet first</div>
+              <div class="gs-email-banner-row">
+                <code id="gs-service-email">scalearmy-sheets-sync@core-sprite-496011-q2.iam.gserviceaccount.com</code>
+                <button class="gs-copy-btn" onclick="copyServiceEmail()">
+                  <svg width="11" height="11" viewBox="0 0 11 11" fill="none"><rect x="3.5" y="3.5" width="6" height="6" rx="1" stroke="currentColor" stroke-width="1.2"/><path d="M1.5 7.5V2a.5.5 0 01.5-.5H7" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
+                  Copy
+                </button>
+              </div>
+              <div class="gs-email-banner-hint">Open your Google Sheet → Share → paste the email above → Viewer → Done</div>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <label>Automation name</label>
+            <input type="text" id="auto-name-gsheet_sync" placeholder="e.g. Leads Sheet → HubSpot Contacts">
+          </div>
+
+          <div class="form-row">
+            <label>Google Sheet URL</label>
+            <input type="url" id="gs-sheet-url" placeholder="https://docs.google.com/spreadsheets/d/…">
+            <div class="token-hint" style="margin-top:5px;">Must be shared with the service account email above (Viewer access).</div>
+          </div>
+
+          <div class="form-row">
+            <label>Sheet tab name <span style="font-size:11px;opacity:0.6;">(leave blank for first tab)</span></label>
+            <input type="text" id="gs-sheet-tab" placeholder="e.g. Sheet1">
+          </div>
+
+          <div class="form-row">
+            <label>HubSpot object type</label>
+            <select id="gs-object-type" onchange="onObjectTypeChange()">
+              <option value="contact">Contact</option>
+              <option value="company">Company</option>
+              <option value="deal">Deal</option>
+            </select>
+          </div>
+
+          <div class="form-row">
+            <label>Primary key — sheet column header</label>
+            <input type="text" id="gs-pk-column" placeholder="e.g. Email">
+            <div class="token-hint" style="margin-top:5px;">The column whose value uniquely identifies the record (case-sensitive, must match the sheet header exactly).</div>
+          </div>
+
+          <div class="form-row">
+            <label>Primary key type</label>
+            <select id="gs-pk-type">
+              <option value="email">Email (contact)</option>
+              <option value="domain">Domain (company)</option>
+              <option value="id">HubSpot object ID</option>
+            </select>
+          </div>
+
+          <!-- Deal-specific defaults (hidden unless deal selected) -->
+          <div id="gs-deal-fields" style="display:none;">
+            <div class="form-row">
+              <label>Default pipeline ID <span style="font-size:11px;opacity:0.6;">(optional)</span></label>
+              <input type="text" id="gs-default-pipeline" placeholder="e.g. default">
+            </div>
+            <div class="form-row">
+              <label>Default deal stage ID <span style="font-size:11px;opacity:0.6;">(optional)</span></label>
+              <input type="text" id="gs-default-stage" placeholder="e.g. appointmentscheduled">
+            </div>
+          </div>
+
+          <!-- Column mappings -->
+          <div class="form-row">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+              <label style="margin-bottom:0;">Column mappings</label>
+              <button type="button" class="btn btn-cream" onclick="addGsMapping()" style="font-size:12px;padding:5px 10px;">+ Add mapping</button>
+            </div>
+            <div class="gs-mapping-header">
+              <span>Sheet column header</span>
+              <span>HubSpot property name</span>
+              <span></span>
+            </div>
+            <div id="gs-mappings-container"></div>
+            <div class="token-hint" style="margin-top:6px;">Enter the exact column header from the sheet and the internal HubSpot property name (e.g. <em>firstname</em>, <em>company</em>, <em>dealname</em>). Both are case-sensitive.</div>
+          </div>
+
+          <!-- Schedule -->
+          <div class="form-row">
+            <label>Sync schedule</label>
+            <div class="gs-sched-toggle">
+              <button type="button" class="gs-sched-btn active" id="gs-sched-btn-interval" onclick="selectGsSchedule('interval')">Interval</button>
+              <button type="button" class="gs-sched-btn" id="gs-sched-btn-daily"    onclick="selectGsSchedule('daily')">Daily</button>
+              <button type="button" class="gs-sched-btn" id="gs-sched-btn-weekly"   onclick="selectGsSchedule('weekly')">Weekly</button>
+            </div>
+            <div class="gs-sched-details" id="gs-sched-interval-details">
+              <div style="flex:1;">
+                <label>Run every</label>
+                <select id="gs-interval-minutes">
+                  <option value="15">15 minutes</option>
+                  <option value="30">30 minutes</option>
+                  <option value="60" selected>1 hour</option>
+                  <option value="180">3 hours</option>
+                  <option value="360">6 hours</option>
+                  <option value="720">12 hours</option>
+                </select>
+              </div>
+            </div>
+            <div class="gs-sched-details" id="gs-sched-daily-details" style="display:none;">
+              <div style="flex:1;">
+                <label>Run time (EST)</label>
+                <input type="time" id="gs-daily-time" value="08:00">
+              </div>
+            </div>
+            <div class="gs-sched-details" id="gs-sched-weekly-details" style="display:none;">
+              <div style="flex:1;">
+                <label>Day of week</label>
+                <select id="gs-weekly-day">
+                  <option value="0">Monday</option>
+                  <option value="1">Tuesday</option>
+                  <option value="2">Wednesday</option>
+                  <option value="3">Thursday</option>
+                  <option value="4">Friday</option>
+                  <option value="5">Saturday</option>
+                  <option value="6">Sunday</option>
+                </select>
+              </div>
+              <div style="flex:1;">
+                <label>Run time (EST)</label>
+                <input type="time" id="gs-weekly-time" value="08:00">
+              </div>
+            </div>
+          </div>
+
+          <hr class="slack-divider">
+          <div class="slack-toggle-row">
+            <span class="slack-toggle-label"><span class="slack-icon"><svg width="16" height="16" viewBox="0 0 54 54" xmlns="http://www.w3.org/2000/svg"><path d="M19.7 32.2c0 2.9-2.4 5.3-5.3 5.3s-5.3-2.4-5.3-5.3 2.4-5.3 5.3-5.3H19.7v5.3z" fill="#E01E5A"/><path d="M22.3 32.2c0-2.9 2.4-5.3 5.3-5.3s5.3 2.4 5.3 5.3v13.3c0 2.9-2.4 5.3-5.3 5.3s-5.3-2.4-5.3-5.3V32.2z" fill="#E01E5A"/><path d="M27.6 19.7c-2.9 0-5.3-2.4-5.3-5.3s2.4-5.3 5.3-5.3 5.3 2.4 5.3 5.3V19.7H27.6z" fill="#36C5F0"/><path d="M27.6 22.3c2.9 0 5.3 2.4 5.3 5.3s-2.4 5.3-5.3 5.3H14.4c-2.9 0-5.3-2.4-5.3-5.3s2.4-5.3 5.3-5.3H27.6z" fill="#36C5F0"/><path d="M40.1 27.6c0-2.9 2.4-5.3 5.3-5.3s5.3 2.4 5.3 5.3-2.4 5.3-5.3 5.3H40.1V27.6z" fill="#2EB67D"/><path d="M37.4 27.6c0 2.9-2.4 5.3-5.3 5.3s-5.3-2.4-5.3-5.3V14.4c0-2.9 2.4-5.3 5.3-5.3s5.3 2.4 5.3 5.3V27.6z" fill="#2EB67D"/><path d="M32.1 40.1c2.9 0 5.3 2.4 5.3 5.3s-2.4 5.3-5.3 5.3-5.3-2.4-5.3-5.3V40.1h5.3z" fill="#ECB22E"/><path d="M32.1 37.4c-2.9 0-5.3-2.4-5.3-5.3s2.4-5.3 5.3-5.3h13.3c2.9 0 5.3 2.4 5.3 5.3s-2.4 5.3-5.3 5.3H32.1z" fill="#ECB22E"/></svg></span> Slack notification</span>
+            <label class="toggle"><input type="checkbox" id="slack-enabled-gsheet_sync" onchange="toggleSlackSection('gsheet_sync',this.checked)"><span class="toggle-slider"></span></label>
+          </div>
+          <div id="slack-body-gsheet_sync" class="slack-body" style="display:none;">
+            <div><label>Channel</label><div class="search-select"><input type="text" id="slack-ch-search-gsheet_sync" placeholder="Search channels…" autocomplete="off"><div class="search-dropdown" id="slack-ch-dropdown-gsheet_sync"></div></div></div>
+            <div><label>Message template</label><textarea id="slack-msg-gsheet_sync" rows="3" placeholder="e.g. ✅ Sheet sync complete for {{automation_name}}"></textarea><div class="token-hint">Tokens: {{automation_name}}</div></div>
+          </div>
+
+          <div class="form-footer">
+            <button class="btn btn-cream" onclick="cancelEdit()">Cancel</button>
+            <button class="btn btn-primary" onclick="createAutomation('gsheet_sync')" id="create-btn-gsheet_sync">Create automation</button>
+          </div>
+          <div class="error-msg" id="form-error-gsheet_sync"></div>
+        </div>
+      </div>
+
+      </div><!-- close form col -->
+
+      <!-- Right column -->
+      <div id="right-column">
+        <div class="card" id="alert-panel">
+          <div class="card-header">
+            <h3>Low enrollment alert</h3>
+            <label class="toggle" style="margin-bottom:0;">
+              <input type="checkbox" id="alert-enabled" onchange="toggleAlertConfig(this.checked)">
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+          <div id="alert-body" style="display:none;">
+            <div class="alert-body-inner">
+              <div>
+                <label>Alert if fewer than</label>
+                <div style="display:flex;align-items:center;gap:10px;">
+                  <input type="number" id="alert-threshold" min="1" value="20" style="width:110px;">
+                  <span style="color:var(--muted);font-size:14px;white-space:nowrap;">enrollments in the period</span>
+                </div>
+              </div>
+              <div>
+                <label>Slack channel</label>
+                <div class="search-select">
+                  <input type="text" id="alert-slack-ch-search" placeholder="Search channels…" autocomplete="off">
+                  <div class="search-dropdown" id="alert-slack-ch-dropdown"></div>
+                </div>
+              </div>
+              <div>
+                <label>Message template</label>
+                <textarea id="alert-message" rows="3" placeholder="e.g. ⚠️ {{automation_name}} had only {{count}} enrollments (threshold: {{threshold}})"></textarea>
+                <div class="token-hint">Tokens: {{count}} {{automation_name}} {{threshold}} {{date}}</div>
+              </div>
+              <div>
+                <label>Schedule</label>
+                <div class="sched-toggle">
+                  <button type="button" class="sched-btn active" id="sched-btn-daily" data-sched="daily" onclick="selectSchedule('daily')">Daily</button>
+                  <button type="button" class="sched-btn" id="sched-btn-weekly" data-sched="weekly" onclick="selectSchedule('weekly')">Weekly</button>
+                </div>
+              </div>
+              <div class="alert-time-grid">
+                <div>
+                  <label>Alert time (EST)</label>
+                  <input type="time" id="alert-time" value="08:00">
+                </div>
+                <div id="alert-day-row" style="display:none;">
+                  <label>Day of week</label>
+                  <select id="alert-day">
+                    <option value="0">Monday</option><option value="1">Tuesday</option><option value="2">Wednesday</option>
+                    <option value="3">Thursday</option><option value="4">Friday</option><option value="5">Saturday</option><option value="6">Sunday</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      </div><!-- close edit-grid -->
+    </div>
+  </main>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- LOGS MODAL -->
+<div id="logs-modal" class="modal-overlay" style="display:none;" onclick="if(event.target===this)closeLogs()">
+  <div class="modal">
+    <div class="modal-header">
+      <div style="display:flex;align-items:center;gap:10px;">
+        <h3 id="logs-modal-title">List contacts</h3>
+        <span class="badge-count" id="logs-modal-count" style="display:none;"></span>
+      </div>
+      <button class="btn btn-cream" onclick="closeLogs()" style="padding:5px 11px;font-size:13px;">✕</button>
+    </div>
+    <div style="padding:0.75rem 1.5rem;border-bottom:1px solid var(--border);">
+      <input type="text" id="logs-search" placeholder="Search by email…" oninput="filterLogs(this.value)"
+        style="width:100%;font-size:13px;padding:8px 12px;background:rgba(254,242,222,0.05);border:1px solid var(--border2);border-radius:var(--radius-sm);color:var(--cream);">
+    </div>
+    <div class="modal-body" id="logs-body"></div>
+  </div>
+</div>
+
+<!-- DELETE MODAL -->
+<div id="delete-modal" class="modal-overlay" style="display:none;" onclick="if(event.target===this)closeDeleteModal()">
+  <div class="modal delete-modal-inner">
+    <div class="modal-header">
+      <h3>Remove automation</h3>
+      <button class="btn btn-cream" onclick="closeDeleteModal()" style="padding:5px 11px;font-size:13px;">✕</button>
+    </div>
+    <div class="delete-modal-body">
+      <p>Are you sure you want to remove this automation? This action cannot be undone. Leads already sent won't be affected.</p>
+      <div class="delete-modal-footer">
+        <button class="btn btn-cream" onclick="closeDeleteModal()">Cancel</button>
+        <button class="btn btn-danger" onclick="confirmDelete()" style="background:rgba(255,100,50,0.12);">Remove</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const BASE = '/api';
+let TOKEN = '';
+let automations = [];
+let hsList = [], campList = [], formList = [], slackChannels = [], hsPropList = [];
+let hsSelectedInstantly      = { id:'', name:'' };
+let hsSelectedForm           = { id:'', name:'' };
+let campSelected             = { id:'', name:'' };
+let formSelected             = { id:'', name:'' };
+let slackChSelectedInstantly = { id:'', name:'' };
+let slackChSelectedForm      = { id:'', name:'' };
+let slackChSelectedGsheet    = { id:'', name:'' };
+let alertSlackChSelected     = { id:'', name:'' };
+let filtersInstantly = [];
+let filtersForm      = [];
+let dailyCounts      = {};
+let logsData         = [];  // full list for search
+let gsMappings       = []; // [{column:'', property:''}]
+let gsScheduleType   = 'interval';
+let dropdownsLoaded  = false;
+let currentFilter    = 'all';
+let searchQuery      = '';
+let editingId        = null;
+let currentAction    = 'enroll';
+let pendingDeleteId  = null;
+
+// ── Theme ────────────────────────────────────────────────────
+function applyTheme(light) {
+  document.body.classList.toggle('light-mode', light);
+  const icon = document.getElementById('theme-icon');
+  const label = document.getElementById('theme-label');
+  if (light) {
+    icon.innerHTML = `<svg width="15" height="15" viewBox="0 0 15 15" fill="none"><path d="M12.5 9.5a5.5 5.5 0 01-7-7 5.5 5.5 0 107 7z" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+    label.textContent = 'Dark mode';
+  } else {
+    icon.innerHTML = `<svg width="15" height="15" viewBox="0 0 15 15" fill="none"><circle cx="7.5" cy="7.5" r="2.5" stroke="currentColor" stroke-width="1.3"/><path d="M7.5 1.5V3M7.5 12V13.5M1.5 7.5H3M12 7.5H13.5M3.4 3.4l1.06 1.06M10.54 10.54l1.06 1.06M10.54 4.46l1.06-1.06M3.4 11.6l1.06-1.06" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>`;
+    label.textContent = 'Light mode';
+  }
+}
+function toggleTheme() {
+  const isLight = !document.body.classList.contains('light-mode');
+  localStorage.setItem('sa-theme', isLight ? 'light' : 'dark');
+  applyTheme(isLight);
+}
+applyTheme(localStorage.getItem('sa-theme') === 'light');
+
+// ── Toast ────────────────────────────────────────────────────
+function showToast(msg, type='success') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = `toast show ${type}`;
+  setTimeout(() => t.className = 'toast', 2800);
+}
+
+// ── Auth ─────────────────────────────────────────────────────
+async function login() {
+  const pw  = document.getElementById('pw-input').value;
+  const btn = document.getElementById('login-btn');
+  const err = document.getElementById('login-error');
+  btn.disabled = true; btn.textContent = 'Signing in…'; err.style.display = 'none';
+  try {
+    const res  = await fetch(`${BASE}/login`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({password:pw}) });
+    const data = await res.json();
+    if (res.ok) {
+      TOKEN = data.token;
+      document.getElementById('login-screen').style.display = 'none';
+      document.getElementById('app').style.display = 'block';
+      loadAutomations();
+      loadServiceAccountEmail();
+    } else { err.style.display = 'block'; }
+  } catch(e) { err.style.display = 'block'; err.textContent = 'Connection error.'; }
+  btn.disabled = false; btn.textContent = 'Sign in';
+}
+
+function logout() {
+  TOKEN = '';
+  document.getElementById('login-screen').style.display = 'flex';
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('pw-input').value = '';
+}
+
+async function loadServiceAccountEmail() {
+  try {
+    const { ok, data } = await api('GET', '/google/service-account-email');
+    if (ok && data.email) document.getElementById('gs-service-email').textContent = data.email;
+  } catch(e) { /* keep hardcoded fallback */ }
+}
+
+function copyServiceEmail() {
+  const email = document.getElementById('gs-service-email').textContent;
+  navigator.clipboard.writeText(email).then(() => showToast('Email copied'))
+    .catch(() => { const el=document.createElement('textarea'); el.value=email; document.body.appendChild(el); el.select(); document.execCommand('copy'); document.body.removeChild(el); showToast('Email copied'); });
+}
+
+// ── Navigation ───────────────────────────────────────────────
+function showPage(page) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById(`page-${page}`).classList.add('active');
+  document.getElementById(`nav-${page}`)?.classList.add('active');
+  if (page === 'add' && !dropdownsLoaded) loadDropdowns();
+  if (page === 'dashboard') setFilter(currentFilter);
+}
+
+// ── Form helpers ─────────────────────────────────────────────
+function selectAction(action) {
+  currentAction = action;
+  document.getElementById('action-enroll').classList.toggle('selected', action === 'enroll');
+  document.getElementById('action-unenroll').classList.toggle('selected', action === 'unenroll');
+}
+function selectSchedule(sched) {
+  document.getElementById('sched-btn-daily').classList.toggle('active', sched === 'daily');
+  document.getElementById('sched-btn-weekly').classList.toggle('active', sched === 'weekly');
+  document.getElementById('alert-day-row').style.display = sched === 'weekly' ? 'block' : 'none';
+}
+function toggleAlertConfig(enabled) {
+  document.getElementById('alert-body').style.display = enabled ? 'block' : 'none';
+}
+function updateAlertPanelVisibility() {
+  // Hide alert panel for gsheet_sync (it doesn't apply)
+  const isGsheet = document.getElementById('tab-gsheet_sync').classList.contains('active');
+  document.getElementById('alert-panel').style.display = isGsheet ? 'none' : '';
+}
+function toggleSlackSection(deliveryType, enabled) {
+  document.getElementById(`slack-body-${deliveryType}`).style.display = enabled ? 'flex' : 'none';
+}
+function switchTab(tab) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.getElementById(`tab-btn-${tab}`).classList.add('active');
+  document.getElementById(`tab-${tab}`).classList.add('active');
+  updateAlertPanelVisibility();
+}
+
+// ── GSheet helpers ───────────────────────────────────────────
+function onObjectTypeChange() {
+  const ot = document.getElementById('gs-object-type').value;
+  document.getElementById('gs-deal-fields').style.display = ot === 'deal' ? 'block' : 'none';
+}
+
+function selectGsSchedule(type) {
+  gsScheduleType = type;
+  ['interval','daily','weekly'].forEach(t => {
+    document.getElementById(`gs-sched-btn-${t}`).classList.toggle('active', t === type);
+    document.getElementById(`gs-sched-${t}-details`).style.display = t === type ? 'flex' : 'none';
+  });
+}
+
+function addGsMapping(col='', prop='', propLabel='') {
+  gsMappings.push({ column: col, property: prop, propertyLabel: propLabel });
+  renderGsMappings();
+}
+
+function removeGsMapping(i) {
+  gsMappings.splice(i, 1);
+  renderGsMappings();
+}
+
+function renderGsMappings() {
+  const container = document.getElementById('gs-mappings-container');
+  if (!gsMappings.length) {
+    container.innerHTML = '<div style="font-size:13px;color:var(--muted);padding:6px 0;">No mappings yet — add at least one.</div>';
+    return;
+  }
+  container.innerHTML = gsMappings.map((m, i) => `
+    <div class="gs-mapping-row">
+      <input type="text" value="${esc(m.column)}" placeholder="Sheet column header"
+        oninput="gsMappings[${i}].column=this.value" style="font-size:13px;padding:8px 10px;">
+      <div class="search-select" style="min-width:0;">
+        <input type="text" id="gs-prop-${i}" placeholder="Search HubSpot property…" autocomplete="off"
+          style="font-size:13px;padding:8px 10px;" class="${m.property?'has-value':''}">
+        <div class="search-dropdown" id="gs-prop-dd-${i}"></div>
+      </div>
+      <button type="button" class="btn-trash" onclick="removeGsMapping(${i})" title="Remove">
+        <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M1.5 3h10M4.5 3V2a.5.5 0 01.5-.5h2.5a.5.5 0 01.5.5v1M5.5 5.5v4M7.5 5.5v4M2.5 3l.5 7.5a.5.5 0 00.5.5h6a.5.5 0 00.5-.5L10.5 3" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+    </div>`).join('');
+  gsMappings.forEach((m, i) => initGsPropSearch(i, m.property, m.propertyLabel));
+}
+
+function initGsPropSearch(index, currentProp, currentLabel) {
+  const input    = document.getElementById('gs-prop-' + index);
+  const dropdown = document.getElementById('gs-prop-dd-' + index);
+  if (!input || !dropdown) return;
+  const propList = hsPropList || [];
+  if (currentProp) { input.value = currentLabel || currentProp; input.classList.add('has-value'); }
+  function renderOptions(q) {
+    const matches = q ? propList.filter(p => p.label.toLowerCase().includes(q) || p.name.toLowerCase().includes(q)) : propList;
+    dropdown.innerHTML = matches.length
+      ? matches.map(p => `<div class="search-option${currentProp===p.name?' selected':''}" data-name="${esc(p.name)}" data-label="${esc(p.label)}">${esc(p.label)}<span style="font-size:10px;opacity:.4;margin-left:6px;">${esc(p.name)}</span></div>`).join('')
+      : '<div class="search-option-empty">No properties found</div>';
+    dropdown.querySelectorAll('.search-option').forEach(el => {
+      el.addEventListener('mousedown', e => {
+        e.preventDefault();
+        gsMappings[index].property      = el.dataset.name;
+        gsMappings[index].propertyLabel = el.dataset.label;
+        input.value = el.dataset.label;
+        input.classList.add('has-value');
+        dropdown.classList.remove('open');
+        currentProp = el.dataset.name;
+      });
+    });
+    dropdown.classList.add('open');
+  }
+  input.addEventListener('focus', () => renderOptions(''));
+  input.addEventListener('input', () => { input.classList.remove('has-value'); gsMappings[index].property=''; renderOptions(input.value.toLowerCase()); });
+  input.addEventListener('blur',  () => { setTimeout(() => dropdown.classList.remove('open'), 150); if (!gsMappings[index].property) { input.value=''; input.classList.remove('has-value'); } else { input.value = gsMappings[index].propertyLabel||gsMappings[index].property; input.classList.add('has-value'); } });
+}
+
+function resetGsForm() {
+  document.getElementById('auto-name-gsheet_sync').value = '';
+  document.getElementById('gs-sheet-url').value = '';
+  document.getElementById('gs-sheet-tab').value = '';
+  document.getElementById('gs-object-type').value = 'contact';
+  document.getElementById('gs-pk-column').value = '';
+  document.getElementById('gs-pk-type').value = 'email';
+  document.getElementById('gs-default-pipeline').value = '';
+  document.getElementById('gs-default-stage').value = '';
+  document.getElementById('gs-deal-fields').style.display = 'none';
+  gsMappings = [];
+  renderGsMappings();
+  selectGsSchedule('interval');
+  document.getElementById('gs-interval-minutes').value = '60';
+  document.getElementById('gs-daily-time').value = '08:00';
+  document.getElementById('gs-weekly-time').value = '08:00';
+  document.getElementById('gs-weekly-day').value = '0';
+  const cb = document.getElementById('slack-enabled-gsheet_sync');
+  if (cb) { cb.checked = false; toggleSlackSection('gsheet_sync', false); }
+  resetSearchSelect('slack-ch-search-gsheet_sync','slack-ch-dropdown-gsheet_sync', slackChSelectedGsheet);
+  const ta = document.getElementById('slack-msg-gsheet_sync');
+  if (ta) ta.value = '';
+  document.getElementById('form-error-gsheet_sync').style.display = 'none';
+}
+
+// ── New / Cancel ─────────────────────────────────────────────
+function newAutomation() {
+  editingId = null;
+  currentAction = 'enroll';
+  document.getElementById('add-page-title').textContent = 'New automation';
+  document.querySelector('.tab-bar').style.display = '';
+  document.getElementById('view-logs-btn').style.display = 'none';
+  ['instantly','hubspot_form','gsheet_sync'].forEach(dt => {
+    const btn = document.getElementById(`create-btn-${dt}`);
+    if (btn) btn.textContent = 'Create automation';
+    const err = document.getElementById(`form-error-${dt}`);
+    if (err) err.style.display = 'none';
+  });
+  document.getElementById('auto-name-instantly').value = '';
+  document.getElementById('auto-name-hubspot_form').value = '';
+  resetSearchSelect('hs-search-instantly','hs-dropdown-instantly',hsSelectedInstantly);
+  resetSearchSelect('hs-search-hubspot_form','hs-dropdown-hubspot_form',hsSelectedForm);
+  resetSearchSelect('camp-search','camp-dropdown',campSelected);
+  resetSearchSelect('form-search','form-dropdown',formSelected);
+  selectAction('enroll');
+  document.getElementById('delay-amount').value = '0';
+  document.getElementById('delay-unit').value = 'hours';
+  filtersInstantly = []; filtersForm = [];
+  renderFilters('instantly'); renderFilters('hubspot_form');
+  ['instantly','hubspot_form'].forEach(dt => {
+    const cb = document.getElementById(`slack-enabled-${dt}`);
+    if (cb) { cb.checked = false; toggleSlackSection(dt, false); }
+    resetSearchSelect(`slack-ch-search-${dt}`,`slack-ch-dropdown-${dt}`, dt==='instantly'?slackChSelectedInstantly:slackChSelectedForm);
+    const ta = document.getElementById(`slack-msg-${dt}`);
+    if (ta) ta.value = '';
+  });
+  document.getElementById('alert-enabled').checked = false;
+  toggleAlertConfig(false);
+  document.getElementById('alert-threshold').value = '20';
+  resetSearchSelect('alert-slack-ch-search','alert-slack-ch-dropdown',alertSlackChSelected);
+  document.getElementById('alert-message').value = '';
+  selectSchedule('daily');
+  document.getElementById('alert-time').value = '08:00';
+  document.getElementById('alert-day').value = '0';
+  resetGsForm();
+  switchTab('instantly');
+  showPage('add');
+}
+
+function cancelEdit() {
+  editingId = null;
+  ['instantly','hubspot_form','gsheet_sync'].forEach(dt => {
+    const btn = document.getElementById(`create-btn-${dt}`);
+    if (btn) btn.textContent = 'Create automation';
+  });
+  document.getElementById('add-page-title').textContent = 'New automation';
+  document.querySelector('.tab-bar').style.display = '';
+  document.getElementById('view-logs-btn').style.display = 'none';
+  showPage('dashboard');
+}
+
+// ── Filters ──────────────────────────────────────────────────
+function addFilter(deliveryType) {
+  const arr = deliveryType === 'instantly' ? filtersInstantly : filtersForm;
+  arr.push({ property:'', operator:'equals', value:'' });
+  renderFilters(deliveryType);
+}
+function removeFilter(deliveryType, index) {
+  const arr = deliveryType === 'instantly' ? filtersInstantly : filtersForm;
+  arr.splice(index, 1);
+  renderFilters(deliveryType);
+}
+function updateFilter(deliveryType, index, field, value) {
+  const arr = deliveryType === 'instantly' ? filtersInstantly : filtersForm;
+  arr[index][field] = value;
+  if (field === 'property') arr[index].value = '';
+  if (field === 'operator' || field === 'property') renderFilters(deliveryType);
+}
+function renderFilters(deliveryType) {
+  const arr = deliveryType === 'instantly' ? filtersInstantly : filtersForm;
+  const container = document.getElementById(`filters-${deliveryType}`);
+  if (!container) return;
+  if (!arr.length) {
+    container.innerHTML = '<div style="font-size:13px;color:var(--muted);padding:6px 0;">No conditions — all contacts will be processed.</div>';
+    return;
+  }
+  container.innerHTML = arr.map((f, i) => {
+    const propMeta = hsPropList.find(p => p.name === f.property);
+    const isEnum = propMeta && (propMeta.type==='enumeration' || ['select','radio','checkbox','booleancheckbox'].includes(propMeta.fieldType)) && propMeta.options.length;
+    let valueField = `<div style="flex:2;min-width:0;"></div>`;
+    if (f.operator !== 'exists') {
+      if (isEnum) {
+        valueField = `<select onchange="updateFilter('${deliveryType}',${i},'value',this.value)" style="flex:2;font-size:13px;padding:8px 10px;min-width:0;">
+          <option value="" disabled ${!f.value?'selected':''}>Select value…</option>
+          ${propMeta.options.map(o=>`<option value="${esc(o.value)}" ${f.value===o.value?'selected':''}>${esc(o.label)}</option>`).join('')}
+        </select>`;
+      } else {
+        valueField = `<input type="text" placeholder="Value" value="${esc(f.value)}" oninput="updateFilter('${deliveryType}',${i},'value',this.value)" style="flex:2;font-size:13px;padding:8px 10px;min-width:0;">`;
+      }
     }
-    resp = requests.post("https://api.instantly.ai/api/v2/leads/add", headers=headers, json={
-        "campaign_id": campaign_id,
-        "leads": [{"email": email, "first_name": first_name, "last_name": last_name, "company_name": company}],
-    }, timeout=10)
-    _log(f"[sync] Instantly add {email} status={resp.status_code} body={resp.text[:300]}")
-    resp.raise_for_status()
+    return `<div style="display:flex;gap:8px;margin-bottom:8px;align-items:center;">
+      <div class="search-select" style="flex:2;min-width:0;">
+        <input type="text" id="prop-search-${deliveryType}-${i}" placeholder="Search properties…" autocomplete="off" style="font-size:13px;padding:8px 10px;">
+        <div class="search-dropdown" id="prop-dropdown-${deliveryType}-${i}"></div>
+      </div>
+      <select onchange="updateFilter('${deliveryType}',${i},'operator',this.value)" style="flex:1;font-size:13px;padding:8px 10px;min-width:0;">
+        <option value="equals"       ${f.operator==='equals'?'selected':''}>equals</option>
+        <option value="not_equals"   ${f.operator==='not_equals'?'selected':''}>not equals</option>
+        <option value="contains"     ${f.operator==='contains'?'selected':''}>contains</option>
+        <option value="not_contains" ${f.operator==='not_contains'?'selected':''}>not contains</option>
+        <option value="exists"       ${f.operator==='exists'?'selected':''}>exists</option>
+      </select>
+      ${valueField}
+      <button type="button" onclick="removeFilter('${deliveryType}',${i})" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:18px;line-height:1;flex-shrink:0;padding:0 2px;">×</button>
+    </div>`;
+  }).join('');
+  arr.forEach((f, i) => initFilterPropSearch(deliveryType, i, f.property));
+}
 
-def get_instantly_lead(email, campaign_id):
-    url     = f"https://api.instantly.ai/api/v2/leads?campaign_id={campaign_id}&email={email}&limit=1"
-    headers = {"Authorization": f"Bearer {INSTANTLY_API_KEY}"}
-    try:
-        resp  = requests.get(url, headers=headers, timeout=10)
-        resp.raise_for_status()
-        data  = resp.json()
-        items = data if isinstance(data, list) else data.get("items", data.get("leads", []))
-        for lead in items:
-            if lead.get("email", "").lower() == email.lower():
-                return lead
-        return None
-    except Exception as e:
-        _log(f"[sync] get_instantly_lead error for {email}: {e}")
-        return None
-
-def unenroll_from_instantly(lead_id):
-    url     = f"https://api.instantly.ai/api/v2/leads/{lead_id}"
-    headers = {"Authorization": f"Bearer {INSTANTLY_API_KEY}"}
-    resp    = requests.delete(url, headers=headers, timeout=10)
-    _log(f"[sync] unenroll lead {lead_id} status={resp.status_code}")
-    resp.raise_for_status()
-
-def submit_hs_form(email, first_name, last_name, company, form_id):
-    url  = f"https://api.hsforms.com/submissions/v3/integration/submit/{HUBSPOT_PORTAL_ID}/{form_id}"
-    resp = requests.post(url, json={
-        "fields": [
-            {"name": "email",     "value": email},
-            {"name": "firstname", "value": first_name},
-            {"name": "lastname",  "value": last_name},
-            {"name": "company",   "value": company},
-        ]
-    }, timeout=10)
-    _log(f"[sync] HS form {form_id} submit {email} status={resp.status_code} body={resp.text[:300]}")
-    resp.raise_for_status()
-
-# ── Clay helpers ──────────────────────────────────────────────
-
-def push_to_clay(table_id, row_data):
-    """Push a single row to a Clay table."""
-    headers = {
-        "Authorization": f"Bearer {CLAY_API_KEY}",
-        "Content-Type":  "application/json"
+function initFilterPropSearch(deliveryType, index, currentPropName) {
+  const input    = document.getElementById(`prop-search-${deliveryType}-${index}`);
+  const dropdown = document.getElementById(`prop-dropdown-${deliveryType}-${index}`);
+  if (!input || !dropdown) return;
+  const currentProp = hsPropList.find(p => p.name === currentPropName);
+  if (currentProp) { input.value = currentProp.label; input.classList.add('has-value'); }
+  function renderOptions(query) {
+    const q = query.trim().toLowerCase();
+    const matches = q ? hsPropList.filter(p => p.label.toLowerCase().includes(q)||p.name.toLowerCase().includes(q)) : hsPropList;
+    if (!matches.length) { dropdown.innerHTML=`<div class="search-option-empty">No properties found</div>`; }
+    else {
+      dropdown.innerHTML = matches.map(p =>
+        `<div class="search-option${currentPropName===p.name?' selected':''}" data-name="${esc(p.name)}" data-label="${esc(p.label)}">${esc(p.label)}<span style="font-size:10px;opacity:0.45;margin-left:6px;">${esc(p.name)}</span></div>`
+      ).join('');
+      dropdown.querySelectorAll('.search-option').forEach(el => {
+        el.addEventListener('mousedown', e => { e.preventDefault(); updateFilter(deliveryType, index, 'property', el.dataset.name); });
+      });
     }
-    url  = f"https://api.clay.com/v1/sources/{table_id}/rows"
-    resp = requests.post(url, headers=headers, json={"data": row_data}, timeout=15)
-    if resp.status_code not in (200, 201):
-        raise Exception(f"Clay API error {resp.status_code}: {resp.text[:200]}")
-    return resp.json()
-
-def run_clay_push(automation, contacts, sent_cache, auto_id):
-    """Push unsent contacts from HubSpot list to Clay table."""
-    table_id       = automation.get("clay_table_id", "")
-    col_mappings   = automation.get("clay_column_mappings", [])
-    slack_channel  = automation.get("slack_channel", "")
-    auto_name      = automation.get("name", auto_id)
-
-    if not table_id:
-        _log(f"[clay] {auto_name}: no table_id configured, skipping")
-        return 0, 0
-
-    pushed   = 0
-    skipped  = 0
-    errors   = 0
-    clay_key = f"clay:{auto_id}"  # separate sent key namespace for Clay
-
-    for contact in contacts:
-        email = contact["email"]
-
-        # Check if already pushed to this Clay table
-        if already_sent_cached(email, clay_key, sent_cache):
-            skipped += 1
-            continue
-
-        # Build row data from column mappings
-        row_data = {}
-        for mapping in col_mappings:
-            hs_prop    = mapping.get("hs_property", "")
-            clay_col   = mapping.get("clay_column", "")
-            if not hs_prop or not clay_col:
-                continue
-            val = contact.get(hs_prop, "")
-            if val:
-                row_data[clay_col] = val
-
-        if not row_data:
-            _log(f"[clay] {auto_name}: no data for {email}, skipping")
-            skipped += 1
-            continue
-
-        try:
-            push_to_clay(table_id, row_data)
-            mark_as_sent(email, clay_key, sent_cache)
-            pushed += 1
-            _log(f"[clay] {auto_name}: pushed {email}")
-        except Exception as e:
-            _log(f"[clay] {auto_name}: error pushing {email}: {e}")
-            errors += 1
-
-    _log(f"[clay] {auto_name}: done. pushed={pushed} skipped={skipped} errors={errors}")
-
-    if errors > 0 and slack_channel and automation.get("slack_enabled"):
-        send_slack_message(slack_channel,
-            f"⚠️ *{auto_name}* — Clay push had {errors} error(s). Check Vercel logs.")
-
-    return pushed, errors
-
-# ── GSheet pull helpers ───────────────────────────────────────
-
-def get_google_token():
-    import google.oauth2.service_account
-    import google.auth.transport.requests as google_requests
-
-    # Check Redis cache first
-    cached = _redis_get("gsheet_token_cache")
-    if cached and cached.get("token") and cached.get("expires_at"):
-        try:
-            expires_at = datetime.datetime.fromisoformat(cached["expires_at"])
-            now        = datetime.datetime.now(datetime.timezone.utc)
-            if (expires_at - now).total_seconds() > 300:
-                return cached["token"]
-        except Exception:
-            pass
-
-    sa_json = os.environ.get("GOOGLE_SERVICE_ACCOUNT_JSON", "{}")
-    if not sa_json or sa_json == "{}":
-        raise ValueError("GOOGLE_SERVICE_ACCOUNT_JSON not configured")
-
-    creds_data = json.loads(sa_json)
-    creds      = google.oauth2.service_account.Credentials.from_service_account_info(
-        creds_data, scopes=["https://www.googleapis.com/auth/spreadsheets.readonly"]
-    )
-    creds.refresh(google_requests.Request())
-
-    expires_at = (datetime.datetime.now(datetime.timezone.utc) +
-                  datetime.timedelta(minutes=55)).isoformat()
-    try:
-        _redis_set_json("gsheet_token_cache", {"token": creds.token, "expires_at": expires_at})
-    except Exception:
-        pass
-
-    return creds.token
-
-def extract_sheet_id(url):
-    import re
-    match = re.search(r'/spreadsheets/d/([a-zA-Z0-9-_]+)', url)
-    if not match:
-        raise ValueError(f"Invalid Google Sheet URL: {url}")
-    return match.group(1)
-
-def get_sheet_data(sheet_id, tab_name, token):
-    from urllib.parse import quote as url_quote
-    range_name = url_quote(f"'{tab_name}'", safe='') if tab_name else "A1:ZZ"
-    url  = f"https://sheets.googleapis.com/v4/spreadsheets/{sheet_id}/values/{range_name}"
-    resp = requests.get(url, headers={"Authorization": f"Bearer {token}"}, timeout=20)
-    resp.raise_for_status()
-    return resp.json().get("values", [])
-
-def hs_batch_upsert(hs_object, inputs):
-    hs_headers = {"Authorization": f"Bearer {HUBSPOT_API_KEY}", "Content-Type": "application/json"}
-    errors = []
-    for i in range(0, len(inputs), 100):
-        batch = inputs[i:i + 100]
-        url   = f"https://api.hubapi.com/crm/v3/objects/{hs_object}/batch/upsert"
-        try:
-            resp = requests.post(url, headers=hs_headers, json={"inputs": batch}, timeout=20)
-            if resp.status_code not in (200, 201, 207):
-                errors.append(f"HTTP {resp.status_code}: {resp.text[:200]}")
-            else:
-                for err in resp.json().get("errors", []):
-                    errors.append(err.get("message", "Unknown error"))
-        except Exception as e:
-            errors.append(str(e))
-    return errors
-
-def hs_batch_update(hs_object, inputs):
-    hs_headers = {"Authorization": f"Bearer {HUBSPOT_API_KEY}", "Content-Type": "application/json"}
-    errors = []
-    for i in range(0, len(inputs), 100):
-        batch = inputs[i:i + 100]
-        url   = f"https://api.hubapi.com/crm/v3/objects/{hs_object}/batch/update"
-        try:
-            resp = requests.post(url, headers=hs_headers, json={"inputs": batch}, timeout=20)
-            if resp.status_code not in (200, 201, 207):
-                errors.append(f"HTTP {resp.status_code}: {resp.text[:200]}")
-            else:
-                for err in resp.json().get("errors", []):
-                    errors.append(err.get("message", "Unknown error"))
-        except Exception as e:
-            errors.append(str(e))
-    return errors
-
-def should_run_gsheet(automation):
-    """Check if the GSheet pull is due to run based on its schedule."""
-    schedule_type    = automation.get("gsheet_schedule_type", "interval")
-    last_gsheet_run  = automation.get("last_gsheet_run")  # separate from last_run
-    now_utc          = datetime.datetime.now(datetime.timezone.utc)
-    est_now          = datetime.datetime.now(EST)
-
-    if schedule_type == "interval":
-        interval_min = int(automation.get("gsheet_interval_minutes", 60))
-        if not last_gsheet_run:
-            return True
-        try:
-            lr = datetime.datetime.fromisoformat(last_gsheet_run.replace("Z", "+00:00"))
-            return (now_utc - lr).total_seconds() / 60 >= interval_min
-        except Exception:
-            return True
-
-    elif schedule_type == "daily":
-        run_time = automation.get("gsheet_run_time", "08:00")
-        try:
-            h, m = [int(x) for x in run_time.split(":")]
-        except Exception:
-            h, m = 8, 0
-        if (est_now.hour, est_now.minute) < (h, m):
-            return False
-        if last_gsheet_run:
-            try:
-                lr = datetime.datetime.fromisoformat(
-                    last_gsheet_run.replace("Z", "+00:00")).astimezone(EST)
-                if lr.date() == est_now.date():
-                    return False
-            except Exception:
-                pass
-        return True
-
-    elif schedule_type == "weekly":
-        run_day  = int(automation.get("gsheet_run_day", 0))
-        run_time = automation.get("gsheet_run_time", "08:00")
-        if est_now.weekday() != run_day:
-            return False
-        try:
-            h, m = [int(x) for x in run_time.split(":")]
-        except Exception:
-            h, m = 8, 0
-        if (est_now.hour, est_now.minute) < (h, m):
-            return False
-        if last_gsheet_run:
-            try:
-                lr      = datetime.datetime.fromisoformat(
-                    last_gsheet_run.replace("Z", "+00:00")).astimezone(EST)
-                cal_lr  = lr.isocalendar()
-                cal_now = est_now.isocalendar()
-                if cal_lr[0] == cal_now[0] and cal_lr[1] == cal_now[1]:
-                    return False
-            except Exception:
-                pass
-        return True
-
-    return True
-
-def run_gsheet_pull(automation):
-    """Pull enriched data from GSheet and upsert into HubSpot."""
-    auto_name       = automation.get("name", "?")
-    sheet_url       = automation.get("sheet_url", "")
-    sheet_tab       = automation.get("sheet_tab", "")
-    object_type     = automation.get("object_type", "contact")
-    pk_column       = automation.get("primary_key_column", "")
-    pk_type         = automation.get("primary_key_type", "email")
-    column_mappings = automation.get("column_mappings", [])
-    slack_channel   = automation.get("slack_channel", "")
-
-    hs_object = {
-        "contact": "contacts",
-        "company": "companies",
-        "deal":    "deals"
-    }.get(object_type, "contacts")
-
-    try:
-        gtoken   = get_google_token()
-        sheet_id = extract_sheet_id(sheet_url)
-        rows     = get_sheet_data(sheet_id, sheet_tab, gtoken)
-    except Exception as e:
-        msg = f"⚠️ *{auto_name}* — Could not read Google Sheet: {e}"
-        _log(f"[enrich/gsheet] {msg}")
-        if slack_channel and automation.get("slack_enabled"):
-            send_slack_message(slack_channel, msg)
-        return
-
-    if not rows or len(rows) < 2:
-        _log(f"[enrich/gsheet] {auto_name}: sheet empty or header-only, skipping")
-        return
-
-    headers   = [h.strip() for h in rows[0]]
-    data_rows = rows[1:]
-
-    if pk_column not in headers:
-        msg = f"⚠️ *{auto_name}* — Primary key column '{pk_column}' not found. Headers: {headers}"
-        _log(f"[enrich/gsheet] {msg}")
-        if slack_channel and automation.get("slack_enabled"):
-            send_slack_message(slack_channel, msg)
-        return
-
-    pk_idx        = headers.index(pk_column)
-    upsert_inputs = []
-
-    for row in data_rows:
-        row_padded = list(row) + [''] * max(0, len(headers) - len(row))
-        pk_value   = row_padded[pk_idx].strip() if pk_idx < len(row_padded) else ''
-        if not pk_value:
-            continue
-
-        properties = {}
-        for mapping in column_mappings:
-            col  = mapping.get("column", "").strip()
-            prop = mapping.get("property", "").strip()
-            if not col or not prop or col not in headers:
-                continue
-            cidx = headers.index(col)
-            val  = row_padded[cidx].strip() if cidx < len(row_padded) else ''
-            if val:
-                properties[prop] = val
-
-        if not properties:
-            continue
-
-        if pk_type in ("email", "domain"):
-            upsert_inputs.append({
-                "id":         pk_value,
-                "idProperty": pk_type,
-                "properties": properties
-            })
-        else:
-            upsert_inputs.append({"id": pk_value, "properties": properties})
-
-    _log(f"[enrich/gsheet] {auto_name}: {len(upsert_inputs)} upserts for {hs_object}")
-
-    all_errors = []
-    if upsert_inputs:
-        if pk_type in ("email", "domain"):
-            all_errors += hs_batch_upsert(hs_object, upsert_inputs)
-        else:
-            all_errors += hs_batch_update(hs_object, upsert_inputs)
-
-    if all_errors:
-        _log(f"[enrich/gsheet] {auto_name}: {len(all_errors)} error(s): {all_errors[:3]}")
-        if slack_channel and automation.get("slack_enabled"):
-            snippet = "\n".join(f"• {e}" for e in all_errors[:10])
-            send_slack_message(slack_channel,
-                f"⚠️ *{auto_name}* — GSheet pull had {len(all_errors)} error(s):\n{snippet}")
-    else:
-        _log(f"[enrich/gsheet] {auto_name}: done. errors=0")
-        if slack_channel and automation.get("slack_enabled"):
-            send_slack_message(slack_channel,
-                f"✅ *{auto_name}* — GSheet pull complete. {len(upsert_inputs)} records updated in HubSpot.")
-
-# ── Enrichment automation runner ──────────────────────────────
-
-def run_enrichment(automation, sent_cache):
-    """Run Clay push and/or GSheet pull depending on which toggles are enabled."""
-    auto_id   = automation.get("id", "")
-    auto_name = automation.get("name", auto_id)
-    list_id   = automation.get("hubspot_list_id", "")
-
-    clay_enabled   = automation.get("clay_enabled", False)
-    gsheet_enabled = automation.get("enrichment_gsheet_enabled", False)
-
-    # ── Step 1: Clay push ─────────────────────────────────────
-    if clay_enabled:
-        _log(f"[enrich] {auto_name}: running Clay push for list {list_id}")
-        try:
-            contacts = get_list_contacts(list_id)
-            run_clay_push(automation, contacts, sent_cache, auto_id)
-        except Exception as e:
-            _log(f"[enrich] {auto_name}: Clay push error: {e}")
-    else:
-        _log(f"[enrich] {auto_name}: Clay push disabled, skipping")
-
-    # ── Step 2: GSheet pull ───────────────────────────────────
-    if gsheet_enabled:
-        if should_run_gsheet(automation):
-            _log(f"[enrich] {auto_name}: running GSheet pull")
-            try:
-                run_gsheet_pull(automation)
-                automation["last_gsheet_run"] = datetime.datetime.utcnow().strftime(
-                    "%Y-%m-%dT%H:%M:%SZ")
-            except Exception as e:
-                _log(f"[enrich] {auto_name}: GSheet pull error: {e}")
-        else:
-            _log(f"[enrich] {auto_name}: GSheet pull not scheduled yet, skipping")
-    else:
-        _log(f"[enrich] {auto_name}: GSheet pull disabled, skipping")
-
-
-class handler(BaseHTTPRequestHandler):
-
-    def do_GET(self):
-        secret = self.headers.get("X-Sync-Secret", "")
-        if SYNC_SECRET and secret != SYNC_SECRET:
-            self._json(401, {"error": "Unauthorized"})
-            return
-        self._run_sync()
-
-    def _run_sync(self):
-        all_automations = get_automations()
-        # Exclude gsheet_sync — handled by /api/sync_gsheet
-        active = [
-            a for a in all_automations
-            if a.get("active") and a.get("delivery_type") != "gsheet_sync"
-        ]
-        _log(f"[sync] running for {len(active)} active automations")
-
-        # Load all sent: keys into memory once
-        sent_cache = load_sent_cache()
-
-        total_processed = total_duplicates = total_errors = total_waiting = total_filtered = 0
-
-        est_now  = datetime.datetime.now(EST)
-        est_date = est_now.date().isoformat()
-
-        for automation in active:
-            auto_id       = automation.get("id", "")
-            delivery_type = automation.get("delivery_type", "instantly")
-
-            # ── Enrichment automation ─────────────────────────
-            if delivery_type == "enrichment":
-                _log(f"[sync] enrichment {auto_id}: {automation.get('name', '')}")
-                try:
-                    run_enrichment(automation, sent_cache)
-                except Exception as e:
-                    _log(f"[sync] enrichment {auto_id} error: {e}")
-                automation["last_run"] = datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
-                continue
-
-            # ── Instantly + HubSpot form ──────────────────────
-            list_id     = automation.get("hubspot_list_id", "")
-            target_id   = automation.get("instantly_campaign_id") if delivery_type == "instantly" else automation.get("hubspot_form_id")
-            action      = automation.get("action", "enroll")
-            delay_hours = float(automation.get("delay_hours", 0))
-            filters     = automation.get("filters", [])
-
-            _log(f"[sync] automation={auto_id} list={list_id} delivery={delivery_type} target={target_id} action={action} delay={delay_hours}h filters={len(filters)}")
-
-            if not target_id:
-                _log(f"[sync] skip: no target_id for automation {auto_id}")
-                continue
-
-            extra_props = [f["property"] for f in filters if f.get("property")]
-            contacts    = get_list_contacts(list_id, extra_properties=extra_props)
-
-            for c in contacts:
-                email      = c["email"]
-                first_name = c.get("firstname", "")
-                last_name  = c.get("lastname", "")
-                company    = c.get("company", "")
-                try:
-                    if already_sent_cached(email, target_id, sent_cache):
-                        total_duplicates += 1
-                        continue
-
-                    if delivery_type == "instantly" and delay_hours > 0:
-                        first_seen = get_first_seen(email, target_id)
-                        if first_seen is None:
-                            set_first_seen(email, target_id)
-                            _log(f"[sync] delay: first seen {email}, waiting {delay_hours}h")
-                            total_waiting += 1
-                            continue
-                        elapsed_hours = (time.time() - first_seen) / 3600
-                        if elapsed_hours < delay_hours:
-                            remaining = round(delay_hours - elapsed_hours, 1)
-                            _log(f"[sync] delay: {email} waiting {remaining}h more")
-                            total_waiting += 1
-                            continue
-
-                    if not check_filters(c, filters):
-                        _log(f"[sync] filtered out {email}: failed conditions")
-                        mark_as_sent(email, target_id, sent_cache)
-                        total_filtered += 1
-                        continue
-
-                    if delivery_type == "instantly":
-                        if action == "unenroll":
-                            lead = get_instantly_lead(email, target_id)
-                            if lead is None:
-                                _log(f"[sync] unenroll: {email} not in campaign, skip")
-                                mark_as_sent(email, target_id, sent_cache)
-                                total_duplicates += 1
-                                continue
-                            lead_status = lead.get("status", "")
-                            if lead_status in INSTANTLY_TERMINAL_STATUSES:
-                                _log(f"[sync] unenroll: {email} already terminal ({lead_status}), skip")
-                                mark_as_sent(email, target_id, sent_cache)
-                                total_duplicates += 1
-                                continue
-                            lead_id = lead.get("id", "")
-                            if not lead_id:
-                                _log(f"[sync] unenroll: no lead_id for {email}, skip")
-                                continue
-                            unenroll_from_instantly(lead_id)
-                        else:
-                            add_to_instantly(email, first_name, last_name, company, target_id)
-                            try:
-                                increment_enroll_count(auto_id, est_date)
-                            except Exception:
-                                pass
-                            try:
-                                send_enrollment_notification(automation, email, first_name, last_name, company)
-                            except Exception:
-                                pass
-                    else:
-                        submit_hs_form(email, first_name, last_name, company, target_id)
-                        try:
-                            increment_enroll_count(auto_id, est_date)
-                        except Exception:
-                            pass
-                        try:
-                            send_enrollment_notification(automation, email, first_name, last_name, company)
-                        except Exception:
-                            pass
-
-                    mark_as_sent(email, target_id, sent_cache)
-                    try:
-                        log_enrollment(auto_id, email,
-                                       f"{delivery_type}_{action}" if delivery_type == "instantly" else delivery_type,
-                                       time.time())
-                    except Exception:
-                        pass
-                    _log(f"[sync] processed {email} -> {delivery_type} {action} {target_id}")
-                    total_processed += 1
-
-                except Exception as e:
-                    _log(f"[sync] error for {email}: {e}")
-                    total_errors += 1
-
-            try:
-                check_and_send_alert(automation, auto_id, est_now, est_date)
-            except Exception as e:
-                _log(f"[sync] alert check error for {auto_id}: {e}")
-
-            automation["last_run"] = datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
-
-        save_automations(all_automations)
-
-        result = {
-            "processed":  total_processed,
-            "duplicates": total_duplicates,
-            "waiting":    total_waiting,
-            "filtered":   total_filtered,
-            "errors":     total_errors
-        }
-        _log(f"[sync] done: {result}")
-        self._json(200, result)
-
-    def _json(self, status, data):
-        body = json.dumps(data).encode()
-        self.send_response(status)
-        self.send_header("Content-Type", "application/json")
-        self.send_header("Content-Length", str(len(body)))
-        self.end_headers()
-        self.wfile.write(body)
-
-    def log_message(self, *args):
-        pass
+    dropdown.classList.add('open');
+  }
+  input.addEventListener('focus', () => renderOptions(''));
+  input.addEventListener('input', () => { input.classList.remove('has-value'); renderOptions(input.value); });
+  input.addEventListener('blur', () => {
+    setTimeout(() => dropdown.classList.remove('open'), 150);
+    const arr2 = deliveryType==='instantly' ? filtersInstantly : filtersForm;
+    const meta = hsPropList.find(p => p.name === arr2[index]?.property);
+    if (meta) { input.value=meta.label; input.classList.add('has-value'); }
+    else { input.value=''; input.classList.remove('has-value'); }
+  });
+}
+
+// ── API ──────────────────────────────────────────────────────
+async function api(method, path, body) {
+  const opts = { method, headers:{'Content-Type':'application/json','X-Auth-Token':TOKEN} };
+  if (body) opts.body = JSON.stringify(body);
+  const res = await fetch(`${BASE}${path}`, opts);
+  return { ok:res.ok, status:res.status, data:await res.json() };
+}
+
+// ── Load automations ─────────────────────────────────────────
+async function loadAutomations() {
+  const list = document.getElementById('automations-list');
+  list.innerHTML = '<div class="empty-state"><p>Loading…</p></div>';
+  try {
+    const { data } = await api('GET', '/automations');
+    automations = Array.isArray(data) ? data : [];
+    renderAutomations();
+    loadActivityData();
+  } catch(e) {
+    list.innerHTML = '<div class="empty-state"><p>Failed to load. Check your deployment.</p></div>';
+  }
+}
+
+function setFilter(filter) {
+  currentFilter = filter;
+  ['dashboard','filter-instantly','filter-hubspot_form','filter-gsheet_sync'].forEach(id => {
+    document.getElementById(`nav-${id}`)?.classList.remove('active');
+  });
+  if (filter === 'all')          document.getElementById('nav-dashboard').classList.add('active');
+  if (filter === 'instantly')    document.getElementById('nav-filter-instantly').classList.add('active');
+  if (filter === 'hubspot_form') document.getElementById('nav-filter-hubspot_form').classList.add('active');
+  if (filter === 'gsheet_sync')  document.getElementById('nav-filter-gsheet_sync').classList.add('active');
+  renderAutomations();
+}
+
+function onSearch(val) {
+  searchQuery = val.trim().toLowerCase();
+  renderAutomations();
+}
+
+function renderAutomations() {
+  const list = document.getElementById('automations-list');
+  const count = automations.length;
+  document.getElementById('stat-total').textContent = count || '0';
+
+  let filtered = automations;
+  if (currentFilter === 'instantly')    filtered = filtered.filter(a => a.delivery_type === 'instantly');
+  if (currentFilter === 'hubspot_form') filtered = filtered.filter(a => a.delivery_type === 'hubspot_form');
+  if (currentFilter === 'gsheet_sync')  filtered = filtered.filter(a => a.delivery_type === 'gsheet_sync');
+  if (searchQuery) filtered = filtered.filter(a =>
+    (a.name||'').toLowerCase().includes(searchQuery) ||
+    (a.hubspot_list_name||'').toLowerCase().includes(searchQuery) ||
+    (a.instantly_campaign_name||'').toLowerCase().includes(searchQuery) ||
+    (a.hubspot_form_name||'').toLowerCase().includes(searchQuery) ||
+    (a.sheet_url||'').toLowerCase().includes(searchQuery)
+  );
+
+  document.getElementById('auto-count').textContent = filtered.length;
+
+  if (!filtered.length) {
+    list.innerHTML = count
+      ? `<div class="empty-state"><div class="empty-icon">🔍</div><p>No automations match your filter.</p></div>`
+      : `<div class="empty-state"><div class="empty-icon">⚡</div><p>No automations yet.<br>Create your first one to get started.</p></div>`;
+    return;
+  }
+
+  const trashSvg = `<svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M1.5 3h10M4.5 3V2a.5.5 0 01.5-.5h2.5a.5.5 0 01.5.5v1M5.5 5.5v4M7.5 5.5v4M2.5 3l.5 7.5a.5.5 0 00.5.5h6a.5.5 0 00.5-.5L10.5 3" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+
+  list.innerHTML = filtered.map(a => {
+    const isGsheet = a.delivery_type === 'gsheet_sync';
+    const isForm   = a.delivery_type === 'hubspot_form';
+    const active   = a.active !== false;
+
+    let sourceChip, deliveryChip;
+    if (isGsheet) {
+      const objLabel = {contact:'Contacts', company:'Companies', deal:'Deals'}[a.object_type] || a.object_type;
+      const schedLabel = a.gsheet_schedule_type === 'interval'
+        ? (() => { const m=a.gsheet_interval_minutes||60; return m>=60?`${m/60}h`:`${m}m`; })()
+        : a.gsheet_schedule_type === 'daily' ? 'Daily' : 'Weekly';
+      sourceChip   = `<span class="chip chip-gs">▦ GSheet</span>`;
+      deliveryChip = `<span class="chip chip-gs">HubSpot ${objLabel} · ${schedLabel}</span>`;
+    } else {
+      sourceChip = `<span class="chip chip-hs">HubSpot · ${esc(a.hubspot_list_name || a.hubspot_list_id)}</span>`;
+      deliveryChip = isForm
+        ? `<span class="chip chip-form">HS Form · ${esc(a.hubspot_form_name || a.hubspot_form_id)}</span>`
+        : `<span class="chip chip-in">Instantly · ${esc(a.instantly_campaign_name || a.instantly_campaign_id)}</span>`;
+    }
+
+    const actionChip = (!isForm && !isGsheet)
+      ? (a.action === 'unenroll'
+          ? `<span class="chip chip-unenroll">⊖ Unenroll</span>`
+          : `<span class="chip chip-in" style="color:#86efac;border-color:rgba(134,239,172,0.3);background:rgba(134,239,172,0.08);">⊕ Enroll</span>`)
+      : '';
+    const delayLabel = (!isForm && !isGsheet && a.delay_hours > 0)
+      ? `<span class="chip chip-hs">⏱ ${a.delay_hours>=24?(a.delay_hours/24)+'d':a.delay_hours+'h'} delay</span>` : '';
+    const alertChip = a.alert_enabled ? `<span class="chip chip-alert">🔔 Alert</span>` : '';
+    const slackChip = a.slack_enabled
+      ? `<span class="chip chip-hs" style="gap:4px;"><svg width="10" height="10" viewBox="0 0 54 54" xmlns="http://www.w3.org/2000/svg"><path d="M19.7 32.2c0 2.9-2.4 5.3-5.3 5.3s-5.3-2.4-5.3-5.3 2.4-5.3 5.3-5.3H19.7v5.3z" fill="#E01E5A"/><path d="M22.3 32.2c0-2.9 2.4-5.3 5.3-5.3s5.3 2.4 5.3 5.3v13.3c0 2.9-2.4 5.3-5.3 5.3s-5.3-2.4-5.3-5.3V32.2z" fill="#E01E5A"/><path d="M27.6 19.7c-2.9 0-5.3-2.4-5.3-5.3s2.4-5.3 5.3-5.3 5.3 2.4 5.3 5.3V19.7H27.6z" fill="#36C5F0"/><path d="M27.6 22.3c2.9 0 5.3 2.4 5.3 5.3s-2.4 5.3-5.3 5.3H14.4c-2.9 0-5.3-2.4-5.3-5.3s2.4-5.3 5.3-5.3H27.6z" fill="#36C5F0"/><path d="M40.1 27.6c0-2.9 2.4-5.3 5.3-5.3s5.3 2.4 5.3 5.3-2.4 5.3-5.3 5.3H40.1V27.6z" fill="#2EB67D"/><path d="M37.4 27.6c0 2.9-2.4 5.3-5.3 5.3s-5.3-2.4-5.3-5.3V14.4c0-2.9 2.4-5.3 5.3-5.3s5.3 2.4 5.3 5.3V27.6z" fill="#2EB67D"/><path d="M32.1 40.1c2.9 0 5.3 2.4 5.3 5.3s-2.4 5.3-5.3 5.3-5.3-2.4-5.3-5.3V40.1h5.3z" fill="#ECB22E"/><path d="M32.1 37.4c-2.9 0-5.3-2.4-5.3-5.3s2.4-5.3 5.3-5.3h13.3c2.9 0 5.3 2.4 5.3 5.3s-2.4 5.3-5.3 5.3H32.1z" fill="#ECB22E"/></svg>${esc(a.slack_channel_name||'Slack')}</span>`
+      : '';
+    const lastRunLabel = a.last_run
+      ? `<span style="font-size:11px;color:var(--muted);">Last run: ${timeAgo(a.last_run)}</span>`
+      : `<span style="font-size:11px;color:var(--muted);">Never run</span>`;
+    const count24h = dailyCounts[a.id] || 0;
+    const count24hChip = count24h > 0
+      ? `<span style="font-size:11px;font-weight:600;color:#86efac;background:rgba(134,239,172,0.1);border:1px solid rgba(134,239,172,0.25);border-radius:100px;padding:2px 8px;">${count24h} today</span>`
+      : '';
+
+    return `<div class="automation-row" onclick="editAutomation('${esc(a.id)}')" id="row-${esc(a.id)}">
+      <div style="flex:1;min-width:0;">
+        <div class="auto-name">${esc(a.name)}</div>
+        <div class="auto-meta">${sourceChip}${deliveryChip}${actionChip}${delayLabel}${slackChip}${alertChip}</div>
+      </div>
+      <div class="auto-actions" style="display:flex;align-items:center;gap:10px;" onclick="event.stopPropagation()">
+        ${count24hChip}
+        ${lastRunLabel}
+        <label class="toggle" title="${active?'Pause':'Activate'}" onclick="event.stopPropagation()">
+          <input type="checkbox" ${active?'checked':''} onchange="toggleAutomation('${esc(a.id)}',this.checked)">
+          <span class="toggle-slider"></span>
+        </label>
+        <button class="btn-trash" onclick="promptDelete('${esc(a.id)}')" title="Remove automation">${trashSvg}</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ── Toggle active ─────────────────────────────────────────────
+async function toggleAutomation(id, active) {
+  try {
+    const { ok } = await api('PATCH', `/automations/${id}`, { active });
+    if (ok) { automations = automations.map(a => a.id===id?{...a,active}:a); renderAutomations(); showToast(active?'Automation activated':'Automation paused'); }
+    else { showToast('Failed to update','error'); renderAutomations(); }
+  } catch(e) { showToast('Network error','error'); renderAutomations(); }
+}
+
+// ── Delete ────────────────────────────────────────────────────
+function promptDelete(id) { pendingDeleteId=id; document.getElementById('delete-modal').style.display='flex'; }
+function closeDeleteModal() { pendingDeleteId=null; document.getElementById('delete-modal').style.display='none'; }
+async function confirmDelete() {
+  const id = pendingDeleteId; closeDeleteModal(); if (!id) return;
+  try {
+    const { ok } = await api('DELETE', `/automations/${id}`);
+    if (ok) { automations=automations.filter(a=>a.id!==id); renderAutomations(); showToast('Automation removed'); }
+    else showToast('Failed to remove','error');
+  } catch(e) { showToast('Network error','error'); }
+}
+
+// ── Search selects ────────────────────────────────────────────
+function initSearchSelect(inputId, dropdownId, items, selectedObj, placeholder) {
+  const input = document.getElementById(inputId);
+  const dropdown = document.getElementById(dropdownId);
+  if (!input || !dropdown) return;
+  function renderOptions(filter) {
+    const q = filter.trim().toLowerCase();
+    const filtered = q ? items.filter(x=>x.name.toLowerCase().includes(q)) : items;
+    if (!filtered.length) { dropdown.innerHTML=`<div class="search-option-empty">No results for "${esc(filter)}"</div>`; }
+    else {
+      dropdown.innerHTML = filtered.map(x =>
+        `<div class="search-option${selectedObj.id===x.id?' selected':''}" data-id="${esc(x.id)}" data-name="${esc(x.name)}">${esc(x.name)}</div>`
+      ).join('');
+      dropdown.querySelectorAll('.search-option').forEach(el => {
+        el.addEventListener('mousedown', e => {
+          e.preventDefault();
+          selectedObj.id=el.dataset.id; selectedObj.name=el.dataset.name;
+          input.value=el.dataset.name; input.classList.add('has-value');
+          dropdown.classList.remove('open');
+        });
+      });
+    }
+    dropdown.classList.add('open');
+  }
+  input.addEventListener('focus', () => renderOptions(input.value));
+  input.addEventListener('input', () => { selectedObj.id=''; selectedObj.name=''; input.classList.remove('has-value'); renderOptions(input.value); });
+  input.addEventListener('blur', () => {
+    setTimeout(() => dropdown.classList.remove('open'), 150);
+    if (!selectedObj.id) { input.value=''; input.classList.remove('has-value'); }
+  });
+  input.placeholder = placeholder;
+}
+
+function resetSearchSelect(inputId, dropdownId, selectedObj) {
+  selectedObj.id=''; selectedObj.name='';
+  const input = document.getElementById(inputId);
+  if (input) { input.value=''; input.classList.remove('has-value'); }
+  const dd = document.getElementById(dropdownId);
+  if (dd) dd.classList.remove('open');
+}
+
+// ── Load dropdowns ────────────────────────────────────────────
+async function loadDropdowns() {
+  dropdownsLoaded = true;
+  const ids = ['hs-search-instantly','hs-search-hubspot_form','camp-search','form-search'];
+  ids.forEach(id => { const el=document.getElementById(id); if(el){el.disabled=true;el.placeholder='Loading…';} });
+  try {
+    const [l,c,f,s,pr] = await Promise.all([
+      api('GET','/lists'), api('GET','/campaigns'), api('GET','/forms'), api('GET','/slack/channels'), api('GET','/properties')
+    ]);
+    if (l.ok && Array.isArray(l.data)) {
+      hsList = l.data;
+      initSearchSelect('hs-search-instantly',   'hs-dropdown-instantly',   hsList,hsSelectedInstantly,'Search HubSpot lists…');
+      initSearchSelect('hs-search-hubspot_form','hs-dropdown-hubspot_form',hsList,hsSelectedForm,     'Search HubSpot lists…');
+    } else { ['hs-search-instantly','hs-search-hubspot_form'].forEach(id=>{const el=document.getElementById(id);if(el)el.placeholder=`Error: ${(l.data&&l.data.error)||'failed'}`;}); }
+    if (c.ok && Array.isArray(c.data)) {
+      campList = c.data;
+      initSearchSelect('camp-search','camp-dropdown',campList,campSelected,'Search Instantly campaigns…');
+    } else { const el=document.getElementById('camp-search');if(el)el.placeholder=`Error: ${(c.data&&c.data.error)||'failed'}`; }
+    if (f.ok && Array.isArray(f.data)) {
+      formList = f.data;
+      initSearchSelect('form-search','form-dropdown',formList,formSelected,'Search HubSpot forms…');
+    } else { const el=document.getElementById('form-search');if(el)el.placeholder=`Error: ${(f.data&&f.data.error)||'failed'}`; }
+    if (s.ok && Array.isArray(s.data)) {
+      slackChannels = s.data;
+      initSearchSelect('slack-ch-search-instantly',   'slack-ch-dropdown-instantly',   slackChannels,slackChSelectedInstantly,'Search channels…');
+      initSearchSelect('slack-ch-search-hubspot_form','slack-ch-dropdown-hubspot_form',slackChannels,slackChSelectedForm,     'Search channels…');
+      initSearchSelect('slack-ch-search-gsheet_sync', 'slack-ch-dropdown-gsheet_sync', slackChannels,slackChSelectedGsheet,  'Search channels…');
+      initSearchSelect('alert-slack-ch-search',       'alert-slack-ch-dropdown',       slackChannels,alertSlackChSelected,   'Search channels…');
+    }
+    if (pr.ok && Array.isArray(pr.data)) hsPropList = pr.data;
+  } catch(e) { ids.forEach(id=>{const el=document.getElementById(id);if(el)el.placeholder='Network error';}); }
+  ids.forEach(id=>{const el=document.getElementById(id);if(el)el.disabled=false;});
+}
+
+// ── Create / Update ───────────────────────────────────────────
+async function createAutomation(deliveryType) {
+  const nameEl = document.getElementById(`auto-name-${deliveryType}`);
+  const errEl  = document.getElementById(`form-error-${deliveryType}`);
+  const btn    = document.getElementById(`create-btn-${deliveryType}`);
+  const name   = nameEl.value.trim();
+  errEl.style.display = 'none';
+
+  if (!name) { errEl.textContent='Please enter an automation name.'; errEl.style.display='block'; return; }
+
+  // ── GSheet sync payload ──────────────────────────────────
+  if (deliveryType === 'gsheet_sync') {
+    const sheetUrl  = document.getElementById('gs-sheet-url').value.trim();
+    const sheetTab  = document.getElementById('gs-sheet-tab').value.trim();
+    const objType   = document.getElementById('gs-object-type').value;
+    const pkCol     = document.getElementById('gs-pk-column').value.trim();
+    const pkType    = document.getElementById('gs-pk-type').value;
+    const validMaps = gsMappings.filter(m => m.column.trim() && m.property.trim());
+
+    if (!sheetUrl)     { errEl.textContent='Please enter the Google Sheet URL.'; errEl.style.display='block'; return; }
+    if (!pkCol)        { errEl.textContent='Please enter the primary key column header.'; errEl.style.display='block'; return; }
+    if (!validMaps.length) { errEl.textContent='Please add at least one column mapping.'; errEl.style.display='block'; return; }
+
+    let payload = {
+      name,
+      delivery_type:        'gsheet_sync',
+      sheet_url:            sheetUrl,
+      sheet_tab:            sheetTab,
+      object_type:          objType,
+      primary_key_column:   pkCol,
+      primary_key_type:     pkType,
+      column_mappings:      validMaps,
+      gsheet_schedule_type: gsScheduleType,
+      gsheet_interval_minutes: parseInt(document.getElementById('gs-interval-minutes').value) || 60,
+      gsheet_run_time:      gsScheduleType==='daily' ? document.getElementById('gs-daily-time').value : document.getElementById('gs-weekly-time').value,
+      gsheet_run_day:       parseInt(document.getElementById('gs-weekly-day').value) || 0,
+      default_pipeline:     document.getElementById('gs-default-pipeline').value.trim(),
+      default_stage:        document.getElementById('gs-default-stage').value.trim(),
+    };
+
+    const slackEnabled = document.getElementById('slack-enabled-gsheet_sync')?.checked;
+    if (slackEnabled) {
+      const slackMsg = (document.getElementById('slack-msg-gsheet_sync')?.value||'').trim();
+      if (!slackChSelectedGsheet.id) { errEl.textContent='Please select a Slack channel.'; errEl.style.display='block'; return; }
+      if (!slackMsg) { errEl.textContent='Please enter a Slack message template.'; errEl.style.display='block'; return; }
+      payload.slack_enabled=true; payload.slack_channel=slackChSelectedGsheet.id; payload.slack_channel_name=slackChSelectedGsheet.name; payload.slack_message=slackMsg;
+    } else { payload.slack_enabled=false; }
+
+    btn.disabled=true; btn.textContent=editingId?'Saving…':'Creating…';
+    try {
+      const { ok, data } = editingId
+        ? await api('PATCH',`/automations/${editingId}`,payload)
+        : await api('POST','/automations',payload);
+      if (ok) {
+        editingId=null;
+        document.getElementById('create-btn-gsheet_sync').textContent='Create automation';
+        document.getElementById('add-page-title').textContent='New automation';
+        document.querySelector('.tab-bar').style.display='';
+        document.getElementById('view-logs-btn').style.display='none';
+        showToast(editingId?'Automation updated':'Automation created');
+        showPage('dashboard'); loadAutomations();
+      } else { errEl.textContent=data.error||'Something went wrong.'; errEl.style.display='block'; }
+    } catch(e) { errEl.textContent='Network error. Try again.'; errEl.style.display='block'; }
+    btn.disabled=false; btn.textContent=editingId?'Save changes':'Create automation';
+    return;
+  }
+
+  // ── Instantly / HS Form payload ───────────────────────────
+  const hsSelected = deliveryType==='instantly' ? hsSelectedInstantly : hsSelectedForm;
+  if (!hsSelected.id) { errEl.textContent='Please select a HubSpot list.'; errEl.style.display='block'; return; }
+
+  let payload = { name, delivery_type:deliveryType, hubspot_list_id:hsSelected.id, hubspot_list_name:hsSelected.name };
+
+  if (deliveryType === 'instantly') {
+    if (!campSelected.id) { errEl.textContent='Please select an Instantly campaign.'; errEl.style.display='block'; return; }
+    payload.instantly_campaign_id=campSelected.id; payload.instantly_campaign_name=campSelected.name;
+    payload.action=currentAction;
+    const delayAmount=parseInt(document.getElementById('delay-amount').value)||0;
+    const delayUnit=document.getElementById('delay-unit').value;
+    payload.delay_hours=delayUnit==='days'?delayAmount*24:delayAmount;
+  } else {
+    if (!formSelected.id) { errEl.textContent='Please select a HubSpot form.'; errEl.style.display='block'; return; }
+    payload.hubspot_form_id=formSelected.id; payload.hubspot_form_name=formSelected.name;
+  }
+
+  payload.filters=(deliveryType==='instantly'?filtersInstantly:filtersForm).filter(f=>f.property.trim());
+
+  const slackEnabled=document.getElementById(`slack-enabled-${deliveryType}`)?.checked;
+  if (slackEnabled) {
+    const slackChSel=deliveryType==='instantly'?slackChSelectedInstantly:slackChSelectedForm;
+    const slackMsg=(document.getElementById(`slack-msg-${deliveryType}`)?.value||'').trim();
+    if (!slackChSel.id) { errEl.textContent='Please select a Slack channel.'; errEl.style.display='block'; return; }
+    if (!slackMsg) { errEl.textContent='Please enter a Slack message template.'; errEl.style.display='block'; return; }
+    payload.slack_enabled=true; payload.slack_channel=slackChSel.id; payload.slack_channel_name=slackChSel.name; payload.slack_message=slackMsg;
+  } else { payload.slack_enabled=false; }
+
+  const alertEnabled=document.getElementById('alert-enabled')?.checked;
+  payload.alert_enabled=!!alertEnabled;
+  if (alertEnabled) {
+    const alertThreshold=parseInt(document.getElementById('alert-threshold').value)||0;
+    const alertMsg=(document.getElementById('alert-message').value||'').trim();
+    if (!alertSlackChSelected.id) { errEl.textContent='Please select a Slack channel for the alert.'; errEl.style.display='block'; return; }
+    if (!alertMsg) { errEl.textContent='Please enter an alert message template.'; errEl.style.display='block'; return; }
+    if (!alertThreshold) { errEl.textContent='Please enter an alert threshold.'; errEl.style.display='block'; return; }
+    payload.alert_threshold=alertThreshold; payload.alert_slack_channel=alertSlackChSelected.id;
+    payload.alert_slack_channel_name=alertSlackChSelected.name; payload.alert_message=alertMsg;
+    payload.alert_schedule=document.querySelector('.sched-btn.active')?.dataset.sched||'daily';
+    payload.alert_time=document.getElementById('alert-time').value||'08:00';
+    payload.alert_day=parseInt(document.getElementById('alert-day').value)||0;
+  }
+
+  btn.disabled=true; btn.textContent=editingId?'Saving…':'Creating…';
+  try {
+    const { ok, data } = editingId
+      ? await api('PATCH',`/automations/${editingId}`,payload)
+      : await api('POST','/automations',payload);
+    if (ok) {
+      const wasEditing=!!editingId; editingId=null;
+      ['instantly','hubspot_form'].forEach(dt=>{const b=document.getElementById(`create-btn-${dt}`);if(b)b.textContent='Create automation';});
+      document.getElementById('add-page-title').textContent='New automation';
+      document.querySelector('.tab-bar').style.display='';
+      document.getElementById('view-logs-btn').style.display='none';
+      nameEl.value='';
+      resetSearchSelect(`hs-search-${deliveryType}`,`hs-dropdown-${deliveryType}`,hsSelected);
+      if (deliveryType==='instantly') resetSearchSelect('camp-search','camp-dropdown',campSelected);
+      else resetSearchSelect('form-search','form-dropdown',formSelected);
+      showToast(wasEditing?'Automation updated':'Automation created');
+      showPage('dashboard'); loadAutomations();
+    } else { errEl.textContent=data.error||'Something went wrong.'; errEl.style.display='block'; }
+  } catch(e) { errEl.textContent='Network error. Try again.'; errEl.style.display='block'; }
+  btn.disabled=false; btn.textContent=editingId?'Save changes':'Create automation';
+}
+
+// ── Edit ──────────────────────────────────────────────────────
+async function editAutomation(id) {
+  const a = automations.find(x => x.id===id);
+  if (!a) return;
+  editingId = id;
+  if (!dropdownsLoaded) await loadDropdowns();
+  const isForm   = a.delivery_type==='hubspot_form';
+  const isGsheet = a.delivery_type==='gsheet_sync';
+  document.getElementById('add-page-title').textContent='Edit automation';
+  document.querySelector('.tab-bar').style.display='none';
+  document.getElementById('view-logs-btn').style.display = 'flex';
+  showPage('add');
+  switchTab(isGsheet?'gsheet_sync':isForm?'hubspot_form':'instantly');
+
+  if (isGsheet) {
+    document.getElementById('auto-name-gsheet_sync').value = a.name||'';
+    document.getElementById('gs-sheet-url').value          = a.sheet_url||'';
+    document.getElementById('gs-sheet-tab').value          = a.sheet_tab||'';
+    document.getElementById('gs-object-type').value        = a.object_type||'contact';
+    document.getElementById('gs-pk-column').value          = a.primary_key_column||'';
+    document.getElementById('gs-pk-type').value            = a.primary_key_type||'email';
+    document.getElementById('gs-default-pipeline').value   = a.default_pipeline||'';
+    document.getElementById('gs-default-stage').value      = a.default_stage||'';
+    onObjectTypeChange();
+    gsMappings = JSON.parse(JSON.stringify(a.column_mappings||[]));
+    renderGsMappings();
+    selectGsSchedule(a.gsheet_schedule_type||'interval');
+    document.getElementById('gs-interval-minutes').value = String(a.gsheet_interval_minutes||60);
+    document.getElementById('gs-daily-time').value        = a.gsheet_run_time||'08:00';
+    document.getElementById('gs-weekly-time').value       = a.gsheet_run_time||'08:00';
+    document.getElementById('gs-weekly-day').value        = String(a.gsheet_run_day||0);
+    document.getElementById('create-btn-gsheet_sync').textContent='Save changes';
+    const slackCb = document.getElementById('slack-enabled-gsheet_sync');
+    if (slackCb) {
+      slackCb.checked=!!a.slack_enabled; toggleSlackSection('gsheet_sync',!!a.slack_enabled);
+      if (a.slack_enabled) {
+        slackChSelectedGsheet.id=a.slack_channel||''; slackChSelectedGsheet.name=a.slack_channel_name||'';
+        const sci=document.getElementById('slack-ch-search-gsheet_sync');
+        if (sci){sci.value=a.slack_channel_name||'';sci.classList.toggle('has-value',!!a.slack_channel);}
+        const ta=document.getElementById('slack-msg-gsheet_sync');
+        if (ta) ta.value=a.slack_message||'';
+      }
+    }
+    return;
+  }
+
+  if (isForm) {
+    document.getElementById('auto-name-hubspot_form').value=a.name||'';
+    hsSelectedForm={id:a.hubspot_list_id||'',name:a.hubspot_list_name||''};
+    const hi=document.getElementById('hs-search-hubspot_form');
+    if(hi){hi.value=a.hubspot_list_name||'';hi.classList.toggle('has-value',!!a.hubspot_list_id);}
+    formSelected={id:a.hubspot_form_id||'',name:a.hubspot_form_name||''};
+    const fi=document.getElementById('form-search');
+    if(fi){fi.value=a.hubspot_form_name||'';fi.classList.toggle('has-value',!!a.hubspot_form_id);}
+    document.getElementById('create-btn-hubspot_form').textContent='Save changes';
+    filtersForm=JSON.parse(JSON.stringify(a.filters||[])); renderFilters('hubspot_form');
+  } else {
+    document.getElementById('auto-name-instantly').value=a.name||'';
+    hsSelectedInstantly={id:a.hubspot_list_id||'',name:a.hubspot_list_name||''};
+    const hi=document.getElementById('hs-search-instantly');
+    if(hi){hi.value=a.hubspot_list_name||'';hi.classList.toggle('has-value',!!a.hubspot_list_id);}
+    campSelected={id:a.instantly_campaign_id||'',name:a.instantly_campaign_name||''};
+    const ci=document.getElementById('camp-search');
+    if(ci){ci.value=a.instantly_campaign_name||'';ci.classList.toggle('has-value',!!a.instantly_campaign_id);}
+    const delayHours=a.delay_hours||0;
+    if(delayHours>0&&delayHours%24===0){document.getElementById('delay-amount').value=delayHours/24;document.getElementById('delay-unit').value='days';}
+    else{document.getElementById('delay-amount').value=delayHours;document.getElementById('delay-unit').value='hours';}
+    document.getElementById('create-btn-instantly').textContent='Save changes';
+    filtersInstantly=JSON.parse(JSON.stringify(a.filters||[])); renderFilters('instantly');
+    selectAction(a.action==='unenroll'?'unenroll':'enroll');
+  }
+
+  const dt=isForm?'hubspot_form':'instantly';
+  const slackCb=document.getElementById(`slack-enabled-${dt}`);
+  if(slackCb){
+    slackCb.checked=!!a.slack_enabled; toggleSlackSection(dt,!!a.slack_enabled);
+    if(a.slack_enabled){
+      const slackChSel=isForm?slackChSelectedForm:slackChSelectedInstantly;
+      slackChSel.id=a.slack_channel||''; slackChSel.name=a.slack_channel_name||'';
+      const sci=document.getElementById(`slack-ch-search-${dt}`);
+      if(sci){sci.value=a.slack_channel_name||'';sci.classList.toggle('has-value',!!a.slack_channel);}
+      const ta=document.getElementById(`slack-msg-${dt}`);
+      if(ta) ta.value=a.slack_message||'';
+    }
+  }
+  const alertEnabled=!!a.alert_enabled;
+  document.getElementById('alert-enabled').checked=alertEnabled; toggleAlertConfig(alertEnabled);
+  if(alertEnabled){
+    document.getElementById('alert-threshold').value=a.alert_threshold||20;
+    alertSlackChSelected.id=a.alert_slack_channel||''; alertSlackChSelected.name=a.alert_slack_channel_name||'';
+    const asi=document.getElementById('alert-slack-ch-search');
+    if(asi){asi.value=a.alert_slack_channel_name||'';asi.classList.toggle('has-value',!!a.alert_slack_channel);}
+    document.getElementById('alert-message').value=a.alert_message||'';
+    selectSchedule(a.alert_schedule||'daily');
+    document.getElementById('alert-time').value=a.alert_time||'08:00';
+    document.getElementById('alert-day').value=String(a.alert_day||0);
+  } else {
+    document.getElementById('alert-threshold').value='20';
+    resetSearchSelect('alert-slack-ch-search','alert-slack-ch-dropdown',alertSlackChSelected);
+    document.getElementById('alert-message').value='';
+    selectSchedule('daily'); document.getElementById('alert-time').value='08:00'; document.getElementById('alert-day').value='0';
+  }
+}
+
+async function refreshDropdowns() { dropdownsLoaded=false; await loadDropdowns(); showToast('Lists refreshed'); }
+
+// ── Logs ──────────────────────────────────────────────────────
+function viewCurrentLogs() { if(editingId) viewLogs(editingId); }
+async function viewLogs(id) {
+  const a=automations.find(x=>x.id===id); if(!a) return;
+  const modal=document.getElementById('logs-modal');
+  const countEl=document.getElementById('logs-modal-count');
+  const searchEl=document.getElementById('logs-search');
+  const isGsheet=a.delivery_type==='gsheet_sync';
+  document.getElementById('logs-modal-title').textContent=`${isGsheet?'Processed contacts':'List contacts'} · ${a.name}`;
+  countEl.style.display='none';
+  if(searchEl) searchEl.value='';
+  logsData=[];
+  document.getElementById('logs-body').innerHTML='<div class="empty-state"><p>Loading…</p></div>';
+  modal.style.display='flex';
+  try {
+    if(isGsheet) {
+      const {ok,data}=await api('GET',`/logs/${encodeURIComponent(a.id)}`);
+      if(ok&&Array.isArray(data)&&data.length){
+        logsData=data; countEl.textContent=data.length; countEl.style.display='';
+        renderLogRows(data);
+      } else if(ok){
+        countEl.textContent='0'; countEl.style.display='';
+        document.getElementById('logs-body').innerHTML='<div class="empty-state"><div class="empty-icon">📋</div><p>No contacts processed yet — logs appear after the next sync run.</p></div>';
+      } else {
+        document.getElementById('logs-body').innerHTML=`<div class="empty-state"><p>Error: ${esc((data&&data.error)||'Failed to load logs.')}</p></div>`;
+      }
+    } else {
+      const {ok,data}=await api('GET',`/contacts/${a.hubspot_list_id}`);
+      if(ok&&Array.isArray(data)&&data.length){
+        logsData=data; countEl.textContent=data.length; countEl.style.display='';
+        renderLogRows(data);
+      } else if(ok){
+        logsData=[]; countEl.textContent='0'; countEl.style.display='';
+        document.getElementById('logs-body').innerHTML='<div class="empty-state"><div class="empty-icon">📋</div><p>No contacts in this list yet.</p></div>';
+      } else {
+        document.getElementById('logs-body').innerHTML=`<div class="empty-state"><p>Error: ${esc((data&&data.error)||'Failed to load contacts.')}</p></div>`;
+      }
+    }
+  } catch(e) { document.getElementById('logs-body').innerHTML='<div class="empty-state"><p>Network error.</p></div>'; }
+}
+function closeLogs() { document.getElementById('logs-modal').style.display='none'; }
+
+// ── Helpers ───────────────────────────────────────────────────
+function timeAgo(isoStr) {
+  const diff=Math.floor((Date.now()-new Date(isoStr))/1000);
+  if(diff<60) return 'just now';
+  if(diff<3600) return Math.floor(diff/60)+'m ago';
+  if(diff<86400) return Math.floor(diff/3600)+'h ago';
+  return Math.floor(diff/86400)+'d ago';
+}
+function esc(str) {
+  return String(str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ── Activity data ─────────────────────────────────────────────
+async function loadActivityData() {
+  try {
+    const { ok, data } = await api('GET', '/activity');
+    if (!ok || !data) return;
+
+    // Per-automation 24h counts
+    dailyCounts = data.daily || {};
+    renderAutomations(); // re-render to show chips
+
+    // Total 24h stat card
+    const total24h = Object.values(dailyCounts).reduce((s, v) => s + v, 0);
+    const el24h = document.getElementById('stat-24h');
+    if (el24h) el24h.textContent = total24h || '0';
+
+    // 30-day activity bar in sidebar
+    const monthly = data.monthly || [];  // array of 30 daily totals, oldest first
+    activityMonthlyData = monthly;
+    renderActivityBar(monthly);
+
+    // Total 30d label
+    const total30 = monthly.reduce((s, v) => s + v, 0);
+    const navTotal = document.getElementById('nav-total-runs');
+    if (navTotal) navTotal.textContent = total30.toLocaleString();
+
+  } catch(e) {
+    // Non-critical, fail silently
+  }
+}
+
+function renderActivityBar(monthly) {
+  const container = document.getElementById('nav-activity-bars');
+  if (!container) return;
+  if (!monthly.length) { container.innerHTML = '<span style="font-size:10px;color:var(--muted);">No data yet</span>'; return; }
+  const max = Math.max(...monthly, 1);
+  container.innerHTML = monthly.map((v, i) => {
+    const h = Math.max(2, Math.round((v / max) * 28));
+    const today = i === monthly.length - 1;
+    const color = today ? 'var(--orange)' : v > 0 ? 'rgba(255,100,50,0.45)' : 'rgba(254,242,222,0.08)';
+    return `<div title="${v} runs" style="flex:1;height:${h}px;background:${color};border-radius:2px;transition:opacity 0.1s;" onmouseenter="this.style.opacity=0.7" onmouseleave="this.style.opacity=1"></div>`;
+  }).join('');
+}
+
+
+// ── Activity modal ────────────────────────────────────────────
+let activityMonthlyData = [];
+
+function openActivityModal() {
+  if (!activityMonthlyData.length) return;
+  const modal = document.getElementById('activity-modal');
+  const total = activityMonthlyData.reduce((s, v) => s + v, 0);
+  document.getElementById('activity-modal-total').textContent = `${total.toLocaleString()} total contacts processed`;
+  renderActivityModalBars(activityMonthlyData);
+  modal.style.display = 'flex';
+  modal.onclick = e => { if (e.target === modal) modal.style.display = 'none'; };
+}
+
+function renderActivityModalBars(monthly) {
+  const container = document.getElementById('activity-modal-bars');
+  if (!container) return;
+  const max = Math.max(...monthly, 1);
+  const today = new Date();
+  container.innerHTML = monthly.map((v, i) => {
+    const daysAgo = monthly.length - 1 - i;
+    const d = new Date(today);
+    d.setDate(d.getDate() - daysAgo);
+    const label = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    const isToday = daysAgo === 0;
+    const h = Math.max(3, Math.round((v / max) * 120));
+    const color = isToday ? '#ff6432' : v > 0 ? 'rgba(255,100,50,0.5)' : 'rgba(254,242,222,0.08)';
+    return `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;position:relative;height:100%;justify-content:flex-end;">
+      <div class="activity-bar-tooltip" style="display:none;position:absolute;bottom:calc(100% + 4px);left:50%;transform:translateX(-50%);background:#1a2535;border:1px solid rgba(255,255,255,0.15);border-radius:6px;padding:5px 10px;font-size:11px;white-space:nowrap;z-index:100;color:#ffffff;box-shadow:0 4px 12px rgba(0,0,0,0.4);">
+        <strong>${v}</strong> · ${label}
+      </div>
+      <div style="width:100%;height:${h}px;background:${color};border-radius:3px;transition:background 0.15s,transform 0.15s;cursor:pointer;"
+        onmouseenter="this.previousElementSibling.style.display='block';this.style.background='#ff6432';this.style.transform='scaleY(1.08)';this.style.transformOrigin='bottom';"
+        onmouseleave="this.previousElementSibling.style.display='none';this.style.background='${color}';this.style.transform='scaleY(1)';">
+      </div>
+      ${daysAgo % 7 === 0 || isToday ? `<div style="font-size:9px;color:rgba(255,255,255,0.5);position:absolute;bottom:0;transform:translateY(16px);white-space:nowrap;">${label}</div>` : ''}
+    </div>`;
+  }).join('');
+}
+
+</script>
+
+  <!-- Activity graph modal -->
+  <div id="activity-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);z-index:1000;align-items:center;justify-content:center;">
+    <div style="background:#1a2a3a;border:1px solid rgba(254,242,222,0.12);border-radius:16px;padding:2rem;width:700px;max-width:95vw;box-shadow:0 24px 80px rgba(0,0,0,0.6);">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem;">
+        <div>
+          <h3 style="margin:0 0 3px;color:#ffffff;">Activity — Last 30 days</h3>
+          <div style="font-size:12px;color:rgba(255,255,255,0.55);" id="activity-modal-total"></div>
+        </div>
+        <button onclick="document.getElementById('activity-modal').style.display='none'" style="background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);border-radius:8px;color:#ffffff;width:32px;height:32px;cursor:pointer;font-size:16px;">✕</button>
+      </div>
+      <div id="activity-modal-bars" style="display:flex;align-items:flex-end;gap:4px;height:140px;padding-bottom:24px;position:relative;"></div>
+    </div>
+  </div>
+</body>
+</html>
