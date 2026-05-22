@@ -1797,7 +1797,7 @@ function renderActivityModalBars(monthly) {
         onmouseenter="this.previousElementSibling.style.display='block';this.style.background='#ff6432';this.style.transform='scaleY(1.08)';this.style.transformOrigin='bottom';"
         onmouseleave="this.previousElementSibling.style.display='none';this.style.background='${color}';this.style.transform='scaleY(1)';">
       </div>
-      ${daysAgo % 7 === 0 || isToday ? `<div style="font-size:9px;color:var(--muted);position:absolute;bottom:0;transform:translateY(16px);white-space:nowrap;">${label}</div>` : ''}
+      ${daysAgo % 7 === 0 || isToday ? `<div style="font-size:9px;color:rgba(255,255,255,0.5);position:absolute;bottom:0;transform:translateY(16px);white-space:nowrap;">${label}</div>` : ''}
     </div>`;
   }).join('');
 }
@@ -1809,10 +1809,10 @@ function renderActivityModalBars(monthly) {
     <div style="background:#1a2a3a;border:1px solid rgba(254,242,222,0.12);border-radius:16px;padding:2rem;width:700px;max-width:95vw;box-shadow:0 24px 80px rgba(0,0,0,0.6);">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem;">
         <div>
-          <h3 style="margin:0 0 3px;">Activity — Last 30 days</h3>
-          <div style="font-size:12px;color:var(--muted);" id="activity-modal-total"></div>
+          <h3 style="margin:0 0 3px;color:#ffffff;">Activity — Last 30 days</h3>
+          <div style="font-size:12px;color:rgba(255,255,255,0.55);" id="activity-modal-total"></div>
         </div>
-        <button onclick="document.getElementById('activity-modal').style.display='none'" style="background:rgba(254,242,222,0.08);border:1px solid var(--border2);border-radius:8px;color:var(--cream);width:32px;height:32px;cursor:pointer;font-size:16px;">✕</button>
+        <button onclick="document.getElementById('activity-modal').style.display='none'" style="background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);border-radius:8px;color:#ffffff;width:32px;height:32px;cursor:pointer;font-size:16px;">✕</button>
       </div>
       <div id="activity-modal-bars" style="display:flex;align-items:flex-end;gap:4px;height:140px;padding-bottom:24px;position:relative;"></div>
     </div>
