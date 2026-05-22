@@ -748,10 +748,10 @@ class handler(BaseHTTPRequestHandler):
 
                 if did_something:
                     ran += 1
-                    # Only update last_run when something actually ran
-                    automation["last_run"] = datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
                 else:
                     skipped += 1
+                # Always update last_run so dashboard shows correct time
+                automation["last_run"] = datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
 
             # ── Enrichment ────────────────────────────────────
             elif delivery_type == "enrichment":
