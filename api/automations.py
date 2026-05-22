@@ -433,34 +433,75 @@ class handler(BaseHTTPRequestHandler):
                 self._json(500, {'error': str(e)})
 
         elif "/logs/" in path:
-            auto_id = path.split("/logs/")[-1].strip("/")
+            from urllib.parse import unquote
+            auto_id = unquote(path.split("/logs/")[-1].strip("/"))
             try:
-                from urllib.parse import unquote
-                auto_id = unquote(auto_id)
-                log_url = f"{UPSTASH_URL}/lrange/logs:{auto_id}/0/999"
-                log_req = Request(log_url, headers={"Authorization": f"Bearer {UPSTASH_TOKEN}"})
-                with urlopen(log_req, timeout=8) as r:
-                    log_data = json.loads(r.read())
-                entries = log_data.get("result", [])
+                # Find the automation
+                automations_list = get_automations()
+                auto = next((a for a in automations_list if a.get("id") == auto_id), None)
+                if not auto:
+                    self._json(404, {"error": "Automation not found"})
+                    return
+
+                sheet_url = auto.get("sheet_url", "")
+                sheet_tab = auto.get("sheet_tab", "")
+                pk_column = auto.get("primary_key_column", "Email")
+
+                if not sheet_url:
+                    self._json(200, [])
+                    return
+
+                # Get Google token
+                import re as _re
+                import google.oauth2.service_account
+                import google.auth.transport.requests as google_requests
+                from urllib.parse import quote
+
+                sa_json = os.environ.get("GOOGLE_SERVICE_ACCOUNT_JSON", "{}")
+                creds_data = json.loads(sa_json)
+                creds = google.oauth2.service_account.Credentials.from_service_account_info(
+                    creds_data, scopes=["https://www.googleapis.com/auth/spreadsheets.readonly"]
+                )
+                creds.refresh(google_requests.Request())
+                token = creds.token
+
+                # Extract sheet ID
+                match = _re.search(r'/spreadsheets/d/([a-zA-Z0-9-_]+)', sheet_url)
+                if not match:
+                    self._json(400, {"error": "Invalid sheet URL"})
+                    return
+                sheet_id = match.group(1)
+
+                # Fetch sheet data
+                range_name = quote(f"'{sheet_tab}'", safe='') if sheet_tab else "A1:ZZ"
+                sheets_url = f"https://sheets.googleapis.com/v4/spreadsheets/{sheet_id}/values/{range_name}"
+                import requests as req_lib
+                resp = req_lib.get(sheets_url, headers={"Authorization": f"Bearer {token}"}, timeout=20)
+                resp.raise_for_status()
+                sheet_data = resp.json().get("values", [])
+
+                if not sheet_data or len(sheet_data) < 2:
+                    self._json(200, [])
+                    return
+
+                headers = [h.strip() for h in sheet_data[0]]
+                pk_idx  = headers.index(pk_column) if pk_column in headers else 0
+
+                # Build name from first/last name columns if available
+                fn_idx = next((i for i, h in enumerate(headers) if h.lower() in ('first name','firstname','first')), None)
+                ln_idx = next((i for i, h in enumerate(headers) if h.lower() in ('last name','lastname','last')), None)
+
                 rows = []
-                for entry_str in entries:
-                    try:
-                        entry = json.loads(entry_str)
-                        ts = entry.get("ts", 0)
-                        created = ""
-                        if ts:
-                            try:
-                                created = datetime.datetime.fromtimestamp(float(ts), tz=datetime.timezone.utc).isoformat()
-                            except Exception:
-                                created = str(ts)
-                        rows.append({
-                            "email":   entry.get("email", ""),
-                            "name":    entry.get("email", ""),
-                            "created": created,
-                            "type":    entry.get("type", "")
-                        })
-                    except Exception:
+                for row in sheet_data[1:]:
+                    padded = list(row) + [''] * max(0, len(headers) - len(row))
+                    email  = padded[pk_idx].strip() if pk_idx < len(padded) else ''
+                    if not email:
                         continue
+                    first = padded[fn_idx].strip() if fn_idx is not None and fn_idx < len(padded) else ''
+                    last  = padded[ln_idx].strip() if ln_idx is not None and ln_idx < len(padded) else ''
+                    name  = f"{first} {last}".strip() or email
+                    rows.append({"email": email, "name": name, "created": ""})
+
                 self._json(200, rows)
             except Exception as e:
                 self._json(500, {"error": str(e)})
