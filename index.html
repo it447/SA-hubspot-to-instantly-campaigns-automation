@@ -1790,7 +1790,7 @@ function renderActivityModalBars(monthly) {
     const h = Math.max(3, Math.round((v / max) * 120));
     const color = isToday ? '#ff6432' : v > 0 ? 'rgba(255,100,50,0.5)' : 'rgba(254,242,222,0.08)';
     return `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;position:relative;height:100%;justify-content:flex-end;">
-      <div class="activity-bar-tooltip" style="display:none;position:absolute;bottom:calc(100% + 4px);left:50%;transform:translateX(-50%);background:var(--card);border:1px solid var(--border2);border-radius:6px;padding:4px 8px;font-size:11px;white-space:nowrap;z-index:10;color:var(--cream);">
+      <div class="activity-bar-tooltip" style="display:none;position:absolute;bottom:calc(100% + 4px);left:50%;transform:translateX(-50%);background:#1a2535;border:1px solid rgba(255,255,255,0.15);border-radius:6px;padding:5px 10px;font-size:11px;white-space:nowrap;z-index:100;color:#ffffff;box-shadow:0 4px 12px rgba(0,0,0,0.4);">
         <strong>${v}</strong> · ${label}
       </div>
       <div style="width:100%;height:${h}px;background:${color};border-radius:3px;transition:background 0.15s,transform 0.15s;cursor:pointer;"
