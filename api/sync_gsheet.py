@@ -49,16 +49,22 @@ def log_enrollment(auto_id, email, delivery_type, ts):
     """Log a processed contact to Redis for activity reporting."""
     try:
         entry = json.dumps({"email": email, "type": delivery_type, "ts": ts})
-        url   = f"{UPSTASH_URL}/lpush/logs:{auto_id}/{entry}"
-        # URL-encode the entry
-        from urllib.parse import quote
-        url = f"{UPSTASH_URL}/lpush/logs:{auto_id}/{quote(entry, safe='')}"
-        req = Request(url, headers={"Authorization": f"Bearer {UPSTASH_TOKEN}"})
+        # Use POST with JSON body for LPUSH
+        url  = f"{UPSTASH_URL}/lpush/logs:{auto_id}"
+        body = json.dumps([entry]).encode()
+        req  = Request(url, data=body, headers={
+            "Authorization": f"Bearer {UPSTASH_TOKEN}",
+            "Content-Type":  "application/json"
+        }, method="POST")
         with urlopen(req, timeout=5) as r:
             r.read()
         # Trim to last 10000 entries
-        trim_url = f"{UPSTASH_URL}/ltrim/logs:{auto_id}/0/9999"
-        req2 = Request(trim_url, headers={"Authorization": f"Bearer {UPSTASH_TOKEN}"})
+        trim_url  = f"{UPSTASH_URL}/ltrim/logs:{auto_id}/0/9999"
+        trim_body = json.dumps([0, 9999]).encode()
+        req2 = Request(trim_url, data=trim_body, headers={
+            "Authorization": f"Bearer {UPSTASH_TOKEN}",
+            "Content-Type":  "application/json"
+        }, method="POST")
         with urlopen(req2, timeout=5) as r:
             r.read()
     except Exception as e:
@@ -701,7 +707,9 @@ class handler(BaseHTTPRequestHandler):
             # ── GSheet sync (may also include Clay push) ─────
             if delivery_type == "gsheet_sync":
                 clay_enabled   = automation.get("clay_enabled", False)
-                gsheet_enabled = automation.get("gsheet_enabled", False)
+                # Default gsheet_enabled to True for old automations that predate the toggle
+                # (if neither flag exists, it's a pure gsheet sync)
+                gsheet_enabled = automation.get("gsheet_enabled", not clay_enabled)
                 did_something  = False
 
                 # Clay push runs every cycle (no schedule, just dedup)
