@@ -462,9 +462,9 @@ def run_gsheet_sync(automation):
                 f"{len(upsert_inputs)} upserted, {len(create_inputs)} created.")
 
     _log(f"[gsheet] {auto_name}: done. errors={len(all_errors)}")
-    # Log each upserted contact for activity reporting
-    if not all_errors:
-        auto_id = automation.get("id", "")
+    # Log each upserted contact for activity reporting regardless of errors
+    auto_id = automation.get("id", "")
+    if auto_id:
         for inp in upsert_inputs:
             pk = inp.get("id", "")
             if pk:
