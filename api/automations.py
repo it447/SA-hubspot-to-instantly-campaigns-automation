@@ -387,7 +387,10 @@ class handler(BaseHTTPRequestHandler):
                 est       = datetime.timezone(datetime.timedelta(hours=-5))
                 est_now   = datetime.datetime.now(est)
                 now_utc   = datetime.datetime.now(datetime.timezone.utc)
-                cutoff_24h = now_utc - datetime.timedelta(hours=24)
+                # Cutoff = midnight today in Florida (EDT = UTC-4)
+                edt = datetime.timezone(datetime.timedelta(hours=-4))
+                today_edt = datetime.datetime.now(edt).replace(hour=0, minute=0, second=0, microsecond=0)
+                cutoff_24h = today_edt.astimezone(datetime.timezone.utc)
                 day_totals = {}
                 daily      = {}
 
