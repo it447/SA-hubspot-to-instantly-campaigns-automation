@@ -1227,8 +1227,8 @@ async function loadAutomations() {
   try {
     const { data } = await api('GET', '/automations');
     automations = Array.isArray(data) ? data : [];
+    await loadActivityData();
     renderAutomations();
-    loadActivityData();
   } catch(e) {
     list.innerHTML = '<div class="empty-state"><p>Failed to load. Check your deployment.</p></div>';
   }
