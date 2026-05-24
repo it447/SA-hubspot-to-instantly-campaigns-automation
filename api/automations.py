@@ -384,46 +384,74 @@ class handler(BaseHTTPRequestHandler):
         elif path.endswith('/activity'):
             try:
                 automations_list = get_automations()
-                est = datetime.timezone(datetime.timedelta(hours=-5))
-                est_now = datetime.datetime.now(est)
-                now_utc = datetime.datetime.now(datetime.timezone.utc)
+                est       = datetime.timezone(datetime.timedelta(hours=-5))
+                est_now   = datetime.datetime.now(est)
+                now_utc   = datetime.datetime.now(datetime.timezone.utc)
                 cutoff_24h = now_utc - datetime.timedelta(hours=24)
                 day_totals = {}
-                daily = {}
+                daily      = {}
+
                 for a in automations_list:
-                    auto_id = a.get('id','')
+                    auto_id       = a.get('id','')
+                    delivery_type = a.get('delivery_type','')
                     if not auto_id:
                         continue
-                    try:
-                        log_url = f"{UPSTASH_URL}/lrange/logs:{auto_id}/0/999"
-                        log_req = Request(log_url, headers={"Authorization": f"Bearer {UPSTASH_TOKEN}"})
-                        with urlopen(log_req, timeout=8) as r:
-                            log_data = json.loads(r.read())
-                        entries = log_data.get("result", [])
-                        count_24h = 0
-                        for entry_str in entries:
-                            try:
-                                entry = json.loads(entry_str)
-                                ts = entry.get("ts", 0)
-                                if not ts:
+
+                    # GSheet automations — read from Redis logs
+                    if delivery_type == 'gsheet_sync':
+                        try:
+                            log_url = f"{UPSTASH_URL}/lrange/logs:{auto_id}/0/999"
+                            log_req = Request(log_url, headers={"Authorization": f"Bearer {UPSTASH_TOKEN}"})
+                            with urlopen(log_req, timeout=8) as r:
+                                log_data = json.loads(r.read())
+                            entries   = log_data.get("result", [])
+                            count_24h = 0
+                            for entry_str in entries:
+                                try:
+                                    entry = json.loads(entry_str)
+                                    ts    = entry.get("ts", 0)
+                                    if not ts:
+                                        continue
+                                    try:
+                                        dt = datetime.datetime.fromtimestamp(float(ts), tz=datetime.timezone.utc)
+                                    except (ValueError, TypeError):
+                                        dt = datetime.datetime.fromisoformat(str(ts).replace("Z", "+00:00"))
+                                    day_key = dt.astimezone(est).date().isoformat()
+                                    day_totals[day_key] = day_totals.get(day_key, 0) + 1
+                                    if dt >= cutoff_24h:
+                                        count_24h += 1
+                                except Exception:
+                                    continue
+                            if count_24h > 0:
+                                daily[auto_id] = count_24h
+                        except Exception:
+                            pass
+
+                    # Instantly / Form automations — read createdate from HubSpot list
+                    else:
+                        list_id = a.get('hubspot_list_id','')
+                        if not list_id:
+                            continue
+                        try:
+                            contacts  = get_list_contacts(list_id)
+                            count_24h = 0
+                            for c in contacts:
+                                created = c.get('created','')
+                                if not created:
                                     continue
                                 try:
-                                    dt = datetime.datetime.fromtimestamp(float(ts), tz=datetime.timezone.utc)
-                                except (ValueError, TypeError):
-                                    dt = datetime.datetime.fromisoformat(str(ts).replace("Z", "+00:00"))
-                                day_key = dt.astimezone(est).date().isoformat()
-                                day_totals[day_key] = day_totals.get(day_key, 0) + 1
-                                if dt >= cutoff_24h:
-                                    count_24h += 1
-                            except Exception:
-                                continue
-                        if count_24h > 0:
-                            daily[auto_id] = count_24h
-                    except Exception:
-                        today_str = est_now.date().isoformat()
-                        c = _redis_get_int(f'enroll_count:{auto_id}:{today_str}')
-                        if c:
-                            daily[auto_id] = c
+                                    dt = datetime.datetime.fromisoformat(created.replace("Z","+00:00"))
+                                    day_key = dt.astimezone(est).date().isoformat()
+                                    day_totals[day_key] = day_totals.get(day_key, 0) + 1
+                                    if dt >= cutoff_24h:
+                                        count_24h += 1
+                                except Exception:
+                                    continue
+                            if count_24h > 0:
+                                daily[auto_id] = count_24h
+                        except Exception:
+                            pass
+
                 monthly = []
                 for i in range(29, -1, -1):
                     day = (est_now - datetime.timedelta(days=i)).date().isoformat()
