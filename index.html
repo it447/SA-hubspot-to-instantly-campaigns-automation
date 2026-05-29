@@ -1766,14 +1766,15 @@ async function viewLogs(id) {
   const countEl=document.getElementById('logs-modal-count');
   const searchEl=document.getElementById('logs-search');
   const isGsheet=a.delivery_type==='gsheet_sync';
-  document.getElementById('logs-modal-title').textContent=`${isGsheet?'Processed contacts':'List contacts'} · ${a.name}`;
+  const isCalendlyAuto=a.delivery_type==='calendly';
+  document.getElementById('logs-modal-title').textContent=`${isGsheet?'Processed contacts':isCalendlyAuto?'Bookings':'List contacts'} · ${a.name}`;
   countEl.style.display='none';
   if(searchEl) searchEl.value='';
   logsData=[];
   document.getElementById('logs-body').innerHTML='<div class="empty-state"><p>Loading…</p></div>';
   modal.style.display='flex';
   try {
-    const endpoint = isGsheet ? `/logs/${encodeURIComponent(a.id)}` : `/contacts/${a.hubspot_list_id}`;
+    const endpoint = (isGsheet || isCalendlyAuto) ? `/logs/${encodeURIComponent(a.id)}` : `/contacts/${a.hubspot_list_id}`;
     const {ok,data}=await api('GET', endpoint);
     if(ok&&Array.isArray(data)&&data.length){
       logsData=data; countEl.textContent=data.length; countEl.style.display='';
