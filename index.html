@@ -1702,20 +1702,20 @@ async function editAutomation(id) {
 
   if (isForm) {
     document.getElementById('auto-name-hubspot_form').value=a.name||'';
-    hsSelectedForm={id:a.hubspot_list_id||'',name:a.hubspot_list_name||''};
+    hsSelectedForm.id=a.hubspot_list_id||'';hsSelectedForm.name=a.hubspot_list_name||'';
     const hi=document.getElementById('hs-search-hubspot_form');
     if(hi){hi.value=a.hubspot_list_name||'';hi.classList.toggle('has-value',!!a.hubspot_list_id);}
-    formSelected={id:a.hubspot_form_id||'',name:a.hubspot_form_name||''};
+    formSelected.id=a.hubspot_form_id||'';formSelected.name=a.hubspot_form_name||'';
     const fi=document.getElementById('form-search');
     if(fi){fi.value=a.hubspot_form_name||'';fi.classList.toggle('has-value',!!a.hubspot_form_id);}
     document.getElementById('create-btn-hubspot_form').textContent='Save changes';
     filtersForm=JSON.parse(JSON.stringify(a.filters||[])); renderFilters('hubspot_form');
   } else {
     document.getElementById('auto-name-instantly').value=a.name||'';
-    hsSelectedInstantly={id:a.hubspot_list_id||'',name:a.hubspot_list_name||''};
+    hsSelectedInstantly.id=a.hubspot_list_id||'';hsSelectedInstantly.name=a.hubspot_list_name||'';
     const hi=document.getElementById('hs-search-instantly');
     if(hi){hi.value=a.hubspot_list_name||'';hi.classList.toggle('has-value',!!a.hubspot_list_id);}
-    campSelected={id:a.instantly_campaign_id||'',name:a.instantly_campaign_name||''};
+    campSelected.id=a.instantly_campaign_id||'';campSelected.name=a.instantly_campaign_name||'';
     const ci=document.getElementById('camp-search');
     if(ci){ci.value=a.instantly_campaign_name||'';ci.classList.toggle('has-value',!!a.instantly_campaign_id);}
     const delayHours=a.delay_hours||0;
