@@ -1995,7 +1995,7 @@ function initCalendlyHsPropSearch(index, currentProp, currentLabel) {
 
 function resetCalendlyForm() {
   const n = document.getElementById('auto-name-calendly'); if(n) n.value='';
-  const e = document.getElementById('calendly-event-url'); if(e) e.value='';
+  const e = document.getElementById('calendly-event-url'); if(e) e.value='all';
   const cb = document.getElementById('slack-enabled-calendly'); if(cb){cb.checked=false;toggleSlackSection('calendly',false);}
   resetSearchSelect('slack-ch-search-calendly','slack-ch-dropdown-calendly',slackChSelectedCalendly);
   const ta = document.getElementById('slack-msg-calendly'); if(ta) ta.value='';
