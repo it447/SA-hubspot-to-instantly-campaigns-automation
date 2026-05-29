@@ -408,7 +408,7 @@
       <div class="card">
         <div class="card-header">
           <h3>All automations <span class="badge-count" id="auto-count">0</span></h3>
-          <button class="btn btn-cream" onclick="loadAutomations()">↻ Refresh</button>
+          <button class="btn btn-cream" onclick="currentFilter='all';const h=document.getElementById('automations-heading');if(h)h.textContent='All automations';loadAutomations()">↻ Refresh</button>
         </div>
         <div class="search-bar">
           <input type="text" id="auto-search" placeholder="Search automations…" oninput="onSearch(this.value)">
@@ -2047,11 +2047,10 @@ async function createCalendlyAutomation() {
 
 // ── 24h filter ────────────────────────────────────────────────
 function filter24h() {
+  if (!Object.keys(dailyCounts).length) return; // don't filter if data not loaded
   currentFilter = '24h';
-  // Clear all nav active states
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   document.getElementById('nav-dashboard')?.classList.add('active');
-  // Update heading
   const heading = document.getElementById('automations-heading');
   if (heading) heading.textContent = 'Active today';
   renderAutomations();
