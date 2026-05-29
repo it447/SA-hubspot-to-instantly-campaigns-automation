@@ -30,7 +30,8 @@ def _redis_get(key):
     if isinstance(result, str):
         result = json.loads(result)
     return result
-    
+
+
 def _redis_set(key, value):
     url = f"{UPSTASH_URL}/set/{key}"
     body = json.dumps(value).encode()
