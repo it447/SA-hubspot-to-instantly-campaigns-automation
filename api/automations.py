@@ -524,6 +524,37 @@ class handler(BaseHTTPRequestHandler):
                     self._json(404, {"error": "Automation not found"})
                     return
 
+                delivery_type = auto.get("delivery_type", "")
+
+                # Calendly + GSheet read from Redis logs
+                if delivery_type in ("calendly",) or (delivery_type == "gsheet_sync" and not auto.get("sheet_url")):
+                    log_url = f"{UPSTASH_URL}/lrange/logs:{auto_id}/0/999"
+                    log_req = Request(log_url, headers={"Authorization": f"Bearer {UPSTASH_TOKEN}"})
+                    with urlopen(log_req, timeout=8) as r:
+                        log_data = json.loads(r.read())
+                    entries = log_data.get("result", [])
+                    rows = []
+                    for entry_str in entries:
+                        try:
+                            entry = json.loads(entry_str)
+                            ts = entry.get("ts", 0)
+                            created = ""
+                            if ts:
+                                try:
+                                    created = datetime.datetime.fromtimestamp(float(ts), tz=datetime.timezone.utc).isoformat()
+                                except Exception:
+                                    pass
+                            rows.append({
+                                "email":   entry.get("email", ""),
+                                "name":    entry.get("name", entry.get("email", "")),
+                                "created": created,
+                                "type":    entry.get("type", "")
+                            })
+                        except Exception:
+                            continue
+                    self._json(200, rows)
+                    return
+
                 sheet_url = auto.get("sheet_url", "")
                 sheet_tab = auto.get("sheet_tab", "")
                 pk_column = auto.get("primary_key_column", "Email")
