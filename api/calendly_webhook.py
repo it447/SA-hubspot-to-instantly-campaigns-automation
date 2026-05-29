@@ -137,9 +137,44 @@ class handler(BaseHTTPRequestHandler):
 
         _log(f"[calendly] booking: email={email} name={first_name} {last_name}")
 
+        # Build properties from automation mappings or defaults
+        automations = get_calendly_automations()
+        calendly_data = {
+            "first_name": first_name,
+            "last_name":  last_name,
+            "phone":      phone,
+            "event_name": payload.get("event_type", {}).get("name", "") if isinstance(payload.get("event_type"), dict) else "",
+            "event_start": payload.get("event", {}).get("start_time", "") if isinstance(payload.get("event"), dict) else "",
+        }
+
+        # Use first matching automation's mappings, or defaults
+        prop_mappings = None
+        for a in automations:
+            if a.get("property_mappings"):
+                prop_mappings = a["property_mappings"]
+                break
+
+        if prop_mappings:
+            properties = []
+            for m in prop_mappings:
+                cf  = m.get("calendly_field", "")
+                hsp = m.get("hs_property", "")
+                val = calendly_data.get(cf, "")
+                if hsp and val:
+                    properties.append({"property": hsp, "value": val})
+        else:
+            properties = []
+            if first_name: properties.append({"property": "firstname", "value": first_name})
+            if last_name:  properties.append({"property": "lastname",  "value": last_name})
+            if phone:      properties.append({"property": "phone",     "value": phone})
+
         # Create/update HubSpot contact
         try:
-            create_or_update_hs_contact(email, first_name, last_name, phone)
+            url = f"https://api.hubapi.com/contacts/v1/contact/createOrUpdate/email/{email}"
+            headers = {"Authorization": f"Bearer {HUBSPOT_API_KEY}", "Content-Type": "application/json"}
+            resp = requests.post(url, headers=headers, json={"properties": properties}, timeout=10)
+            _log(f"[calendly] HubSpot upsert {email} status={resp.status_code}")
+            resp.raise_for_status()
         except Exception as e:
             _log(f"[calendly] HubSpot error: {e}")
             self._json(500, {"error": str(e)})
