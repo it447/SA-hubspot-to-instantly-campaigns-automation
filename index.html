@@ -1011,10 +1011,9 @@ function toggleAlertConfig(enabled) {
   document.getElementById('alert-body').style.display = enabled ? 'block' : 'none';
 }
 function updateAlertPanelVisibility() {
-  // Hide alert panel for gsheet_sync (it doesn't apply)
-  const isGsheet = document.getElementById('tab-gsheet_sync').classList.contains('active');
-  document.getElementById('alert-panel').style.display = isGsheet ? 'none' : '';
-  if (tab === 'calendly') { renderCalendlyMappings(); }
+  const isGsheet   = document.getElementById('tab-gsheet_sync').classList.contains('active');
+  const isCalendly = document.getElementById('tab-calendly')?.classList.contains('active');
+  document.getElementById('alert-panel').style.display = (isGsheet || isCalendly) ? 'none' : '';
 }
 function toggleSlackSection(deliveryType, enabled) {
   document.getElementById(`slack-body-${deliveryType}`).style.display = enabled ? 'flex' : 'none';
@@ -1025,6 +1024,7 @@ function switchTab(tab) {
   document.getElementById(`tab-btn-${tab}`).classList.add('active');
   document.getElementById(`tab-${tab}`).classList.add('active');
   updateAlertPanelVisibility();
+  if (tab === 'calendly') renderCalendlyMappings();
 }
 
 // ── GSheet helpers ───────────────────────────────────────────
