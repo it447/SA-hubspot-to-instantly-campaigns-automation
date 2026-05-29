@@ -743,9 +743,10 @@
           </div>
 
           <div class="form-row">
-            <label>Calendly event type URL</label>
-            <input type="text" id="calendly-event-url" placeholder="https://calendly.com/your-name/event-name">
-            <div class="token-hint" style="margin-top:5px;">Copy the link to your specific Calendly event type</div>
+            <div style="background:rgba(0,107,255,0.06);border:1px solid rgba(0,107,255,0.2);border-radius:8px;padding:0.9rem 1rem;font-size:13px;color:var(--muted);line-height:1.7;">
+              <span style="color:#006BFF;font-weight:600;">⊙ Whole account</span> — this automation fires for every new booking across all your Calendly event types. The webhook is registered automatically when you create this automation.
+            </div>
+            <input type="hidden" id="calendly-event-url" value="all">
           </div>
 
           <div class="form-row">
