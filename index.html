@@ -350,6 +350,7 @@
     <button class="nav-item" id="nav-filter-instantly" onclick="showPage('dashboard');setFilter('instantly')" style="padding-left:28px;font-size:13px;display:flex;align-items:center;gap:7px;"><svg width="14" height="14" viewBox="0 0 100 100" fill="none" style="flex-shrink:0;"><circle cx="50" cy="50" r="50" fill="#2563EB"/><polygon points="58,10 30,55 50,55 42,90 70,45 50,45" fill="white"/></svg> Instantly</button>
     <button class="nav-item" id="nav-filter-hubspot_form" onclick="showPage('dashboard');setFilter('hubspot_form')" style="padding-left:28px;font-size:13px;display:flex;align-items:center;gap:7px;"><svg width="14" height="14" viewBox="0 0 100 100" fill="none" style="flex-shrink:0;"><circle cx="62" cy="50" r="18" fill="#FF7A59"/><circle cx="62" cy="50" r="9" fill="white"/><circle cx="25" cy="28" r="8" fill="#FF7A59"/><circle cx="25" cy="72" r="8" fill="#FF7A59"/><circle cx="78" cy="18" r="7" fill="#FF7A59"/><line x1="25" y1="28" x2="50" y2="45" stroke="#FF7A59" stroke-width="8" stroke-linecap="round"/><line x1="25" y1="72" x2="50" y2="57" stroke="#FF7A59" stroke-width="8" stroke-linecap="round"/><line x1="78" y1="18" x2="68" y2="35" stroke="#FF7A59" stroke-width="8" stroke-linecap="round"/></svg> HubSpot Form</button>
     <button class="nav-item" id="nav-filter-gsheet_sync" onclick="showPage('dashboard');setFilter('gsheet_sync')" style="padding-left:28px;font-size:13px;display:flex;align-items:center;gap:7px;"><svg width="14" height="14" viewBox="0 0 100 100" fill="none" style="flex-shrink:0;"><rect x="15" y="5" width="55" height="70" rx="4" fill="#0F9D58"/><rect x="30" y="5" width="40" height="18" rx="2" fill="#0F9D58"/><path d="M70 5 L85 20 L70 20 Z" fill="#087447"/><rect x="70" y="5" width="15" height="15" rx="2" fill="#34A853"/><rect x="22" y="35" width="56" height="4" rx="2" fill="white" opacity="0.7"/><rect x="22" y="47" width="56" height="4" rx="2" fill="white" opacity="0.7"/><rect x="22" y="59" width="40" height="4" rx="2" fill="white" opacity="0.7"/></svg> GSheet Sync</button>
+    <button class="nav-item" id="nav-filter-calendly" onclick="showPage('dashboard');setFilter('calendly')" style="padding-left:28px;font-size:13px;display:flex;align-items:center;gap:7px;"><svg width="14" height="14" viewBox="0 0 100 100" fill="none" style="flex-shrink:0;"><circle cx="50" cy="50" r="48" fill="#006BFF" opacity="0.15" stroke="#006BFF" stroke-width="4"/><path d="M72 35 A30 30 0 1 0 72 65" stroke="#006BFF" stroke-width="10" stroke-linecap="round" fill="none"/></svg> Calendly</button>
     <button class="nav-item" onclick="newAutomation()" id="nav-add" style="margin-top:4px;">
       <span class="nav-icon">+</span> New automation
     </button>
@@ -442,6 +443,7 @@
         <button class="tab-btn active"  id="tab-btn-instantly"    onclick="switchTab('instantly')">Instantly Automation</button>
         <button class="tab-btn teal"    id="tab-btn-hubspot_form" onclick="switchTab('hubspot_form')">HS Form Fill Sequence</button>
         <button class="tab-btn gs-tab"  id="tab-btn-gsheet_sync"  onclick="switchTab('gsheet_sync')">GSheet → HubSpot Sync</button>
+        <button class="tab-btn" id="tab-btn-calendly" onclick="switchTab('calendly')" style="color:#006BFF;">⊙ Calendly</button>
       </div>
 
       <div class="edit-grid">
@@ -725,6 +727,61 @@
             <button class="btn btn-primary" onclick="createAutomation('gsheet_sync')" id="create-btn-gsheet_sync">Create automation</button>
           </div>
           <div class="error-msg" id="form-error-gsheet_sync"></div>
+        </div>
+      </div>
+
+
+      <!-- ── Tab: Calendly ── -->
+      <div class="tab-panel" id="tab-calendly">
+        <div class="form-card" style="max-width:560px;">
+          <h3>Calendly → HubSpot</h3>
+          <p class="form-desc">When someone books a meeting on Calendly, automatically create or update their contact in HubSpot using their email as the primary key.</p>
+
+          <div class="form-row">
+            <label>Automation name</label>
+            <input type="text" id="auto-name-calendly" placeholder="e.g. New booking → HubSpot contact">
+          </div>
+
+          <div class="form-row">
+            <label>Calendly event type URL</label>
+            <input type="text" id="calendly-event-url" placeholder="https://calendly.com/your-name/event-name">
+            <div class="token-hint" style="margin-top:5px;">Copy the link to your specific Calendly event type</div>
+          </div>
+
+          <div class="form-row">
+            <label>HubSpot properties to update</label>
+            <div style="background:rgba(254,242,222,0.04);border:1px solid var(--border);border-radius:8px;padding:1rem;font-size:13px;color:var(--muted);line-height:1.7;">
+              The following fields are automatically mapped from Calendly:<br>
+              <span style="color:var(--cream);">• Email</span> — primary key (always updated)<br>
+              <span style="color:var(--cream);">• First name / Last name</span> — from invitee name<br>
+              <span style="color:var(--cream);">• Phone number</span> — from booking questions (if asked)
+            </div>
+          </div>
+
+          <hr class="slack-divider">
+          <div class="slack-toggle-row">
+            <span class="slack-toggle-label">
+              <span class="slack-icon"><svg width="16" height="16" viewBox="0 0 54 54" xmlns="http://www.w3.org/2000/svg"><path d="M19.7 32.2c0 2.9-2.4 5.3-5.3 5.3s-5.3-2.4-5.3-5.3 2.4-5.3 5.3-5.3H19.7v5.3z" fill="#E01E5A"/><path d="M22.3 32.2c0-2.9 2.4-5.3 5.3-5.3s5.3 2.4 5.3 5.3v13.3c0 2.9-2.4 5.3-5.3 5.3s-5.3-2.4-5.3-5.3V32.2z" fill="#E01E5A"/><path d="M27.6 19.7c-2.9 0-5.3-2.4-5.3-5.3s2.4-5.3 5.3-5.3 5.3 2.4 5.3 5.3V19.7H27.6z" fill="#36C5F0"/><path d="M27.6 22.3c2.9 0 5.3 2.4 5.3 5.3s-2.4 5.3-5.3 5.3H14.4c-2.9 0-5.3-2.4-5.3-5.3s2.4-5.3 5.3-5.3H27.6z" fill="#36C5F0"/><path d="M40.1 27.6c0-2.9 2.4-5.3 5.3-5.3s5.3 2.4 5.3 5.3-2.4 5.3-5.3 5.3H40.1V27.6z" fill="#2EB67D"/><path d="M37.4 27.6c0 2.9-2.4 5.3-5.3 5.3s-5.3-2.4-5.3-5.3V14.4c0-2.9 2.4-5.3 5.3-5.3s5.3 2.4 5.3 5.3V27.6z" fill="#2EB67D"/><path d="M32.1 40.1c2.9 0 5.3 2.4 5.3 5.3s-2.4 5.3-5.3 5.3-5.3-2.4-5.3-5.3V40.1h5.3z" fill="#ECB22E"/><path d="M32.1 37.4c-2.9 0-5.3-2.4-5.3-5.3s2.4-5.3 5.3-5.3h13.3c2.9 0 5.3 2.4 5.3 5.3s-2.4 5.3-5.3 5.3H32.1z" fill="#ECB22E"/></svg></span>
+              Slack notification
+            </span>
+            <label class="toggle"><input type="checkbox" id="slack-enabled-calendly" onchange="toggleSlackSection('calendly',this.checked)"><span class="toggle-slider"></span></label>
+          </div>
+          <div id="slack-body-calendly" class="slack-body" style="display:none;">
+            <div>
+              <label>Channel</label>
+              <div class="search-select"><input type="text" id="slack-ch-search-calendly" placeholder="Search channels…" autocomplete="off"><div class="search-dropdown" id="slack-ch-dropdown-calendly"></div></div>
+            </div>
+            <div>
+              <label>Message template</label>
+              <textarea id="slack-msg-calendly" rows="3" placeholder="e.g. 📅 New booking from {{email}}"></textarea>
+            </div>
+          </div>
+
+          <div class="form-footer">
+            <button class="btn btn-cream" onclick="cancelEdit()">Cancel</button>
+            <button class="btn btn-primary" onclick="createAutomation('calendly')" id="create-btn-calendly">Create automation</button>
+          </div>
+          <div class="error-msg" id="form-error-calendly"></div>
         </div>
       </div>
 
@@ -1074,7 +1131,7 @@ function newAutomation() {
   document.getElementById('add-page-title').textContent = 'New automation';
   document.querySelector('.tab-bar').style.display = '';
   document.getElementById('view-logs-btn').style.display = 'none';
-  ['instantly','hubspot_form','gsheet_sync'].forEach(dt => {
+  ['instantly','hubspot_form','gsheet_sync','calendly'].forEach(dt => {
     const btn = document.getElementById(`create-btn-${dt}`);
     if (btn) btn.textContent = 'Create automation';
     const err = document.getElementById(`form-error-${dt}`);
@@ -1107,13 +1164,14 @@ function newAutomation() {
   document.getElementById('alert-time').value = '08:00';
   document.getElementById('alert-day').value = '0';
   resetGsForm();
+  resetCalendlyForm();
   switchTab('instantly');
   showPage('add');
 }
 
 function cancelEdit() {
   editingId = null;
-  ['instantly','hubspot_form','gsheet_sync'].forEach(dt => {
+  ['instantly','hubspot_form','gsheet_sync','calendly'].forEach(dt => {
     const btn = document.getElementById(`create-btn-${dt}`);
     if (btn) btn.textContent = 'Create automation';
   });
@@ -1243,6 +1301,7 @@ function setFilter(filter) {
   if (filter === 'instantly')    document.getElementById('nav-filter-instantly').classList.add('active');
   if (filter === 'hubspot_form') document.getElementById('nav-filter-hubspot_form').classList.add('active');
   if (filter === 'gsheet_sync')  document.getElementById('nav-filter-gsheet_sync').classList.add('active');
+  if (filter === 'calendly')      document.getElementById('nav-filter-calendly')?.classList.add('active');
   renderAutomations();
 }
 
@@ -1260,6 +1319,7 @@ function renderAutomations() {
   if (currentFilter === 'instantly')    filtered = filtered.filter(a => a.delivery_type === 'instantly');
   if (currentFilter === 'hubspot_form') filtered = filtered.filter(a => a.delivery_type === 'hubspot_form');
   if (currentFilter === 'gsheet_sync')  filtered = filtered.filter(a => a.delivery_type === 'gsheet_sync');
+  if (currentFilter === 'calendly')       filtered = filtered.filter(a => a.delivery_type === 'calendly');
   if (searchQuery) filtered = filtered.filter(a =>
     (a.name||'').toLowerCase().includes(searchQuery) ||
     (a.hubspot_list_name||'').toLowerCase().includes(searchQuery) ||
@@ -1280,12 +1340,16 @@ function renderAutomations() {
   const trashSvg = `<svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M1.5 3h10M4.5 3V2a.5.5 0 01.5-.5h2.5a.5.5 0 01.5.5v1M5.5 5.5v4M7.5 5.5v4M2.5 3l.5 7.5a.5.5 0 00.5.5h6a.5.5 0 00.5-.5L10.5 3" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
 
   list.innerHTML = filtered.map(a => {
-    const isGsheet = a.delivery_type === 'gsheet_sync';
-    const isForm   = a.delivery_type === 'hubspot_form';
+    const isGsheet   = a.delivery_type === 'gsheet_sync';
+    const isForm     = a.delivery_type === 'hubspot_form';
+    const isCalendly = a.delivery_type === 'calendly';
     const active   = a.active !== false;
 
     let sourceChip, deliveryChip;
-    if (isGsheet) {
+    if (isCalendly) {
+      sourceChip   = `<span class="chip" style="color:#006BFF;border-color:rgba(0,107,255,0.3);background:rgba(0,107,255,0.08);">⊙ Calendly</span>`;
+      deliveryChip = `<span class="chip chip-hs">HubSpot Contact</span>`;
+    } else if (isGsheet) {
       const objLabel = {contact:'Contacts', company:'Companies', deal:'Deals'}[a.object_type] || a.object_type;
       const schedLabel = a.gsheet_schedule_type === 'interval'
         ? (() => { const m=a.gsheet_interval_minutes||60; return m>=60?`${m/60}h`:`${m}m`; })()
@@ -1299,12 +1363,12 @@ function renderAutomations() {
         : `<span class="chip chip-in">Instantly · ${esc(a.instantly_campaign_name || a.instantly_campaign_id)}</span>`;
     }
 
-    const actionChip = (!isForm && !isGsheet)
+    const actionChip = (!isForm && !isGsheet && !isCalendly)
       ? (a.action === 'unenroll'
           ? `<span class="chip chip-unenroll">⊖ Unenroll</span>`
           : `<span class="chip chip-enroll">⊕ Enroll</span>`)
       : '';
-    const delayLabel = (!isForm && !isGsheet && a.delay_hours > 0)
+    const delayLabel = (!isForm && !isGsheet && !isCalendly && a.delay_hours > 0)
       ? `<span class="chip chip-hs">⏱ ${a.delay_hours>=24?(a.delay_hours/24)+'d':a.delay_hours+'h'} delay</span>` : '';
     const alertChip = a.alert_enabled ? `<span class="chip chip-alert">🔔 Alert</span>` : '';
     const slackChip = a.slack_enabled
@@ -1443,6 +1507,8 @@ async function createAutomation(deliveryType) {
   if (!name) { errEl.textContent='Please enter an automation name.'; errEl.style.display='block'; return; }
 
   // ── GSheet sync payload ──────────────────────────────────
+  if (deliveryType === 'calendly') { await createCalendlyAutomation(); return; }
+
   if (deliveryType === 'gsheet_sync') {
     const sheetUrl  = document.getElementById('gs-sheet-url').value.trim();
     const sheetTab  = document.getElementById('gs-sheet-tab').value.trim();
@@ -1571,13 +1637,22 @@ async function editAutomation(id) {
   if (!a) return;
   editingId = id;
   if (!dropdownsLoaded) await loadDropdowns();
-  const isForm   = a.delivery_type==='hubspot_form';
-  const isGsheet = a.delivery_type==='gsheet_sync';
+  const isForm     = a.delivery_type==='hubspot_form';
+  const isGsheet   = a.delivery_type==='gsheet_sync';
+  const isCalendly = a.delivery_type==='calendly';
   document.getElementById('add-page-title').textContent='Edit automation';
   document.querySelector('.tab-bar').style.display='none';
   document.getElementById('view-logs-btn').style.display = 'flex';
   showPage('add');
-  switchTab(isGsheet?'gsheet_sync':isForm?'hubspot_form':'instantly');
+  switchTab(isCalendly?'calendly':isGsheet?'gsheet_sync':isForm?'hubspot_form':'instantly');
+
+  if (isCalendly) {
+    document.getElementById('auto-name-calendly').value = a.name||'';
+    document.getElementById('calendly-event-url').value = a.calendly_event_url||'';
+    const slackCbC=document.getElementById('slack-enabled-calendly'); if(slackCbC){slackCbC.checked=!!a.slack_enabled;toggleSlackSection('calendly',!!a.slack_enabled);if(a.slack_enabled){slackChSelectedCalendly.id=a.slack_channel||'';slackChSelectedCalendly.name=a.slack_channel_name||'';const sci=document.getElementById('slack-ch-search-calendly');if(sci){sci.value=a.slack_channel_name||'';sci.classList.toggle('has-value',!!a.slack_channel);}const ta=document.getElementById('slack-msg-calendly');if(ta)ta.value=a.slack_message||'';}}
+    document.getElementById('create-btn-calendly').textContent='Save changes';
+    return;
+  }
 
   if (isGsheet) {
     document.getElementById('auto-name-gsheet_sync').value = a.name||'';
@@ -1818,6 +1893,52 @@ function renderActivityModalBars(monthly) {
       ${daysAgo % 7 === 0 || isToday ? `<div style="font-size:9px;color:rgba(255,255,255,0.5);position:absolute;bottom:0;transform:translateY(16px);white-space:nowrap;">${label}</div>` : ''}
     </div>`;
   }).join('');
+}
+
+
+// ── Calendly ──────────────────────────────────────────────────
+function resetCalendlyForm() {
+  const n = document.getElementById('auto-name-calendly'); if(n) n.value='';
+  const e = document.getElementById('calendly-event-url'); if(e) e.value='';
+  const cb = document.getElementById('slack-enabled-calendly'); if(cb){cb.checked=false;toggleSlackSection('calendly',false);}
+  resetSearchSelect('slack-ch-search-calendly','slack-ch-dropdown-calendly',slackChSelectedCalendly);
+  const ta = document.getElementById('slack-msg-calendly'); if(ta) ta.value='';
+  const err = document.getElementById('form-error-calendly'); if(err) err.style.display='none';
+}
+
+async function createCalendlyAutomation() {
+  const errEl = document.getElementById('form-error-calendly');
+  const btn   = document.getElementById('create-btn-calendly');
+  errEl.style.display = 'none';
+  const name     = document.getElementById('auto-name-calendly').value.trim();
+  const eventUrl = document.getElementById('calendly-event-url').value.trim();
+  if (!name)     { errEl.textContent='Please enter an automation name.'; errEl.style.display='block'; return; }
+  if (!eventUrl) { errEl.textContent='Please enter your Calendly event URL.'; errEl.style.display='block'; return; }
+  let payload = { name, delivery_type:'calendly', calendly_event_url: eventUrl, active: true };
+  const slackEnabled = document.getElementById('slack-enabled-calendly')?.checked;
+  if (slackEnabled) {
+    if (!slackChSelectedCalendly.id) { errEl.textContent='Please select a Slack channel.'; errEl.style.display='block'; return; }
+    payload.slack_enabled      = true;
+    payload.slack_channel      = slackChSelectedCalendly.id;
+    payload.slack_channel_name = slackChSelectedCalendly.name;
+    payload.slack_message      = document.getElementById('slack-msg-calendly')?.value.trim()||'';
+  } else { payload.slack_enabled = false; }
+  btn.disabled=true; btn.textContent=editingId?'Saving…':'Creating…';
+  try {
+    const {ok,data} = editingId
+      ? await api('PATCH','/automations/'+editingId, payload)
+      : await api('POST', '/automations', payload);
+    if (ok) {
+      const wasEditing=!!editingId; editingId=null;
+      btn.textContent='Create automation';
+      document.getElementById('add-page-title').textContent='New automation';
+      document.querySelector('.tab-bar').style.display='';
+      document.getElementById('view-logs-btn').style.display='none';
+      showToast(wasEditing?'Automation updated':'Automation created');
+      showPage('dashboard'); loadAutomations();
+    } else { errEl.textContent=data.error||'Something went wrong.'; errEl.style.display='block'; }
+  } catch(e) { errEl.textContent='Network error.'; errEl.style.display='block'; }
+  btn.disabled=false; btn.textContent=editingId?'Save changes':'Create automation';
 }
 
 </script>
