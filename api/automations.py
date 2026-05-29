@@ -19,17 +19,22 @@ def _log(msg):
     print(msg, file=sys.stderr, flush=True)
 
 def _redis_get(key):
-    url = f"{UPSTASH_URL}/get/{key}"
-    req = Request(url, headers={"Authorization": f"Bearer {UPSTASH_TOKEN}"})
-    with urlopen(req, timeout=5) as r:
-        data = json.loads(r.read())
-    val = data.get("result")
-    if not val:
+    try:
+        url = f"{UPSTASH_URL}/get/{key}"
+        req = Request(url, headers={"Authorization": f"Bearer {UPSTASH_TOKEN}"})
+        with urlopen(req, timeout=5) as r:
+            data = json.loads(r.read())
+        val = data.get("result")
+        _log(f"[redis] GET {key} val_type={type(val).__name__} val_preview={str(val)[:80]}")
+        if not val:
+            return None
+        result = json.loads(val) if isinstance(val, str) else val
+        if isinstance(result, str):
+            result = json.loads(result)
+        return result
+    except Exception as e:
+        _log(f"[redis] GET {key} ERROR: {e}")
         return None
-    result = json.loads(val) if isinstance(val, str) else val
-    if isinstance(result, str):
-        result = json.loads(result)
-    return result
 
 
 def _redis_set(key, value):
