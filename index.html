@@ -1025,7 +1025,12 @@ function switchTab(tab) {
   document.getElementById(`tab-btn-${tab}`).classList.add('active');
   document.getElementById(`tab-${tab}`).classList.add('active');
   updateAlertPanelVisibility();
-  if (tab === 'calendly') renderCalendlyMappings();
+  if (tab === 'calendly') {
+    renderCalendlyMappings();
+    if (slackChannels.length) {
+      initSearchSelect('slack-ch-search-calendly','slack-ch-dropdown-calendly',slackChannels,slackChSelectedCalendly,'Search channels…');
+    }
+  }
 }
 
 // ── GSheet helpers ───────────────────────────────────────────
