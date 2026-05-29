@@ -24,8 +24,13 @@ def _redis_get(key):
     with urlopen(req, timeout=5) as r:
         data = json.loads(r.read())
     val = data.get("result")
-    return json.loads(val) if val else None
-
+    if not val:
+        return None
+    result = json.loads(val) if isinstance(val, str) else val
+    if isinstance(result, str):
+        result = json.loads(result)
+    return result
+    
 def _redis_set(key, value):
     url = f"{UPSTASH_URL}/set/{key}"
     body = json.dumps(value).encode()
