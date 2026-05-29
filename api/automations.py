@@ -44,6 +44,56 @@ def _redis_get_int(key):
     val = data.get("result")
     return int(val) if val else 0
 
+
+def register_calendly_webhook(event_url):
+    """Register webhook with Calendly API and return subscription URI."""
+    calendly_token = os.environ.get("CALENDLY_API_KEY", "")
+    if not calendly_token:
+        _log("[calendly] CALENDLY_API_KEY not set — skipping webhook registration")
+        return None
+    try:
+        # Get user/org info
+        headers = {"Authorization": f"Bearer {calendly_token}", "Content-Type": "application/json"}
+        resp = requests.get("https://api.calendly.com/users/me", headers=headers, timeout=10)
+        resp.raise_for_status()
+        user_data = resp.json().get("resource", {})
+        org_uri  = user_data.get("current_organization", "")
+        user_uri = user_data.get("uri", "")
+        if not org_uri:
+            _log("[calendly] could not get org URI")
+            return None
+
+        # Check if webhook already exists
+        existing = requests.get(
+            f"https://api.calendly.com/webhook_subscriptions?organization={org_uri}&scope=organization",
+            headers=headers, timeout=10
+        )
+        webhook_url = os.environ.get("VERCEL_URL", "")
+        our_url = f"https://sa-hubspot-to-instantly-campaigns-a.vercel.app/webhook/calendly"
+        for sub in existing.json().get("collection", []):
+            if sub.get("callback_url") == our_url:
+                _log("[calendly] webhook already registered")
+                return sub.get("uri")
+
+        # Register new webhook
+        payload = {
+            "url":          our_url,
+            "events":       ["invitee.created", "invitee.canceled"],
+            "organization": org_uri,
+            "scope":        "organization"
+        }
+        resp2 = requests.post(
+            "https://api.calendly.com/webhook_subscriptions",
+            headers=headers, json=payload, timeout=10
+        )
+        resp2.raise_for_status()
+        uri = resp2.json().get("resource", {}).get("uri", "")
+        _log(f"[calendly] webhook registered: {uri}")
+        return uri
+    except Exception as e:
+        _log(f"[calendly] webhook registration error: {e}")
+        return None
+
 def get_automations():
     data = _redis_get("automations_config")
     return data if isinstance(data, list) else []
@@ -631,6 +681,8 @@ class handler(BaseHTTPRequestHandler):
                 self._json(400, {"error": "Please enter your Calendly event URL"})
                 return
             import hashlib as _hl
+            # Register webhook with Calendly
+            register_calendly_webhook(event_url)
             new_auto = {
                 "id":                 f"calendly_{_hl.md5(event_url.encode()).hexdigest()[:8]}",
                 "name":               name,
