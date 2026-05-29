@@ -1011,6 +1011,7 @@ function selectSchedule(sched) {
 }
 function toggleAlertConfig(enabled) {
   document.getElementById('alert-body').style.display = enabled ? 'block' : 'none';
+  if (enabled && slackChannels.length) initSearchSelect('alert-slack-ch-search','alert-slack-ch-dropdown',slackChannels,alertSlackChSelected,'Search channels…');
 }
 function updateAlertPanelVisibility() {
   const isGsheet   = document.getElementById('tab-gsheet_sync').classList.contains('active');
@@ -1019,6 +1020,16 @@ function updateAlertPanelVisibility() {
 }
 function toggleSlackSection(deliveryType, enabled) {
   document.getElementById(`slack-body-${deliveryType}`).style.display = enabled ? 'flex' : 'none';
+  if (enabled && slackChannels.length) {
+    const selMap = {
+      'instantly':    slackChSelectedInstantly,
+      'hubspot_form': slackChSelectedForm,
+      'gsheet_sync':  slackChSelectedGsheet,
+      'calendly':     slackChSelectedCalendly
+    };
+    const sel = selMap[deliveryType];
+    if (sel) initSearchSelect(`slack-ch-search-${deliveryType}`,`slack-ch-dropdown-${deliveryType}`,slackChannels,sel,'Search channels…');
+  }
 }
 function switchTab(tab) {
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
