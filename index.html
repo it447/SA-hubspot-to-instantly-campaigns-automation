@@ -749,13 +749,13 @@
           </div>
 
           <div class="form-row">
-            <label>HubSpot properties to update</label>
-            <div style="background:rgba(254,242,222,0.04);border:1px solid var(--border);border-radius:8px;padding:1rem;font-size:13px;color:var(--muted);line-height:1.7;">
-              The following fields are automatically mapped from Calendly:<br>
-              <span style="color:var(--cream);">• Email</span> — primary key (always updated)<br>
-              <span style="color:var(--cream);">• First name / Last name</span> — from invitee name<br>
-              <span style="color:var(--cream);">• Phone number</span> — from booking questions (if asked)
+            <label>Property mappings <span style="font-size:11px;opacity:0.6;">(Calendly field → HubSpot property)</span></label>
+            <div style="background:rgba(254,242,222,0.04);border:1px solid var(--border);border-radius:8px;padding:0.75rem 1rem;margin-bottom:0.75rem;font-size:12px;color:var(--muted);">
+              <strong style="color:var(--cream);">Email</strong> is always used as the primary key and cannot be removed.
             </div>
+            <div class="gs-mapping-header"><span>Calendly field</span><span>HubSpot property</span><span></span></div>
+            <div id="calendly-mappings-container"></div>
+            <button type="button" class="btn btn-cream" onclick="addCalendlyMapping()" style="font-size:12px;padding:5px 10px;margin-top:8px;">+ Add mapping</button>
           </div>
 
           <hr class="slack-divider">
@@ -1012,6 +1012,7 @@ function updateAlertPanelVisibility() {
   // Hide alert panel for gsheet_sync (it doesn't apply)
   const isGsheet = document.getElementById('tab-gsheet_sync').classList.contains('active');
   document.getElementById('alert-panel').style.display = isGsheet ? 'none' : '';
+  if (tab === 'calendly') { renderCalendlyMappings(); }
 }
 function toggleSlackSection(deliveryType, enabled) {
   document.getElementById(`slack-body-${deliveryType}`).style.display = enabled ? 'flex' : 'none';
@@ -1649,6 +1650,8 @@ async function editAutomation(id) {
   if (isCalendly) {
     document.getElementById('auto-name-calendly').value = a.name||'';
     document.getElementById('calendly-event-url').value = a.calendly_event_url||'';
+    calendlyMappings = a.property_mappings ? JSON.parse(JSON.stringify(a.property_mappings)) : [{calendly_field:'first_name',hs_property:'firstname',hs_label:'First Name'},{calendly_field:'last_name',hs_property:'lastname',hs_label:'Last Name'},{calendly_field:'phone',hs_property:'phone',hs_label:'Phone Number'}];
+    renderCalendlyMappings();
     const slackCbC=document.getElementById('slack-enabled-calendly'); if(slackCbC){slackCbC.checked=!!a.slack_enabled;toggleSlackSection('calendly',!!a.slack_enabled);if(a.slack_enabled){slackChSelectedCalendly.id=a.slack_channel||'';slackChSelectedCalendly.name=a.slack_channel_name||'';const sci=document.getElementById('slack-ch-search-calendly');if(sci){sci.value=a.slack_channel_name||'';sci.classList.toggle('has-value',!!a.slack_channel);}const ta=document.getElementById('slack-msg-calendly');if(ta)ta.value=a.slack_message||'';}}
     document.getElementById('create-btn-calendly').textContent='Save changes';
     return;
@@ -1897,6 +1900,87 @@ function renderActivityModalBars(monthly) {
 
 
 // ── Calendly ──────────────────────────────────────────────────
+
+// ── Calendly mappings ─────────────────────────────────────────
+let calendlyMappings = [
+  { calendly_field: 'first_name', hs_property: 'firstname', hs_label: 'First Name' },
+  { calendly_field: 'last_name',  hs_property: 'lastname',  hs_label: 'Last Name'  },
+  { calendly_field: 'phone',      hs_property: 'phone',     hs_label: 'Phone Number' },
+];
+
+const CALENDLY_FIELDS = [
+  { value: 'first_name',  label: 'First Name' },
+  { value: 'last_name',   label: 'Last Name' },
+  { value: 'phone',       label: 'Phone (from booking questions)' },
+  { value: 'event_name',  label: 'Event Name' },
+  { value: 'event_start', label: 'Event Start Time' },
+];
+
+function addCalendlyMapping() {
+  calendlyMappings.push({ calendly_field: '', hs_property: '', hs_label: '' });
+  renderCalendlyMappings();
+}
+function removeCalendlyMapping(i) {
+  calendlyMappings.splice(i, 1);
+  renderCalendlyMappings();
+}
+function renderCalendlyMappings() {
+  const container = document.getElementById('calendly-mappings-container');
+  if (!container) return;
+  if (!calendlyMappings.length) {
+    container.innerHTML = '<div style="font-size:13px;color:var(--muted);padding:6px 0;">No mappings — add at least one.</div>';
+    return;
+  }
+  const fieldOpts = CALENDLY_FIELDS.map(f => `<option value="${esc(f.value)}">${esc(f.label)}</option>`).join('');
+  container.innerHTML = calendlyMappings.map((m, i) => `
+    <div class="gs-mapping-row">
+      <select onchange="calendlyMappings[${i}].calendly_field=this.value" style="font-size:13px;padding:8px 10px;">
+        <option value="">— Calendly field —</option>${fieldOpts}
+      </select>
+      <div class="search-select" style="min-width:0;">
+        <input type="text" id="cal-hs-prop-${i}" placeholder="Search HubSpot property…" autocomplete="off"
+          style="font-size:13px;padding:8px 10px;" class="${m.hs_property?'has-value':''}">
+        <div class="search-dropdown" id="cal-hs-dd-${i}"></div>
+      </div>
+      <button type="button" class="btn-trash" onclick="removeCalendlyMapping(${i})" title="Remove">
+        <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M1.5 3h10M4.5 3V2a.5.5 0 01.5-.5h2.5a.5.5 0 01.5.5v1M5.5 5.5v4M7.5 5.5v4M2.5 3l.5 7.5a.5.5 0 00.5.5h6a.5.5 0 00.5-.5L10.5 3" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+    </div>`).join('');
+  calendlyMappings.forEach((m, i) => {
+    const sel = container.querySelectorAll('select')[i];
+    if (sel && m.calendly_field) sel.value = m.calendly_field;
+    initCalendlyHsPropSearch(i, m.hs_property, m.hs_label);
+  });
+}
+function initCalendlyHsPropSearch(index, currentProp, currentLabel) {
+  const input    = document.getElementById('cal-hs-prop-' + index);
+  const dropdown = document.getElementById('cal-hs-dd-' + index);
+  if (!input || !dropdown) return;
+  const propList = hsPropList || [];
+  if (currentProp) { input.value = currentLabel || currentProp; input.classList.add('has-value'); }
+  function renderOptions(q) {
+    const matches = q ? propList.filter(p => p.label.toLowerCase().includes(q) || p.name.toLowerCase().includes(q)) : propList;
+    dropdown.innerHTML = matches.length
+      ? matches.map(p => `<div class="search-option${currentProp===p.name?' selected':''}" data-name="${esc(p.name)}" data-label="${esc(p.label)}">${esc(p.label)}<span style="font-size:10px;opacity:.4;margin-left:6px;">${esc(p.name)}</span></div>`).join('')
+      : '<div class="search-option-empty">No properties found</div>';
+    dropdown.querySelectorAll('.search-option').forEach(el => {
+      el.addEventListener('mousedown', e => {
+        e.preventDefault();
+        calendlyMappings[index].hs_property = el.dataset.name;
+        calendlyMappings[index].hs_label    = el.dataset.label;
+        input.value = el.dataset.label;
+        input.classList.add('has-value');
+        dropdown.classList.remove('open');
+        currentProp = el.dataset.name;
+      });
+    });
+    dropdown.classList.add('open');
+  }
+  input.addEventListener('focus', () => renderOptions(''));
+  input.addEventListener('input', () => { input.classList.remove('has-value'); calendlyMappings[index].hs_property=''; renderOptions(input.value.toLowerCase()); });
+  input.addEventListener('blur',  () => { setTimeout(() => dropdown.classList.remove('open'), 150); if (!calendlyMappings[index].hs_property) { input.value=''; input.classList.remove('has-value'); } else { input.value = calendlyMappings[index].hs_label||calendlyMappings[index].hs_property; input.classList.add('has-value'); } });
+}
+
 function resetCalendlyForm() {
   const n = document.getElementById('auto-name-calendly'); if(n) n.value='';
   const e = document.getElementById('calendly-event-url'); if(e) e.value='';
@@ -1904,6 +1988,12 @@ function resetCalendlyForm() {
   resetSearchSelect('slack-ch-search-calendly','slack-ch-dropdown-calendly',slackChSelectedCalendly);
   const ta = document.getElementById('slack-msg-calendly'); if(ta) ta.value='';
   const err = document.getElementById('form-error-calendly'); if(err) err.style.display='none';
+  calendlyMappings = [
+    { calendly_field: 'first_name', hs_property: 'firstname', hs_label: 'First Name' },
+    { calendly_field: 'last_name',  hs_property: 'lastname',  hs_label: 'Last Name'  },
+    { calendly_field: 'phone',      hs_property: 'phone',     hs_label: 'Phone Number' },
+  ];
+  renderCalendlyMappings();
 }
 
 async function createCalendlyAutomation() {
@@ -1914,7 +2004,8 @@ async function createCalendlyAutomation() {
   const eventUrl = document.getElementById('calendly-event-url').value.trim();
   if (!name)     { errEl.textContent='Please enter an automation name.'; errEl.style.display='block'; return; }
   if (!eventUrl) { errEl.textContent='Please enter your Calendly event URL.'; errEl.style.display='block'; return; }
-  let payload = { name, delivery_type:'calendly', calendly_event_url: eventUrl, active: true };
+  const validMaps = calendlyMappings.filter(m => m.calendly_field && m.hs_property);
+  let payload = { name, delivery_type:'calendly', calendly_event_url: eventUrl, active: true, property_mappings: validMaps };
   const slackEnabled = document.getElementById('slack-enabled-calendly')?.checked;
   if (slackEnabled) {
     if (!slackChSelectedCalendly.id) { errEl.textContent='Please select a Slack channel.'; errEl.style.display='block'; return; }
