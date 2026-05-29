@@ -451,7 +451,7 @@ class handler(BaseHTTPRequestHandler):
                         continue
 
                     # GSheet automations — read from Redis logs
-                    if delivery_type == 'gsheet_sync':
+                    if delivery_type in ('gsheet_sync', 'calendly'):
                         try:
                             log_url = f"{UPSTASH_URL}/lrange/logs:{auto_id}/0/999"
                             log_req = Request(log_url, headers={"Authorization": f"Bearer {UPSTASH_TOKEN}"})
