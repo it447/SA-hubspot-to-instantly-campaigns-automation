@@ -624,6 +624,27 @@ class handler(BaseHTTPRequestHandler):
             self._json(200, new_auto)
             return
 
+        # ── Calendly ─────────────────────────────────────────
+        if delivery_type == "calendly":
+            event_url = body.get("calendly_event_url", "").strip()
+            if not event_url:
+                self._json(400, {"error": "Please enter your Calendly event URL"})
+                return
+            import hashlib as _hl
+            new_auto = {
+                "id":                 f"calendly_{_hl.md5(event_url.encode()).hexdigest()[:8]}",
+                "name":               name,
+                "delivery_type":      "calendly",
+                "calendly_event_url": event_url,
+                "property_mappings":  body.get("property_mappings", []),
+                "active":             True,
+            }
+            _apply_slack_fields(new_auto, body)
+            existing.append(new_auto)
+            save_automations(existing)
+            self._json(200, new_auto)
+            return
+
         # ── Instantly + HS Form: both require a HubSpot list ─
         list_id   = str(body.get("hubspot_list_id", "")).strip()
         list_name = body.get("hubspot_list_name", "").strip()
@@ -714,7 +735,12 @@ class handler(BaseHTTPRequestHandler):
                 if "name" in body:
                     a["name"] = str(body["name"]).strip()
 
-                if a.get("delivery_type") == "gsheet_sync":
+                if a.get("delivery_type") == "calendly":
+                    if "calendly_event_url" in body: a["calendly_event_url"] = body["calendly_event_url"]
+                    if "property_mappings"  in body: a["property_mappings"]  = body["property_mappings"]
+                    if "slack_enabled" in body: _apply_slack_fields(a, body)
+
+                elif a.get("delivery_type") == "gsheet_sync":
                     # Re-apply all gsheet fields if any gsheet key is present
                     gsheet_keys = {
                         "sheet_url", "sheet_tab", "object_type", "primary_key_column",
