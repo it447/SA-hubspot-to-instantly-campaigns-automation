@@ -902,6 +902,8 @@ let formSelected             = { id:'', name:'' };
 let slackChSelectedInstantly = { id:'', name:'' };
 let slackChSelectedForm      = { id:'', name:'' };
 let slackChSelectedGsheet    = { id:'', name:'' };
+let slackChSelectedCalendly  = { id:'', name:'' };
+let calendlyMappings         = [];
 let alertSlackChSelected     = { id:'', name:'' };
 let filtersInstantly = [];
 let filtersForm      = [];
@@ -1902,7 +1904,7 @@ function renderActivityModalBars(monthly) {
 // ── Calendly ──────────────────────────────────────────────────
 
 // ── Calendly mappings ─────────────────────────────────────────
-let calendlyMappings = [
+let _calendlyMappingsDefault = [
   { calendly_field: 'first_name', hs_property: 'firstname', hs_label: 'First Name' },
   { calendly_field: 'last_name',  hs_property: 'lastname',  hs_label: 'Last Name'  },
   { calendly_field: 'phone',      hs_property: 'phone',     hs_label: 'Phone Number' },
