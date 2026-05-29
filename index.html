@@ -397,7 +397,7 @@
           <div class="stat-label">Total automations</div>
           <div class="stat-value orange" id="stat-total">—</div>
         </div>
-        <div class="stat-card" style="cursor:pointer;" onclick="open24hModal()" title="Click to see breakdown">
+        <div class="stat-card" style="cursor:pointer;" onclick="filter24h()" title="Click to filter by today's activity">
           <div class="stat-label">Contacts processed · 24h</div>
           <div class="stat-value orange" id="stat-24h">—</div>
         </div>
@@ -1304,6 +1304,7 @@ async function loadAutomations() {
 
 function setFilter(filter) {
   currentFilter = filter;
+  const heading = document.getElementById('automations-heading'); if(heading) heading.textContent = 'All automations';
   ['dashboard','filter-instantly','filter-hubspot_form','filter-gsheet_sync'].forEach(id => {
     document.getElementById(`nav-${id}`)?.classList.remove('active');
   });
@@ -1330,6 +1331,7 @@ function renderAutomations() {
   if (currentFilter === 'hubspot_form') filtered = filtered.filter(a => a.delivery_type === 'hubspot_form');
   if (currentFilter === 'gsheet_sync')  filtered = filtered.filter(a => a.delivery_type === 'gsheet_sync');
   if (currentFilter === 'calendly')       filtered = filtered.filter(a => a.delivery_type === 'calendly');
+  if (currentFilter === '24h')            filtered = filtered.filter(a => (dailyCounts[a.id]||0) > 0);
   if (searchQuery) filtered = filtered.filter(a =>
     (a.name||'').toLowerCase().includes(searchQuery) ||
     (a.hubspot_list_name||'').toLowerCase().includes(searchQuery) ||
@@ -2043,39 +2045,16 @@ async function createCalendlyAutomation() {
 }
 
 
-// ── 24h breakdown modal ───────────────────────────────────────
-function open24hModal() {
-  const total = document.getElementById('stat-24h').textContent;
-  if (!total || total === '—' || total === '0') return;
-  document.getElementById('modal-24h-total').textContent = `${total} contacts across all automations`;
-  const list = document.getElementById('modal-24h-list');
-  // Build rows from dailyCounts
-  const rows = automations
-    .filter(a => dailyCounts[a.id] > 0)
-    .sort((a, b) => (dailyCounts[b.id]||0) - (dailyCounts[a.id]||0));
-  if (!rows.length) {
-    list.innerHTML = '<div style="padding:1.5rem;text-align:center;color:var(--muted);font-size:13px;">No activity in the last 24 hours.</div>';
-  } else {
-    list.innerHTML = rows.map(a => {
-      const count = dailyCounts[a.id] || 0;
-      const pct   = Math.round((count / parseInt(total)) * 100);
-      return `<div style="display:flex;align-items:center;justify-content:space-between;padding:0.85rem 1.5rem;border-bottom:1px solid var(--border);">
-        <div style="flex:1;min-width:0;">
-          <div style="font-size:13px;font-weight:500;color:var(--cream);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(a.name)}</div>
-          <div style="font-size:11px;color:var(--muted);margin-top:2px;">${esc(a.delivery_type==='gsheet_sync'?'GSheet Sync':a.delivery_type==='hubspot_form'?'HubSpot Form':a.delivery_type==='calendly'?'Calendly':'Instantly')}</div>
-        </div>
-        <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;">
-          <div style="width:80px;height:4px;background:rgba(254,242,222,0.1);border-radius:2px;overflow:hidden;">
-            <div style="width:${pct}%;height:100%;background:var(--orange);border-radius:2px;"></div>
-          </div>
-          <span style="font-size:14px;font-weight:600;color:var(--orange);min-width:28px;text-align:right;">${count}</span>
-        </div>
-      </div>`;
-    }).join('');
-  }
-  const modal = document.getElementById('modal-24h');
-  modal.style.display = 'flex';
-  modal.onclick = e => { if (e.target === modal) modal.style.display = 'none'; };
+// ── 24h filter ────────────────────────────────────────────────
+function filter24h() {
+  currentFilter = '24h';
+  // Clear all nav active states
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('nav-dashboard')?.classList.add('active');
+  // Update heading
+  const heading = document.getElementById('automations-heading');
+  if (heading) heading.textContent = 'Active today';
+  renderAutomations();
 }
 
 </script>
@@ -2091,20 +2070,6 @@ function open24hModal() {
         <button onclick="document.getElementById('activity-modal').style.display='none'" style="background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);border-radius:8px;color:#ffffff;width:32px;height:32px;cursor:pointer;font-size:16px;">✕</button>
       </div>
       <div id="activity-modal-bars" style="display:flex;align-items:flex-end;gap:4px;height:140px;padding-bottom:24px;position:relative;"></div>
-    </div>
-  </div>
-
-  <!-- 24h breakdown modal -->
-  <div id="modal-24h" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);backdrop-filter:blur(6px);z-index:1000;align-items:center;justify-content:center;">
-    <div style="background:var(--card);border:1px solid var(--border);border-radius:var(--radius);width:540px;max-width:95vw;max-height:80vh;display:flex;flex-direction:column;overflow:hidden;">
-      <div style="display:flex;align-items:center;justify-content:space-between;padding:1.25rem 1.5rem;border-bottom:1px solid var(--border);">
-        <div>
-          <h3 style="margin:0 0 2px;">Contacts processed · last 24h</h3>
-          <div style="font-size:12px;color:var(--muted);" id="modal-24h-total"></div>
-        </div>
-        <button onclick="document.getElementById('modal-24h').style.display='none'" style="background:rgba(254,242,222,0.08);border:1px solid var(--border2);border-radius:8px;color:var(--cream);width:32px;height:32px;cursor:pointer;font-size:16px;">✕</button>
-      </div>
-      <div style="overflow-y:auto;padding:0.5rem 0;" id="modal-24h-list"></div>
     </div>
   </div>
 
