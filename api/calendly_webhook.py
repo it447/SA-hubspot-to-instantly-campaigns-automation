@@ -72,7 +72,7 @@ def update_last_run(auto_id):
             if a.get("id") == auto_id:
                 a["last_run"] = datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
         url  = f"{UPSTASH_URL}/set/automations_config"
-        body = json.dumps(json.dumps(automations)).encode()
+        body = json.dumps(automations).encode()
         req  = Request(url, data=body, headers={
             "Authorization": f"Bearer {UPSTASH_TOKEN}",
             "Content-Type":  "application/json"
