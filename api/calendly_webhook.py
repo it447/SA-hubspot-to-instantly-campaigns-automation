@@ -64,9 +64,35 @@ def create_or_update_hs_contact(email, first_name, last_name, phone):
     resp.raise_for_status()
     return resp.json()
 
+def update_last_run(auto_id):
+    """Update last_run timestamp for a Calendly automation."""
+    try:
+        automations = get_automations_config()
+        for a in automations:
+            if a.get("id") == auto_id:
+                a["last_run"] = datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
+        url  = f"{UPSTASH_URL}/set/automations_config"
+        body = json.dumps(json.dumps(automations)).encode()
+        req  = Request(url, data=body, headers={
+            "Authorization": f"Bearer {UPSTASH_TOKEN}",
+            "Content-Type":  "application/json"
+        }, method="POST")
+        with urlopen(req, timeout=5) as r:
+            r.read()
+    except Exception as e:
+        _log(f"[calendly] update_last_run error: {e}")
+
+def get_automations_config():
+    url = f"{UPSTASH_URL}/get/automations_config"
+    req = Request(url, headers={"Authorization": f"Bearer {UPSTASH_TOKEN}"})
+    with urlopen(req, timeout=5) as r:
+        data = json.loads(r.read())
+    val = data.get("result")
+    return json.loads(val) if val else []
+
 def get_calendly_automations():
     try:
-        data = _redis_get("automations_config")
+        data = get_automations_config()
         if isinstance(data, list):
             return [a for a in data if a.get("delivery_type") == "calendly" and a.get("active")]
     except Exception:
@@ -189,6 +215,7 @@ class handler(BaseHTTPRequestHandler):
             auto_id = auto.get("id", "")
             try:
                 log_booking(auto_id, email, full_name)
+                update_last_run(auto_id)
             except Exception as e:
                 _log(f"[calendly] log error: {e}")
 
