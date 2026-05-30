@@ -806,9 +806,9 @@
           </div>
 
           <div class="form-row">
-            <label>Clay table ID</label>
-            <input type="text" id="clay-table-id" placeholder="e.g. tbl_abc123xyz">
-            <div class="token-hint" style="margin-top:5px;">Find this in your Clay table URL: clay.com/table/<strong>tbl_…</strong></div>
+            <label>Clay webhook URL</label>
+            <input type="text" id="clay-table-id" placeholder="https://api.clay.com/v1/sources/webhooks/…">
+            <div class="token-hint" style="margin-top:5px;">In your Clay table → Sources → Webhook → copy the webhook URL and paste it here.</div>
           </div>
 
           <div class="form-row">
@@ -1253,13 +1253,13 @@ async function createClayAutomation() {
   const tableId = document.getElementById('clay-table-id').value.trim();
   if (!name)           { errEl.textContent='Please enter an automation name.'; errEl.style.display='block'; return; }
   if (!hsSelectedClay.id) { errEl.textContent='Please select a HubSpot list.'; errEl.style.display='block'; return; }
-  if (!tableId)        { errEl.textContent='Please enter a Clay table ID.'; errEl.style.display='block'; return; }
+  if (!tableId)        { errEl.textContent='Please enter the Clay webhook URL.'; errEl.style.display='block'; return; }
   const validMaps = clayMappings.filter(m => m.hs_property.trim() && m.clay_column.trim());
   if (!validMaps.length) { errEl.textContent='Please add at least one column mapping.'; errEl.style.display='block'; return; }
   let payload = {
     name, delivery_type:'enrichment', clay_enabled:true,
     hubspot_list_id:hsSelectedClay.id, hubspot_list_name:hsSelectedClay.name,
-    clay_table_id:tableId, clay_column_mappings:validMaps, active:true
+    clay_webhook_url:tableId, clay_column_mappings:validMaps, active:true
   };
   const slackEnabled = document.getElementById('slack-enabled-clay')?.checked;
   if (slackEnabled) {
@@ -1515,7 +1515,7 @@ function renderAutomations() {
     let sourceChip, deliveryChip;
     if (isClay) {
       sourceChip   = `<span class="chip chip-hs">HubSpot · ${esc(a.hubspot_list_name || a.hubspot_list_id)}</span>`;
-      deliveryChip = `<span class="chip" style="color:#7C3AED;border-color:rgba(124,58,237,0.3);background:rgba(124,58,237,0.08);">▦ Clay · ${esc(a.clay_table_id||'')}</span>`;
+      deliveryChip = `<span class="chip" style="color:#7C3AED;border-color:rgba(124,58,237,0.3);background:rgba(124,58,237,0.08);">▦ Clay Webhook</span>`;
     } else if (isCalendly) {
       sourceChip   = `<span class="chip" style="color:#006BFF;border-color:rgba(0,107,255,0.3);background:rgba(0,107,255,0.08);">⊙ Calendly</span>`;
       deliveryChip = `<span class="chip chip-hs">HubSpot Contact</span>`;
@@ -1823,7 +1823,7 @@ async function editAutomation(id) {
     hsSelectedClay.id=a.hubspot_list_id||''; hsSelectedClay.name=a.hubspot_list_name||'';
     const hci=document.getElementById('hs-search-clay');
     if(hci){hci.value=a.hubspot_list_name||'';hci.classList.toggle('has-value',!!a.hubspot_list_id);}
-    document.getElementById('clay-table-id').value = a.clay_table_id||'';
+    document.getElementById('clay-table-id').value = a.clay_webhook_url||a.clay_table_id||'';
     clayMappings = a.clay_column_mappings ? JSON.parse(JSON.stringify(a.clay_column_mappings)) : [{hs_property:'email',clay_column:'Email'}];
     renderClayMappings();
     const slackCbCl=document.getElementById('slack-enabled-clay');

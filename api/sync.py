@@ -409,27 +409,21 @@ def submit_hs_form(email, first_name, last_name, company, form_id):
 
 # ── Clay helpers ──────────────────────────────────────────────
 
-def push_to_clay(table_id, row_data):
-    """Push a single row to a Clay table."""
-    headers = {
-        "Authorization": f"Bearer {CLAY_API_KEY}",
-        "Content-Type":  "application/json"
-    }
-    url  = f"https://api.clay.com/v1/sources/{table_id}/rows"
-    resp = requests.post(url, headers=headers, json={"data": row_data}, timeout=15)
-    if resp.status_code not in (200, 201):
-        raise Exception(f"Clay API error {resp.status_code}: {resp.text[:200]}")
-    return resp.json()
+def push_to_clay(webhook_url, row_data):
+    """Push a single row to a Clay table via webhook URL."""
+    resp = requests.post(webhook_url, json=row_data, headers={"Content-Type": "application/json"}, timeout=15)
+    if resp.status_code not in (200, 201, 202):
+        raise Exception(f"Clay webhook error {resp.status_code}: {resp.text[:200]}")
 
 def run_clay_push(automation, contacts, sent_cache, auto_id):
-    """Push unsent contacts from HubSpot list to Clay table."""
-    table_id       = automation.get("clay_table_id", "")
+    """Push unsent contacts from HubSpot list to Clay table via webhook."""
+    webhook_url    = automation.get("clay_webhook_url", "") or automation.get("clay_table_id", "")
     col_mappings   = automation.get("clay_column_mappings", [])
     slack_channel  = automation.get("slack_channel", "")
     auto_name      = automation.get("name", auto_id)
 
-    if not table_id:
-        _log(f"[clay] {auto_name}: no table_id configured, skipping")
+    if not webhook_url:
+        _log(f"[clay] {auto_name}: no webhook URL configured, skipping")
         return 0, 0
 
     pushed   = 0
@@ -462,7 +456,7 @@ def run_clay_push(automation, contacts, sent_cache, auto_id):
             continue
 
         try:
-            push_to_clay(table_id, row_data)
+            push_to_clay(webhook_url, row_data)
             mark_as_sent(email, clay_key, sent_cache)
             pushed += 1
             _log(f"[clay] {auto_name}: pushed {email}")
