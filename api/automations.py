@@ -798,6 +798,35 @@ class handler(BaseHTTPRequestHandler):
                 "filters":           filters,
                 "active":            True,
             }
+
+        elif delivery_type == "enrichment":
+            webhook_url     = body.get("clay_webhook_url", "").strip()
+            col_mappings    = [
+                m for m in body.get("clay_column_mappings", [])
+                if isinstance(m, dict) and m.get("hs_property") and m.get("clay_column")
+            ]
+            if not webhook_url:
+                self._json(400, {"error": "Missing Clay webhook URL"})
+                return
+            for a in existing:
+                if a.get("delivery_type") == "enrichment" and \
+                   a.get("hubspot_list_id") == list_id and \
+                   a.get("clay_webhook_url") == webhook_url:
+                    self._json(409, {"error": "Automation already exists"})
+                    return
+            import hashlib as _hl
+            new_auto = {
+                "id":                  f"clay_{list_id}_{_hl.md5(webhook_url.encode()).hexdigest()[:8]}",
+                "name":                name,
+                "delivery_type":       "enrichment",
+                "clay_enabled":        True,
+                "hubspot_list_id":     list_id,
+                "hubspot_list_name":   list_name,
+                "clay_webhook_url":    webhook_url,
+                "clay_column_mappings": col_mappings,
+                "active":              True,
+            }
+
         else:
             self._json(400, {"error": "Invalid delivery_type"})
             return
@@ -844,6 +873,20 @@ class handler(BaseHTTPRequestHandler):
                     }
                     if gsheet_keys & body.keys():
                         _apply_gsheet_fields(a, body)
+                    if "slack_enabled" in body:
+                        _apply_slack_fields(a, body)
+
+                elif a.get("delivery_type") == "enrichment":
+                    if "hubspot_list_id" in body:
+                        a["hubspot_list_id"]   = str(body["hubspot_list_id"]).strip()
+                        a["hubspot_list_name"] = body.get("hubspot_list_name", "")
+                    if "clay_webhook_url" in body:
+                        a["clay_webhook_url"] = body["clay_webhook_url"].strip()
+                    if "clay_column_mappings" in body:
+                        a["clay_column_mappings"] = [
+                            m for m in body["clay_column_mappings"]
+                            if isinstance(m, dict) and m.get("hs_property") and m.get("clay_column")
+                        ]
                     if "slack_enabled" in body:
                         _apply_slack_fields(a, body)
 
