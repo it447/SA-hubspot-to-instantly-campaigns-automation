@@ -352,6 +352,7 @@
     <button class="nav-item" id="nav-filter-gsheet_sync" onclick="showPage('dashboard');setFilter('gsheet_sync')" style="padding-left:28px;font-size:13px;display:flex;align-items:center;gap:7px;"><svg width="14" height="14" viewBox="0 0 100 100" fill="none" style="flex-shrink:0;"><rect x="15" y="5" width="55" height="70" rx="4" fill="#0F9D58"/><rect x="30" y="5" width="40" height="18" rx="2" fill="#0F9D58"/><path d="M70 5 L85 20 L70 20 Z" fill="#087447"/><rect x="70" y="5" width="15" height="15" rx="2" fill="#34A853"/><rect x="22" y="35" width="56" height="4" rx="2" fill="white" opacity="0.7"/><rect x="22" y="47" width="56" height="4" rx="2" fill="white" opacity="0.7"/><rect x="22" y="59" width="40" height="4" rx="2" fill="white" opacity="0.7"/></svg> GSheet Sync</button>
     <button class="nav-item" id="nav-filter-calendly" onclick="showPage('dashboard');setFilter('calendly')" style="padding-left:28px;font-size:13px;display:flex;align-items:center;gap:7px;"><svg width="14" height="14" viewBox="0 0 100 100" fill="none" style="flex-shrink:0;"><circle cx="50" cy="50" r="48" fill="#006BFF" opacity="0.15" stroke="#006BFF" stroke-width="4"/><path d="M72 35 A30 30 0 1 0 72 65" stroke="#006BFF" stroke-width="10" stroke-linecap="round" fill="none"/></svg> Calendly</button>
     <button class="nav-item" id="nav-filter-clay" onclick="showPage('dashboard');setFilter('clay')" style="padding-left:28px;font-size:13px;display:flex;align-items:center;gap:7px;"><svg width="14" height="14" viewBox="0 0 100 100" fill="none" style="flex-shrink:0;"><rect x="10" y="20" width="80" height="60" rx="8" fill="#7C3AED" opacity="0.15" stroke="#7C3AED" stroke-width="5"/><rect x="22" y="35" width="56" height="6" rx="3" fill="#7C3AED"/><rect x="22" y="50" width="40" height="6" rx="3" fill="#7C3AED" opacity="0.6"/><rect x="22" y="65" width="28" height="6" rx="3" fill="#7C3AED" opacity="0.35"/></svg> Clay Push</button>
+    <button class="nav-item" id="nav-filter-fb_conversions" onclick="showPage('dashboard');setFilter('fb_conversions')" style="padding-left:28px;font-size:13px;display:flex;align-items:center;gap:7px;"><svg width="14" height="14" viewBox="0 0 100 100" fill="none" style="flex-shrink:0;"><circle cx="50" cy="50" r="48" fill="#1877F2" opacity="0.15" stroke="#1877F2" stroke-width="4"/><text x="50" y="68" text-anchor="middle" font-size="60" font-family="Arial" font-weight="bold" fill="#1877F2">f</text></svg> FB Conversions</button>
     <button class="nav-item" onclick="newAutomation()" id="nav-add" style="margin-top:4px;">
       <span class="nav-icon">+</span> New automation
     </button>
@@ -446,6 +447,7 @@
         <button class="tab-btn gs-tab"  id="tab-btn-gsheet_sync"  onclick="switchTab('gsheet_sync')">GSheet → HubSpot Sync</button>
         <button class="tab-btn" id="tab-btn-calendly" onclick="switchTab('calendly')" style="color:#006BFF;">⊙ Calendly</button>
         <button class="tab-btn" id="tab-btn-clay" onclick="switchTab('clay')" style="color:#7C3AED;">▦ Clay Push</button>
+        <button class="tab-btn" id="tab-btn-fb_conversions" onclick="switchTab('fb_conversions')" style="color:#1877F2;">⬡ FB Conversions</button>
       </div>
 
       <div class="edit-grid">
@@ -839,6 +841,73 @@
         </div>
       </div>
 
+      <!-- ── Tab: FB Conversions ── -->
+      <div class="tab-panel" id="tab-fb_conversions">
+        <div class="form-card" style="max-width:560px;">
+          <h3>HubSpot → Facebook Conversions</h3>
+          <p class="form-desc">Contacts from a HubSpot list are sent as Facebook Conversions API events. Each contact is only sent once — duplicates are tracked automatically.</p>
+
+          <div class="form-row">
+            <label>Automation name</label>
+            <input type="text" id="auto-name-fb" placeholder="e.g. Leads → FB Lead Event">
+          </div>
+
+          <div class="form-row">
+            <label>HubSpot list</label>
+            <div class="search-select"><input type="text" id="hs-search-fb" placeholder="Search HubSpot lists…" autocomplete="off"><div class="search-dropdown" id="hs-dropdown-fb"></div></div>
+          </div>
+
+          <div class="form-row">
+            <label>Pixel ID</label>
+            <input type="text" id="fb-pixel-id" placeholder="e.g. 123456789012345">
+          </div>
+
+          <div class="form-row">
+            <label>Access Token</label>
+            <input type="text" id="fb-access-token" placeholder="Meta Conversions API access token">
+            <div class="token-hint" style="margin-top:5px;">Keep this secret — it will be stored securely.</div>
+          </div>
+
+          <div class="form-row">
+            <label>Event Name</label>
+            <select id="fb-event-name" style="font-size:13px;padding:8px 10px;background:var(--navy-soft);border:1px solid var(--border2);color:var(--cream);border-radius:var(--radius-sm);width:100%;">
+              <option value="Lead">Lead</option>
+              <option value="Schedule">Schedule</option>
+              <option value="Purchase">Purchase</option>
+              <option value="CompleteRegistration">CompleteRegistration</option>
+              <option value="Contact">Contact</option>
+              <option value="ViewContent">ViewContent</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+
+          <div class="form-row">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+              <label style="margin-bottom:0;">Facebook field → HubSpot property</label>
+              <button type="button" class="btn btn-cream" onclick="addFbMapping()" style="font-size:12px;padding:5px 10px;">+ Add mapping</button>
+            </div>
+            <div id="fb-mappings-container"></div>
+            <div class="token-hint" style="margin-top:6px;">Map Facebook customer info fields to your HubSpot contact properties.</div>
+          </div>
+
+          <hr class="slack-divider">
+          <div class="slack-toggle-row">
+            <span class="slack-toggle-label"><span class="slack-icon"><svg width="16" height="16" viewBox="0 0 54 54" xmlns="http://www.w3.org/2000/svg"><path d="M19.7 32.2c0 2.9-2.4 5.3-5.3 5.3s-5.3-2.4-5.3-5.3 2.4-5.3 5.3-5.3H19.7v5.3z" fill="#E01E5A"/><path d="M22.3 32.2c0-2.9 2.4-5.3 5.3-5.3s5.3 2.4 5.3 5.3v13.3c0 2.9-2.4 5.3-5.3 5.3s-5.3-2.4-5.3-5.3V32.2z" fill="#E01E5A"/><path d="M27.6 19.7c-2.9 0-5.3-2.4-5.3-5.3s2.4-5.3 5.3-5.3 5.3 2.4 5.3 5.3V19.7H27.6z" fill="#36C5F0"/><path d="M27.6 22.3c2.9 0 5.3 2.4 5.3 5.3s-2.4 5.3-5.3 5.3H14.4c-2.9 0-5.3-2.4-5.3-5.3s2.4-5.3 5.3-5.3H27.6z" fill="#36C5F0"/><path d="M40.1 27.6c0-2.9 2.4-5.3 5.3-5.3s5.3 2.4 5.3 5.3-2.4 5.3-5.3 5.3H40.1V27.6z" fill="#2EB67D"/><path d="M37.4 27.6c0 2.9-2.4 5.3-5.3 5.3s-5.3-2.4-5.3-5.3V14.4c0-2.9 2.4-5.3 5.3-5.3s5.3 2.4 5.3 5.3V27.6z" fill="#2EB67D"/><path d="M32.1 40.1c2.9 0 5.3 2.4 5.3 5.3s-2.4 5.3-5.3 5.3-5.3-2.4-5.3-5.3V40.1h5.3z" fill="#ECB22E"/><path d="M32.1 37.4c-2.9 0-5.3-2.4-5.3-5.3s2.4-5.3 5.3-5.3h13.3c2.9 0 5.3 2.4 5.3 5.3s-2.4 5.3-5.3 5.3H32.1z" fill="#ECB22E"/></svg></span> Slack notification</span>
+            <label class="toggle"><input type="checkbox" id="slack-enabled-fb_conversions" onchange="toggleSlackSection('fb_conversions',this.checked)"><span class="toggle-slider"></span></label>
+          </div>
+          <div id="slack-body-fb_conversions" class="slack-body" style="display:none;">
+            <div><label>Channel</label><div class="search-select"><input type="text" id="slack-ch-search-fb_conversions" placeholder="Search channels…" autocomplete="off"><div class="search-dropdown" id="slack-ch-dropdown-fb_conversions"></div></div></div>
+            <div><label>Message template</label><textarea id="slack-msg-fb_conversions" rows="3" placeholder="e.g. ✅ {{name}} — sent {{pushed}} FB Conversion event(s)."></textarea><div class="token-hint">Tokens: {{name}}, {{pushed}}</div></div>
+          </div>
+
+          <div class="form-footer">
+            <button class="btn btn-cream" onclick="cancelEdit()">Cancel</button>
+            <button class="btn btn-primary" onclick="createFbAutomation()" id="create-btn-fb">Create automation</button>
+          </div>
+          <div class="error-msg" id="form-error-fb"></div>
+        </div>
+      </div>
+
       </div><!-- close form col -->
 
       <!-- Right column -->
@@ -960,6 +1029,22 @@ let slackChSelectedCalendly  = { id:'', name:'' };
 let slackChSelectedClay      = { id:'', name:'' };
 let hsSelectedClay           = { id:'', name:'' };
 let clayMappings             = [];
+let hsSelectedFb             = { id:'', name:'' };
+let slackChSelectedFb        = { id:'', name:'' };
+let fbMappings               = [{fb_field:'email', hs_property:'email', hs_label:'Email'}];
+
+const FB_FIELDS = [
+  {value:'email',       label:'Email'},
+  {value:'phone',       label:'Phone Number'},
+  {value:'first_name',  label:'First Name'},
+  {value:'last_name',   label:'Last Name'},
+  {value:'city',        label:'City'},
+  {value:'state',       label:'State Code'},
+  {value:'country',     label:'Country Code'},
+  {value:'zip',         label:'Zip Code'},
+  {value:'external_id', label:'External ID'},
+  {value:'fbc',         label:'Click ID (fbc)'},
+];
 let calendlyMappings         = [];
 let alertSlackChSelected     = { id:'', name:'' };
 let filtersInstantly = [];
@@ -1072,17 +1157,19 @@ function updateAlertPanelVisibility() {
   const isGsheet   = document.getElementById('tab-gsheet_sync').classList.contains('active');
   const isCalendly = document.getElementById('tab-calendly')?.classList.contains('active');
   const isClay     = document.getElementById('tab-clay')?.classList.contains('active');
-  document.getElementById('alert-panel').style.display = (isGsheet || isCalendly || isClay) ? 'none' : '';
+  const isFbTab    = document.getElementById('tab-fb_conversions')?.classList.contains('active');
+  document.getElementById('alert-panel').style.display = (isGsheet || isCalendly || isClay || isFbTab) ? 'none' : '';
 }
 function toggleSlackSection(deliveryType, enabled) {
   document.getElementById(`slack-body-${deliveryType}`).style.display = enabled ? 'flex' : 'none';
   if (enabled && slackChannels.length) {
     const selMap = {
-      'instantly':    slackChSelectedInstantly,
-      'hubspot_form': slackChSelectedForm,
-      'gsheet_sync':  slackChSelectedGsheet,
-      'calendly':     slackChSelectedCalendly,
-      'clay':         slackChSelectedClay
+      'instantly':      slackChSelectedInstantly,
+      'hubspot_form':   slackChSelectedForm,
+      'gsheet_sync':    slackChSelectedGsheet,
+      'calendly':       slackChSelectedCalendly,
+      'clay':           slackChSelectedClay,
+      'fb_conversions': slackChSelectedFb
     };
     const sel = selMap[deliveryType];
     if (sel) initSearchSelect(`slack-ch-search-${deliveryType}`,`slack-ch-dropdown-${deliveryType}`,slackChannels,sel,'Search channels…');
@@ -1103,6 +1190,10 @@ function switchTab(tab) {
   if (tab === 'clay') {
     renderClayMappings();
     if (hsList.length) initSearchSelect('hs-search-clay','hs-dropdown-clay',hsList,hsSelectedClay,'Search HubSpot lists…');
+  }
+  if (tab === 'fb_conversions') {
+    renderFbMappings();
+    if (hsList.length) initSearchSelect('hs-search-fb','hs-dropdown-fb',hsList,hsSelectedFb,'Search HubSpot lists…');
   }
 }
 
@@ -1221,6 +1312,124 @@ function resetClayForm() {
   resetSearchSelect('slack-ch-search-clay','slack-ch-dropdown-clay',slackChSelectedClay);
   const ta = document.getElementById('slack-msg-clay'); if (ta) ta.value = '';
   document.getElementById('form-error-clay').style.display = 'none';
+}
+
+function resetFbForm() {
+  document.getElementById('auto-name-fb').value = '';
+  resetSearchSelect('hs-search-fb','hs-dropdown-fb',hsSelectedFb);
+  document.getElementById('fb-pixel-id').value = '';
+  document.getElementById('fb-access-token').value = '';
+  document.getElementById('fb-event-name').value = 'Lead';
+  fbMappings = [{fb_field:'email', hs_property:'email', hs_label:'Email'}];
+  renderFbMappings();
+  const cb = document.getElementById('slack-enabled-fb_conversions');
+  if (cb) { cb.checked = false; toggleSlackSection('fb_conversions', false); }
+  resetSearchSelect('slack-ch-search-fb_conversions','slack-ch-dropdown-fb_conversions',slackChSelectedFb);
+  const ta = document.getElementById('slack-msg-fb_conversions'); if (ta) ta.value = '';
+  const errEl = document.getElementById('form-error-fb'); if (errEl) errEl.style.display = 'none';
+}
+
+function renderFbMappings() {
+  const container = document.getElementById('fb-mappings-container');
+  if (!container) return;
+  if (!fbMappings.length) { container.innerHTML = '<div style="font-size:12px;color:var(--muted);padding:8px 0;">No mappings added.</div>'; return; }
+  container.innerHTML = fbMappings.map((m, i) => `
+    <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:start;margin-bottom:8px;">
+      <select onchange="fbMappings[${i}].fb_field=this.value" style="font-size:13px;padding:8px 10px;background:var(--navy-soft);border:1px solid var(--border2);color:var(--cream);border-radius:var(--radius-sm);">
+        ${FB_FIELDS.map(f=>`<option value="${f.value}" ${m.fb_field===f.value?'selected':''}>${f.label}</option>`).join('')}
+      </select>
+      <div class="search-select">
+        <input type="text" id="fb-hs-prop-${i}" placeholder="Search HubSpot property…" autocomplete="off" style="font-size:13px;">
+        <div class="search-dropdown" id="fb-hs-dd-${i}"></div>
+      </div>
+      <button type="button" class="btn-trash" onclick="removeFbMapping(${i})" title="Remove">🗑</button>
+    </div>`).join('');
+  fbMappings.forEach((m, i) => initFbHsPropSearch(i, m.hs_property, m.hs_label));
+}
+
+function initFbHsPropSearch(index, currentProp, currentLabel) {
+  const input    = document.getElementById('fb-hs-prop-' + index);
+  const dropdown = document.getElementById('fb-hs-dd-' + index);
+  if (!input || !dropdown) return;
+  const propList = hsPropList || [];
+  if (currentProp) { input.value = currentLabel || currentProp; input.classList.add('has-value'); }
+  function renderOptions(q) {
+    const matches = q ? propList.filter(p => p.label.toLowerCase().includes(q) || p.name.toLowerCase().includes(q)) : propList;
+    dropdown.innerHTML = matches.length
+      ? matches.map(p => `<div class="search-option${currentProp===p.name?' selected':''}" data-name="${esc(p.name)}" data-label="${esc(p.label)}">${esc(p.label)}<span style="font-size:10px;opacity:.4;margin-left:6px;">${esc(p.name)}</span></div>`).join('')
+      : '<div class="search-option-empty">No properties found</div>';
+    dropdown.querySelectorAll('.search-option').forEach(el => {
+      el.addEventListener('mousedown', e => {
+        e.preventDefault();
+        fbMappings[index].hs_property = el.dataset.name;
+        fbMappings[index].hs_label    = el.dataset.label;
+        input.value = el.dataset.label;
+        input.classList.add('has-value');
+        dropdown.classList.remove('open');
+        currentProp = el.dataset.name;
+      });
+    });
+    dropdown.classList.add('open');
+  }
+  input.addEventListener('focus', () => renderOptions(''));
+  input.addEventListener('input', () => { input.classList.remove('has-value'); fbMappings[index].hs_property=''; renderOptions(input.value.toLowerCase()); });
+  input.addEventListener('blur',  () => { setTimeout(() => dropdown.classList.remove('open'), 150); if (!fbMappings[index].hs_property) { input.value=''; input.classList.remove('has-value'); } else { input.value = fbMappings[index].hs_label||fbMappings[index].hs_property; input.classList.add('has-value'); } });
+}
+
+function addFbMapping() {
+  fbMappings.push({ fb_field:'email', hs_property:'', hs_label:'' });
+  renderFbMappings();
+}
+
+function removeFbMapping(i) {
+  fbMappings.splice(i, 1);
+  renderFbMappings();
+}
+
+async function createFbAutomation() {
+  const errEl = document.getElementById('form-error-fb');
+  const btn   = document.getElementById('create-btn-fb');
+  errEl.style.display = 'none';
+  const name        = document.getElementById('auto-name-fb').value.trim();
+  const pixelId     = document.getElementById('fb-pixel-id').value.trim();
+  const accessToken = document.getElementById('fb-access-token').value.trim();
+  const eventName   = document.getElementById('fb-event-name').value;
+  if (!name)         { errEl.textContent='Please enter an automation name.'; errEl.style.display='block'; return; }
+  if (!hsSelectedFb.id) { errEl.textContent='Please select a HubSpot list.'; errEl.style.display='block'; return; }
+  if (!pixelId)      { errEl.textContent='Please enter the Pixel ID.'; errEl.style.display='block'; return; }
+  if (!accessToken)  { errEl.textContent='Please enter the Access Token.'; errEl.style.display='block'; return; }
+  if (!eventName)    { errEl.textContent='Please select an Event Name.'; errEl.style.display='block'; return; }
+  const validMaps = fbMappings.filter(m => m.fb_field && m.hs_property);
+  let payload = {
+    name, delivery_type:'fb_conversions',
+    hubspot_list_id: hsSelectedFb.id, hubspot_list_name: hsSelectedFb.name,
+    fb_pixel_id: pixelId, fb_access_token: accessToken,
+    fb_event_name: eventName, fb_field_mappings: validMaps, active: true
+  };
+  const slackEnabled = document.getElementById('slack-enabled-fb_conversions')?.checked;
+  if (slackEnabled) {
+    if (!slackChSelectedFb.id) { errEl.textContent='Please select a Slack channel.'; errEl.style.display='block'; return; }
+    payload.slack_enabled=true; payload.slack_channel=slackChSelectedFb.id;
+    payload.slack_channel_name=slackChSelectedFb.name;
+    payload.slack_message=document.getElementById('slack-msg-fb_conversions')?.value.trim()||'';
+  } else { payload.slack_enabled=false; }
+  btn.disabled=true; btn.textContent=editingId?'Saving…':'Creating…';
+  try {
+    const {ok,data} = editingId
+      ? await api('PATCH','/automations/'+editingId, payload)
+      : await api('POST', '/automations', payload);
+    if (ok) {
+      editingId=null; btn.textContent='Create automation';
+      document.getElementById('add-page-title').textContent='New automation';
+      document.querySelector('.tab-bar').style.display='';
+      document.getElementById('view-logs-btn').style.display='none';
+      await loadAutomations();
+      resetFbForm();
+      showToast('FB Conversions automation saved!');
+      showPage('dashboard');
+    } else { errEl.textContent=data.error||'Something went wrong.'; errEl.style.display='block'; }
+  } catch(e) { errEl.textContent='Network error.'; errEl.style.display='block'; }
+  btn.disabled=false; btn.textContent=editingId?'Save changes':'Create automation';
 }
 
 function renderClayMappings() {
@@ -1363,19 +1572,21 @@ function newAutomation() {
   resetGsForm();
   resetCalendlyForm();
   resetClayForm();
+  resetFbForm();
   switchTab('instantly');
   showPage('add');
 }
 
 function cancelEdit() {
   editingId = null;
-  ['instantly','hubspot_form','gsheet_sync','calendly'].forEach(dt => {
+  ['instantly','hubspot_form','gsheet_sync','calendly','fb'].forEach(dt => {
     const btn = document.getElementById(`create-btn-${dt}`);
     if (btn) btn.textContent = 'Create automation';
   });
   document.getElementById('add-page-title').textContent = 'New automation';
   document.querySelector('.tab-bar').style.display = '';
   document.getElementById('view-logs-btn').style.display = 'none';
+  resetFbForm();
   showPage('dashboard');
 }
 
@@ -1493,7 +1704,7 @@ async function loadAutomations() {
 function setFilter(filter) {
   currentFilter = filter;
   const heading = document.getElementById('automations-heading'); if(heading) heading.textContent = 'All automations';
-  ['dashboard','filter-instantly','filter-hubspot_form','filter-gsheet_sync'].forEach(id => {
+  ['dashboard','filter-instantly','filter-hubspot_form','filter-gsheet_sync','filter-calendly','filter-clay','filter-fb_conversions'].forEach(id => {
     document.getElementById(`nav-${id}`)?.classList.remove('active');
   });
   if (filter === 'all')          document.getElementById('nav-dashboard').classList.add('active');
@@ -1502,6 +1713,7 @@ function setFilter(filter) {
   if (filter === 'gsheet_sync')  document.getElementById('nav-filter-gsheet_sync').classList.add('active');
   if (filter === 'calendly')      document.getElementById('nav-filter-calendly')?.classList.add('active');
   if (filter === 'clay')          document.getElementById('nav-filter-clay')?.classList.add('active');
+  if (filter === 'fb_conversions') document.getElementById('nav-filter-fb_conversions')?.classList.add('active');
   renderAutomations();
 }
 
@@ -1521,6 +1733,7 @@ function renderAutomations() {
   if (currentFilter === 'gsheet_sync')  filtered = filtered.filter(a => a.delivery_type === 'gsheet_sync');
   if (currentFilter === 'calendly')       filtered = filtered.filter(a => a.delivery_type === 'calendly');
   if (currentFilter === 'clay')           filtered = filtered.filter(a => a.delivery_type === 'enrichment' && a.clay_enabled);
+  if (currentFilter === 'fb_conversions') filtered = filtered.filter(a => a.delivery_type === 'fb_conversions');
   if (currentFilter === '24h')            filtered = filtered.filter(a => (dailyCounts[a.id]||0) > 0);
   if (searchQuery) filtered = filtered.filter(a =>
     (a.name||'').toLowerCase().includes(searchQuery) ||
@@ -1546,10 +1759,14 @@ function renderAutomations() {
     const isForm     = a.delivery_type === 'hubspot_form';
     const isCalendly = a.delivery_type === 'calendly';
     const isClay     = a.delivery_type === 'enrichment' && a.clay_enabled;
+    const isFb       = a.delivery_type === 'fb_conversions';
     const active   = a.active !== false;
 
     let sourceChip, deliveryChip;
-    if (isClay) {
+    if (isFb) {
+      sourceChip   = `<span class="chip chip-hs">HubSpot · ${esc(a.hubspot_list_name || a.hubspot_list_id)}</span>`;
+      deliveryChip = `<span class="chip" style="color:#1877F2;border-color:rgba(24,119,242,0.3);background:rgba(24,119,242,0.08);">⬡ FB Conversions</span>`;
+    } else if (isClay) {
       sourceChip   = `<span class="chip chip-hs">HubSpot · ${esc(a.hubspot_list_name || a.hubspot_list_id)}</span>`;
       deliveryChip = `<span class="chip" style="color:#7C3AED;border-color:rgba(124,58,237,0.3);background:rgba(124,58,237,0.08);">▦ Clay Webhook</span>`;
     } else if (isCalendly) {
@@ -1569,12 +1786,12 @@ function renderAutomations() {
         : `<span class="chip chip-in">Instantly · ${esc(a.instantly_campaign_name || a.instantly_campaign_id)}</span>`;
     }
 
-    const actionChip = (!isForm && !isGsheet && !isCalendly && !isClay)
+    const actionChip = (!isForm && !isGsheet && !isCalendly && !isClay && !isFb)
       ? (a.action === 'unenroll'
           ? `<span class="chip chip-unenroll">⊖ Unenroll</span>`
           : `<span class="chip chip-enroll">⊕ Enroll</span>`)
       : '';
-    const delayLabel = (!isForm && !isGsheet && !isCalendly && !isClay && a.delay_hours > 0)
+    const delayLabel = (!isForm && !isGsheet && !isCalendly && !isClay && !isFb && a.delay_hours > 0)
       ? `<span class="chip chip-hs">⏱ ${a.delay_hours>=24?(a.delay_hours/24)+'d':a.delay_hours+'h'} delay</span>` : '';
     const alertChip = a.alert_enabled ? `<span class="chip chip-alert">🔔 Alert</span>` : '';
     const slackChip = a.slack_enabled
@@ -1682,6 +1899,7 @@ async function loadDropdowns() {
       initSearchSelect('hs-search-instantly',   'hs-dropdown-instantly',   hsList,hsSelectedInstantly,'Search HubSpot lists…');
       initSearchSelect('hs-search-hubspot_form','hs-dropdown-hubspot_form',hsList,hsSelectedForm,     'Search HubSpot lists…');
       initSearchSelect('hs-search-clay',        'hs-dropdown-clay',        hsList,hsSelectedClay,     'Search HubSpot lists…');
+      initSearchSelect('hs-search-fb',          'hs-dropdown-fb',          hsList,hsSelectedFb,       'Search HubSpot lists…');
     } else { ['hs-search-instantly','hs-search-hubspot_form'].forEach(id=>{const el=document.getElementById(id);if(el)el.placeholder=`Error: ${(l.data&&l.data.error)||'failed'}`;}); }
     if (c.ok && Array.isArray(c.data)) {
       campList = c.data;
@@ -1697,6 +1915,7 @@ async function loadDropdowns() {
       initSearchSelect('slack-ch-search-hubspot_form','slack-ch-dropdown-hubspot_form',slackChannels,slackChSelectedForm,     'Search channels…');
       initSearchSelect('slack-ch-search-gsheet_sync', 'slack-ch-dropdown-gsheet_sync', slackChannels,slackChSelectedGsheet,  'Search channels…');
       initSearchSelect('alert-slack-ch-search',       'alert-slack-ch-dropdown',       slackChannels,alertSlackChSelected,   'Search channels…');
+      initSearchSelect('slack-ch-search-fb_conversions','slack-ch-dropdown-fb_conversions',slackChannels,slackChSelectedFb,'Search channels…');
     }
     if (pr.ok && Array.isArray(pr.data)) hsPropList = pr.data;
   } catch(e) { ids.forEach(id=>{const el=document.getElementById(id);if(el)el.placeholder='Network error';}); }
@@ -1848,11 +2067,28 @@ async function editAutomation(id) {
   const isGsheet   = a.delivery_type==='gsheet_sync';
   const isCalendly = a.delivery_type==='calendly';
   const isClay     = a.delivery_type==='enrichment' && a.clay_enabled;
+  const isFb       = a.delivery_type==='fb_conversions';
   document.getElementById('add-page-title').textContent='Edit automation';
   document.querySelector('.tab-bar').style.display='none';
   document.getElementById('view-logs-btn').style.display = 'flex';
   showPage('add');
-  switchTab(isClay?'clay':isCalendly?'calendly':isGsheet?'gsheet_sync':isForm?'hubspot_form':'instantly');
+  switchTab(isFb?'fb_conversions':isClay?'clay':isCalendly?'calendly':isGsheet?'gsheet_sync':isForm?'hubspot_form':'instantly');
+
+  if (isFb) {
+    document.getElementById('auto-name-fb').value = a.name||'';
+    hsSelectedFb.id=a.hubspot_list_id||''; hsSelectedFb.name=a.hubspot_list_name||'';
+    const hfi=document.getElementById('hs-search-fb');
+    if(hfi){hfi.value=a.hubspot_list_name||'';hfi.classList.toggle('has-value',!!a.hubspot_list_id);}
+    document.getElementById('fb-pixel-id').value = a.fb_pixel_id||'';
+    document.getElementById('fb-access-token').value = a.fb_access_token||'';
+    document.getElementById('fb-event-name').value = a.fb_event_name||'Lead';
+    fbMappings = a.fb_field_mappings ? JSON.parse(JSON.stringify(a.fb_field_mappings)) : [{fb_field:'email',hs_property:'email',hs_label:'Email'}];
+    renderFbMappings();
+    const slackCbFb=document.getElementById('slack-enabled-fb_conversions');
+    if(slackCbFb){slackCbFb.checked=!!a.slack_enabled;toggleSlackSection('fb_conversions',!!a.slack_enabled);if(a.slack_enabled){slackChSelectedFb.id=a.slack_channel||'';slackChSelectedFb.name=a.slack_channel_name||'';const sci=document.getElementById('slack-ch-search-fb_conversions');if(sci){sci.value=a.slack_channel_name||'';sci.classList.toggle('has-value',!!a.slack_channel);}const ta=document.getElementById('slack-msg-fb_conversions');if(ta)ta.value=a.slack_message||'';}}
+    document.getElementById('create-btn-fb').textContent='Save changes';
+    return;
+  }
 
   if (isClay) {
     document.getElementById('auto-name-clay').value = a.name||'';
@@ -1980,14 +2216,15 @@ async function viewLogs(id) {
   const isGsheet=a.delivery_type==='gsheet_sync';
   const isCalendlyAuto=a.delivery_type==='calendly';
   const isClayAuto=a.delivery_type==='enrichment'&&a.clay_enabled;
-  document.getElementById('logs-modal-title').textContent=`${isGsheet?'Processed contacts':isCalendlyAuto?'Bookings':isClayAuto?'Pushed contacts':'List contacts'} · ${a.name}`;
+  const isFbAuto=a.delivery_type==='fb_conversions';
+  document.getElementById('logs-modal-title').textContent=`${isGsheet?'Processed contacts':isCalendlyAuto?'Bookings':isClayAuto?'Pushed contacts':isFbAuto?'Sent contacts':'List contacts'} · ${a.name}`;
   countEl.style.display='none';
   if(searchEl) searchEl.value='';
   logsData=[];
   document.getElementById('logs-body').innerHTML='<div class="empty-state"><p>Loading…</p></div>';
   modal.style.display='flex';
   try {
-    const endpoint = (isGsheet || isCalendlyAuto || isClayAuto) ? `/logs/${encodeURIComponent(a.id)}` : `/contacts/${a.hubspot_list_id}`;
+    const endpoint = (isGsheet || isCalendlyAuto || isClayAuto || isFbAuto) ? `/logs/${encodeURIComponent(a.id)}` : `/contacts/${a.hubspot_list_id}`;
     const {ok,data}=await api('GET', endpoint);
     if(ok&&Array.isArray(data)&&data.length){
       logsData=data; countEl.textContent=data.length; countEl.style.display='';

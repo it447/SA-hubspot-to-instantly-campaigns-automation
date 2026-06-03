@@ -461,8 +461,8 @@ class handler(BaseHTTPRequestHandler):
                     if not auto_id:
                         continue
 
-                    # GSheet automations — read from Redis logs
-                    if delivery_type in ('gsheet_sync', 'calendly'):
+                    # GSheet / Calendly / Clay / FB automations — read from Redis logs
+                    if delivery_type in ('gsheet_sync', 'calendly', 'fb_conversions') or (delivery_type == 'enrichment' and a.get('clay_enabled')):
                         try:
                             log_url = f"{UPSTASH_URL}/lrange/logs:{auto_id}/0/999"
                             log_req = Request(log_url, headers={"Authorization": f"Bearer {UPSTASH_TOKEN}"})
@@ -537,8 +537,8 @@ class handler(BaseHTTPRequestHandler):
 
                 delivery_type = auto.get("delivery_type", "")
 
-                # Calendly + GSheet read from Redis logs
-                if delivery_type in ("calendly",) or (delivery_type == "gsheet_sync" and not auto.get("sheet_url")):
+                # Calendly + GSheet + FB Conversions + Clay read from Redis logs
+                if delivery_type in ("calendly", "fb_conversions") or (delivery_type == "enrichment" and auto.get("clay_enabled")) or (delivery_type == "gsheet_sync" and not auto.get("sheet_url")):
                     log_url = f"{UPSTASH_URL}/lrange/logs:{auto_id}/0/999"
                     log_req = Request(log_url, headers={"Authorization": f"Bearer {UPSTASH_TOKEN}"})
                     with urlopen(log_req, timeout=8) as r:
@@ -827,6 +827,37 @@ class handler(BaseHTTPRequestHandler):
                 "active":              True,
             }
 
+        elif delivery_type == "fb_conversions":
+            pixel_id     = body.get("fb_pixel_id", "").strip()
+            access_token = body.get("fb_access_token", "").strip()
+            event_name   = body.get("fb_event_name", "").strip()
+            fb_mappings  = [
+                m for m in body.get("fb_field_mappings", [])
+                if isinstance(m, dict) and m.get("fb_field") and m.get("hs_property")
+            ]
+            if not pixel_id:
+                self._json(400, {"error": "Missing Pixel ID"})
+                return
+            if not access_token:
+                self._json(400, {"error": "Missing Access Token"})
+                return
+            if not event_name:
+                self._json(400, {"error": "Missing Event Name"})
+                return
+            import hashlib as _hl
+            new_auto = {
+                "id":               f"fb_{list_id}_{_hl.md5((pixel_id+event_name).encode()).hexdigest()[:8]}",
+                "name":             name,
+                "delivery_type":    "fb_conversions",
+                "hubspot_list_id":  list_id,
+                "hubspot_list_name": list_name,
+                "fb_pixel_id":      pixel_id,
+                "fb_access_token":  access_token,
+                "fb_event_name":    event_name,
+                "fb_field_mappings": fb_mappings,
+                "active":           True,
+            }
+
         else:
             self._json(400, {"error": "Invalid delivery_type"})
             return
@@ -886,6 +917,21 @@ class handler(BaseHTTPRequestHandler):
                         a["clay_column_mappings"] = [
                             m for m in body["clay_column_mappings"]
                             if isinstance(m, dict) and m.get("hs_property") and m.get("clay_column")
+                        ]
+                    if "slack_enabled" in body:
+                        _apply_slack_fields(a, body)
+
+                elif a.get("delivery_type") == "fb_conversions":
+                    if "hubspot_list_id" in body:
+                        a["hubspot_list_id"]   = str(body["hubspot_list_id"]).strip()
+                        a["hubspot_list_name"] = body.get("hubspot_list_name", "")
+                    if "fb_pixel_id"      in body: a["fb_pixel_id"]      = body["fb_pixel_id"].strip()
+                    if "fb_access_token"  in body: a["fb_access_token"]  = body["fb_access_token"].strip()
+                    if "fb_event_name"    in body: a["fb_event_name"]    = body["fb_event_name"].strip()
+                    if "fb_field_mappings" in body:
+                        a["fb_field_mappings"] = [
+                            m for m in body["fb_field_mappings"]
+                            if isinstance(m, dict) and m.get("fb_field") and m.get("hs_property")
                         ]
                     if "slack_enabled" in body:
                         _apply_slack_fields(a, body)

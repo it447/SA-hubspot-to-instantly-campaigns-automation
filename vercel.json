@@ -22,6 +22,7 @@
     { "src": "/api/sync_gsheet", "dest": "/api/sync_gsheet.py" },
     { "src": "/api/sync", "dest": "/api/sync.py" },
     { "src": "/api/sync_clay", "dest": "/api/sync_clay.py" },
+    { "src": "/api/sync_fb", "dest": "/api/sync_fb.py" },
     { "src": "/webhook/calendly", "dest": "/api/calendly_webhook.py" },
     { "src": "/webhook", "dest": "/api/webhook.py" },
     { "src": "/status", "dest": "/api/webhook.py" },
