@@ -172,17 +172,18 @@ def build_user_data(contact, fb_field_mappings, ts):
 
     return user_data
 
-def push_fb_event(pixel_id, access_token, event_name, email, user_data, ts):
+def push_fb_event(pixel_id, access_token, event_name, email, user_data, ts, event_source_url=""):
     event_id = f"{email}_{int(ts)}"
-    payload = {
-        "data": [{
-            "event_name":    event_name,
-            "event_time":    int(ts),
-            "event_id":      event_id,
-            "action_source": "website",
-            "user_data":     user_data,
-        }]
+    event = {
+        "event_name":    event_name,
+        "event_time":    int(ts),
+        "event_id":      event_id,
+        "action_source": "website",
+        "user_data":     user_data,
     }
+    if event_source_url:
+        event["event_source_url"] = event_source_url
+    payload = {"data": [event]}
     url = f"https://graph.facebook.com/v19.0/{pixel_id}/events?access_token={access_token}"
     resp = requests.post(url, json=payload, headers={"Content-Type": "application/json"}, timeout=15)
     if resp.status_code not in (200, 201):
@@ -202,7 +203,7 @@ def run_fb_sync(automation):
         _log(f"[fb_sync] {auto_name}: missing pixel_id or access_token, skipping")
         return
 
-    extra_props = [m.get("hs_property", "") for m in fb_mappings if m.get("hs_property")]
+    extra_props = list({m.get("hs_property", "") for m in fb_mappings if m.get("hs_property")} | {"hs_analytics_first_url", "phone"})
     contacts    = get_list_contacts(list_id, extra_properties=extra_props)
 
     sent = skipped = errors = 0
@@ -221,8 +222,15 @@ def run_fb_sync(automation):
             skipped += 1
             continue
 
+        # Extract event_source_url from first landing page property if present
+        event_source_url = ""
+        first_url = contact.get("hs_analytics_first_url", "").strip()
+        if first_url:
+            # Strip fbclid and other tracking params for cleaner URL
+            event_source_url = first_url.split("?fbclid=")[0].split("&fbclid=")[0]
+
         try:
-            push_fb_event(pixel_id, access_token, event_name, email, user_data, ts)
+            push_fb_event(pixel_id, access_token, event_name, email, user_data, ts, event_source_url)
             mark_sent(auto_id, email)
             log_enrollment(auto_id, email)
             sent += 1
