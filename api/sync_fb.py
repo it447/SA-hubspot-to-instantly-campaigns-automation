@@ -61,16 +61,35 @@ def log_enrollment(auto_id, email):
     with urlopen(req, timeout=5) as r:
         r.read()
 
+# ── Last run timestamp ────────────────────────────────────────
+
+def get_last_run(auto_id):
+    key = f"fb_last_run:{auto_id}"
+    url = f"{UPSTASH_URL}/get/{key}"
+    req = Request(url, headers={"Authorization": f"Bearer {UPSTASH_TOKEN}"})
+    with urlopen(req, timeout=5) as r:
+        result = json.loads(r.read())
+    val = result.get("result")
+    return float(val) if val else None
+
+def set_last_run(auto_id, ts):
+    key = f"fb_last_run:{auto_id}"
+    _redis_set_raw(key, ts)
+
 # ── HubSpot ───────────────────────────────────────────────────
 
-def get_list_contacts(list_id, extra_properties=None):
+def get_new_list_contacts(list_id, since_ts, extra_properties=None):
+    """Fetch only contacts added to the list recently, filtered by createdate >= since_ts."""
     headers    = {"Authorization": f"Bearer {HUBSPOT_API_KEY}"}
     contacts   = []
     vid_offset = None
 
-    base_props = ["email", "firstname", "lastname"]
+    base_props = ["email", "firstname", "lastname", "createdate"]
     all_props  = base_props + [p for p in (extra_properties or []) if p not in base_props]
     prop_str   = "&".join(f"property={p}" for p in all_props)
+
+    # Convert since_ts to milliseconds for HubSpot comparison
+    since_ms = int(since_ts * 1000) if since_ts else 0
 
     while True:
         url = f"https://api.hubapi.com/contacts/v1/lists/{list_id}/contacts/all?count=100&{prop_str}"
@@ -84,20 +103,40 @@ def get_list_contacts(list_id, extra_properties=None):
             _log(f"[fb_sync] HubSpot list {list_id} fetch error: {e}")
             break
 
-        for c in body.get("contacts", []):
+        page_contacts = body.get("contacts", [])
+        found_old = False
+
+        for c in page_contacts:
             props = c.get("properties", {})
             email = props.get("email", {}).get("value", "").strip().lower()
-            if email:
-                contact = {"email": email}
-                for p in all_props:
-                    contact[p] = props.get(p, {}).get("value", "")
-                contacts.append(contact)
+            if not email:
+                continue
+
+            # Filter by createdate if we have a since_ts
+            if since_ms:
+                createdate_ms = props.get("createdate", {}).get("value", "")
+                try:
+                    cd_ms = int(createdate_ms) if createdate_ms else 0
+                except (ValueError, TypeError):
+                    cd_ms = 0
+                if cd_ms < since_ms:
+                    found_old = True
+                    continue
+
+            contact = {"email": email}
+            for p in all_props:
+                contact[p] = props.get(p, {}).get("value", "")
+            contacts.append(contact)
+
+        # HubSpot returns contacts newest-first — stop paginating once we hit old ones
+        if found_old:
+            break
 
         if not body.get("has-more", False):
             break
         vid_offset = body.get("vid-offset")
 
-    _log(f"[fb_sync] list {list_id} has {len(contacts)} contacts")
+    _log(f"[fb_sync] list {list_id} has {len(contacts)} new contacts since last run")
     return contacts
 
 # ── Slack ─────────────────────────────────────────────────────
@@ -204,7 +243,8 @@ def run_fb_sync(automation):
         return
 
     extra_props = list({m.get("hs_property", "") for m in fb_mappings if m.get("hs_property")} | {"hs_analytics_first_url", "phone"})
-    contacts    = get_list_contacts(list_id, extra_properties=extra_props)
+    last_run    = get_last_run(auto_id)
+    contacts    = get_new_list_contacts(list_id, since_ts=last_run, extra_properties=extra_props)
 
     sent = skipped = errors = 0
     ts = time.time()
@@ -240,6 +280,9 @@ def run_fb_sync(automation):
             errors += 1
 
     _log(f"[fb_sync] {auto_name}: done. sent={sent} skipped={skipped} errors={errors}")
+
+    # Always update last_run so next run only checks new contacts
+    set_last_run(auto_id, ts)
 
     if errors > 0 and slack_channel and automation.get("slack_enabled"):
         send_slack_message(slack_channel,
