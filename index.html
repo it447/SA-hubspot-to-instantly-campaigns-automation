@@ -847,6 +847,21 @@
           <h3>HubSpot → Facebook Conversions</h3>
           <p class="form-desc">Contacts from a HubSpot list are sent as Facebook Conversions API events. Each contact is only sent once — duplicates are tracked automatically.</p>
 
+          <!-- Mode selector -->
+          <div class="form-row">
+            <label>Automation type</label>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:4px;">
+              <label id="fb-mode-lead-btn" onclick="setFbMode('lead_attribution')" style="cursor:pointer;border:2px solid #1877F2;border-radius:var(--radius-sm);padding:12px;display:flex;flex-direction:column;gap:4px;">
+                <span style="display:flex;align-items:center;gap:6px;font-size:13px;font-weight:500;color:#1877F2;"><input type="radio" name="fb-mode" value="lead_attribution" id="fb-mode-lead" checked style="accent-color:#1877F2;"> Lead Attribution</span>
+                <span style="font-size:11px;color:var(--muted);padding-left:18px;">Auto-sends Lead event with fbclid from first landing page URL</span>
+              </label>
+              <label id="fb-mode-custom-btn" onclick="setFbMode('custom')" style="cursor:pointer;border:2px solid var(--border2);border-radius:var(--radius-sm);padding:12px;display:flex;flex-direction:column;gap:4px;">
+                <span style="display:flex;align-items:center;gap:6px;font-size:13px;font-weight:500;color:var(--cream);"><input type="radio" name="fb-mode" value="custom" id="fb-mode-custom" style="accent-color:#1877F2;"> Custom Event</span>
+                <span style="font-size:11px;color:var(--muted);padding-left:18px;">Choose event name and map any HubSpot fields manually</span>
+              </label>
+            </div>
+          </div>
+
           <div class="form-row">
             <label>Automation name</label>
             <input type="text" id="auto-name-fb" placeholder="e.g. Leads → FB Lead Event">
@@ -868,26 +883,38 @@
             <div class="token-hint" style="margin-top:5px;">Keep this secret — it will be stored securely.</div>
           </div>
 
-          <div class="form-row">
-            <label>Event Name</label>
-            <select id="fb-event-name" style="font-size:13px;padding:8px 10px;background:var(--navy-soft);border:1px solid var(--border2);color:var(--cream);border-radius:var(--radius-sm);width:100%;">
-              <option value="Lead">Lead</option>
-              <option value="Schedule">Schedule</option>
-              <option value="Purchase">Purchase</option>
-              <option value="CompleteRegistration">CompleteRegistration</option>
-              <option value="Contact">Contact</option>
-              <option value="ViewContent">ViewContent</option>
-              <option value="Other">Other</option>
-            </select>
+          <!-- Lead Attribution info box -->
+          <div id="fb-lead-attribution-info" class="form-row" style="background:rgba(24,119,242,0.08);border:1px solid rgba(24,119,242,0.25);border-radius:var(--radius-sm);padding:12px 14px;">
+            <div style="font-size:13px;color:#1877F2;font-weight:500;margin-bottom:6px;">⬡ Lead Attribution — auto-configured</div>
+            <div style="font-size:12px;color:var(--muted);line-height:1.6;">
+              Event: <strong style="color:var(--cream);">Lead</strong><br>
+              Fields sent automatically: Email, Phone, First Name, Last Name, Click ID (fbc extracted from first landing page URL)
+            </div>
           </div>
 
-          <div class="form-row">
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
-              <label style="margin-bottom:0;">Facebook field → HubSpot property</label>
-              <button type="button" class="btn btn-cream" onclick="addFbMapping()" style="font-size:12px;padding:5px 10px;">+ Add mapping</button>
+          <!-- Custom event fields (shown only in custom mode) -->
+          <div id="fb-custom-fields">
+            <div class="form-row">
+              <label>Event Name</label>
+              <select id="fb-event-name" style="font-size:13px;padding:8px 10px;background:var(--navy-soft);border:1px solid var(--border2);color:var(--cream);border-radius:var(--radius-sm);width:100%;">
+                <option value="Lead">Lead</option>
+                <option value="Schedule">Schedule</option>
+                <option value="Purchase">Purchase</option>
+                <option value="CompleteRegistration">CompleteRegistration</option>
+                <option value="Contact">Contact</option>
+                <option value="ViewContent">ViewContent</option>
+                <option value="Other">Other</option>
+              </select>
             </div>
-            <div id="fb-mappings-container"></div>
-            <div class="token-hint" style="margin-top:6px;">Map Facebook customer info fields to your HubSpot contact properties.</div>
+
+            <div class="form-row">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+                <label style="margin-bottom:0;">Facebook field → HubSpot property</label>
+                <button type="button" class="btn btn-cream" onclick="addFbMapping()" style="font-size:12px;padding:5px 10px;">+ Add mapping</button>
+              </div>
+              <div id="fb-mappings-container"></div>
+              <div class="token-hint" style="margin-top:6px;">Map Facebook customer info fields to your HubSpot contact properties.</div>
+            </div>
           </div>
 
           <hr class="slack-divider">
@@ -1192,6 +1219,8 @@ function switchTab(tab) {
     if (hsList.length) initSearchSelect('hs-search-clay','hs-dropdown-clay',hsList,hsSelectedClay,'Search HubSpot lists…');
   }
   if (tab === 'fb_conversions') {
+    const currentMode = document.querySelector('input[name="fb-mode"]:checked')?.value || 'lead_attribution';
+    setFbMode(currentMode);
     renderFbMappings();
     if (hsList.length) initSearchSelect('hs-search-fb','hs-dropdown-fb',hsList,hsSelectedFb,'Search HubSpot lists…');
   }
@@ -1314,6 +1343,15 @@ function resetClayForm() {
   document.getElementById('form-error-clay').style.display = 'none';
 }
 
+function setFbMode(mode) {
+  document.getElementById('fb-mode-lead').checked   = mode === 'lead_attribution';
+  document.getElementById('fb-mode-custom').checked = mode === 'custom';
+  document.getElementById('fb-mode-lead-btn').style.borderColor   = mode === 'lead_attribution' ? '#1877F2' : 'var(--border2)';
+  document.getElementById('fb-mode-custom-btn').style.borderColor = mode === 'custom' ? '#1877F2' : 'var(--border2)';
+  document.getElementById('fb-lead-attribution-info').style.display = mode === 'lead_attribution' ? 'block' : 'none';
+  document.getElementById('fb-custom-fields').style.display         = mode === 'custom' ? 'block' : 'none';
+}
+
 function resetFbForm() {
   document.getElementById('auto-name-fb').value = '';
   resetSearchSelect('hs-search-fb','hs-dropdown-fb',hsSelectedFb);
@@ -1322,6 +1360,7 @@ function resetFbForm() {
   document.getElementById('fb-event-name').value = 'Lead';
   fbMappings = [{fb_field:'email', hs_property:'email', hs_label:'Email'}];
   renderFbMappings();
+  setFbMode('lead_attribution');
   const cb = document.getElementById('slack-enabled-fb_conversions');
   if (cb) { cb.checked = false; toggleSlackSection('fb_conversions', false); }
   resetSearchSelect('slack-ch-search-fb_conversions','slack-ch-dropdown-fb_conversions',slackChSelectedFb);
@@ -1393,15 +1432,23 @@ async function createFbAutomation() {
   const name        = document.getElementById('auto-name-fb').value.trim();
   const pixelId     = document.getElementById('fb-pixel-id').value.trim();
   const accessToken = document.getElementById('fb-access-token').value.trim();
-  const eventName   = document.getElementById('fb-event-name').value;
-  if (!name)         { errEl.textContent='Please enter an automation name.'; errEl.style.display='block'; return; }
+  const fbMode      = document.querySelector('input[name="fb-mode"]:checked')?.value || 'lead_attribution';
+  const eventName   = fbMode === 'lead_attribution' ? 'Lead' : document.getElementById('fb-event-name').value;
+  if (!name)            { errEl.textContent='Please enter an automation name.'; errEl.style.display='block'; return; }
   if (!hsSelectedFb.id) { errEl.textContent='Please select a HubSpot list.'; errEl.style.display='block'; return; }
-  if (!pixelId)      { errEl.textContent='Please enter the Pixel ID.'; errEl.style.display='block'; return; }
-  if (!accessToken)  { errEl.textContent='Please enter the Access Token.'; errEl.style.display='block'; return; }
-  if (!eventName)    { errEl.textContent='Please select an Event Name.'; errEl.style.display='block'; return; }
-  const validMaps = fbMappings.filter(m => m.fb_field && m.hs_property);
+  if (!pixelId)         { errEl.textContent='Please enter the Pixel ID.'; errEl.style.display='block'; return; }
+  if (!accessToken)     { errEl.textContent='Please enter the Access Token.'; errEl.style.display='block'; return; }
+  if (!eventName)       { errEl.textContent='Please select an Event Name.'; errEl.style.display='block'; return; }
+  const leadAttributionMaps = [
+    {fb_field:'email',       hs_property:'email',     hs_label:'Email'},
+    {fb_field:'phone',       hs_property:'phone',     hs_label:'Phone Number'},
+    {fb_field:'first_name',  hs_property:'firstname', hs_label:'First Name'},
+    {fb_field:'last_name',   hs_property:'lastname',  hs_label:'Last Name'},
+    {fb_field:'fbc',         hs_property:'hs_analytics_first_url', hs_label:'First Page Seen'},
+  ];
+  const validMaps = fbMode === 'lead_attribution' ? leadAttributionMaps : fbMappings.filter(m => m.fb_field && m.hs_property);
   let payload = {
-    name, delivery_type:'fb_conversions',
+    name, delivery_type:'fb_conversions', fb_mode: fbMode,
     hubspot_list_id: hsSelectedFb.id, hubspot_list_name: hsSelectedFb.name,
     fb_pixel_id: pixelId, fb_access_token: accessToken,
     fb_event_name: eventName, fb_field_mappings: validMaps, active: true
@@ -2082,6 +2129,7 @@ async function editAutomation(id) {
     document.getElementById('fb-pixel-id').value = a.fb_pixel_id||'';
     document.getElementById('fb-access-token').value = a.fb_access_token||'';
     document.getElementById('fb-event-name').value = a.fb_event_name||'Lead';
+    setFbMode(a.fb_mode||'lead_attribution');
     fbMappings = a.fb_field_mappings ? JSON.parse(JSON.stringify(a.fb_field_mappings)) : [{fb_field:'email',hs_property:'email',hs_label:'Email'}];
     renderFbMappings();
     const slackCbFb=document.getElementById('slack-enabled-fb_conversions');

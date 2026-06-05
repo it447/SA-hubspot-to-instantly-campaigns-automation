@@ -844,11 +844,13 @@ class handler(BaseHTTPRequestHandler):
             if not event_name:
                 self._json(400, {"error": "Missing Event Name"})
                 return
+            fb_mode = body.get("fb_mode", "lead_attribution")
             import hashlib as _hl
             new_auto = {
                 "id":               f"fb_{list_id}_{_hl.md5((pixel_id+event_name).encode()).hexdigest()[:8]}",
                 "name":             name,
                 "delivery_type":    "fb_conversions",
+                "fb_mode":          fb_mode,
                 "hubspot_list_id":  list_id,
                 "hubspot_list_name": list_name,
                 "fb_pixel_id":      pixel_id,
@@ -926,6 +928,7 @@ class handler(BaseHTTPRequestHandler):
                         a["hubspot_list_id"]   = str(body["hubspot_list_id"]).strip()
                         a["hubspot_list_name"] = body.get("hubspot_list_name", "")
                     if "fb_pixel_id"      in body: a["fb_pixel_id"]      = body["fb_pixel_id"].strip()
+                    if "fb_mode"          in body: a["fb_mode"]          = body["fb_mode"]
                     if "fb_access_token"  in body: a["fb_access_token"]  = body["fb_access_token"].strip()
                     if "fb_event_name"    in body: a["fb_event_name"]    = body["fb_event_name"].strip()
                     if "fb_field_mappings" in body:
