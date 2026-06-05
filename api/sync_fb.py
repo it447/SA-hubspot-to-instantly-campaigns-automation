@@ -76,6 +76,26 @@ def set_last_run(auto_id, ts):
     key = f"fb_last_run:{auto_id}"
     _redis_set_raw(key, ts)
 
+def update_automation_last_run(auto_id):
+    """Update last_run on the automation config so the dashboard shows it."""
+    try:
+        data = _redis_get("automations_config")
+        automations = data if isinstance(data, list) else []
+        for a in automations:
+            if a.get("id") == auto_id:
+                import datetime
+                a["last_run"] = datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
+        url  = f"{UPSTASH_URL}/set/automations_config"
+        body = json.dumps(automations).encode()
+        req  = Request(url, data=body, headers={
+            "Authorization": f"Bearer {UPSTASH_TOKEN}",
+            "Content-Type":  "application/json"
+        }, method="POST")
+        with urlopen(req, timeout=5) as r:
+            r.read()
+    except Exception as e:
+        _log(f"[fb_sync] update_automation_last_run error: {e}")
+
 # ── HubSpot ───────────────────────────────────────────────────
 
 def get_new_list_contacts(list_id, since_ts, extra_properties=None):
@@ -283,6 +303,7 @@ def run_fb_sync(automation):
 
     # Always update last_run so next run only checks new contacts
     set_last_run(auto_id, ts)
+    update_automation_last_run(auto_id)
 
     if errors > 0 and slack_channel and automation.get("slack_enabled"):
         send_slack_message(slack_channel,
