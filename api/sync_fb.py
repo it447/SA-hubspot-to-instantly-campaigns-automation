@@ -39,17 +39,44 @@ def get_automations():
 
 # ── Dedup ─────────────────────────────────────────────────────
 
-def already_sent(auto_id, email):
+def load_sent_cache(auto_id):
+    """Load all sent keys for this automation into a set in one scan."""
+    sent   = set()
+    cursor = 0
+    pattern = f"fb:{auto_id}:*"
+    try:
+        while True:
+            url = f"{UPSTASH_URL}/scan/{cursor}?match={pattern}&count=500"
+            req = Request(url, headers={"Authorization": f"Bearer {UPSTASH_TOKEN}"})
+            with urlopen(req, timeout=10) as r:
+                data = json.loads(r.read())
+            result = data.get("result", [0, []])
+            cursor = int(result[0])
+            for key in (result[1] if len(result) > 1 else []):
+                sent.add(key)
+            if cursor == 0:
+                break
+    except Exception as e:
+        _log(f"[fb_sync] sent cache load error: {e}")
+        return None
+    _log(f"[fb_sync] sent cache loaded: {len(sent)} keys for {auto_id}")
+    return sent
+
+def already_sent(auto_id, email, sent_cache=None):
     key = f"fb:{auto_id}:{email.lower()}"
+    if sent_cache is not None:
+        return key in sent_cache
     url = f"{UPSTASH_URL}/get/{key}"
     req = Request(url, headers={"Authorization": f"Bearer {UPSTASH_TOKEN}"})
     with urlopen(req, timeout=5) as r:
         result = json.loads(r.read())
     return result.get("result") is not None
 
-def mark_sent(auto_id, email):
+def mark_sent(auto_id, email, sent_cache=None):
     key = f"fb:{auto_id}:{email.lower()}"
     _redis_set_raw(key, 1)
+    if sent_cache is not None:
+        sent_cache.add(key)
 
 def log_enrollment(auto_id, email):
     key   = f"logs:{auto_id}"
@@ -244,13 +271,14 @@ def run_fb_sync(automation):
     last_run    = get_last_run(auto_id)
     contacts    = get_new_list_contacts(list_id, since_ts=last_run, extra_properties=extra_props)
 
+    sent_cache = load_sent_cache(auto_id)
     sent = skipped = errors = 0
     ts = time.time()
 
     for contact in contacts:
         email = contact["email"]
 
-        if already_sent(auto_id, email):
+        if already_sent(auto_id, email, sent_cache):
             skipped += 1
             continue
 
@@ -269,7 +297,7 @@ def run_fb_sync(automation):
 
         try:
             push_fb_event(pixel_id, access_token, event_name, email, user_data, ts, event_source_url)
-            mark_sent(auto_id, email)
+            mark_sent(auto_id, email, sent_cache)
             sent += 1
             _log(f"[fb_sync] {auto_name}: sent event for {email}")
         except Exception as e:

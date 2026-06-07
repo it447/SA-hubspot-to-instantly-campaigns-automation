@@ -62,16 +62,42 @@ def update_automation_last_run(auto_id):
 
 # ── Dedup & logs ──────────────────────────────────────────────
 
-def already_sent(auto_id, email):
+def load_sent_cache(auto_id):
+    sent   = set()
+    cursor = 0
+    pattern = f"gcal:{auto_id}:*"
+    try:
+        while True:
+            url = f"{UPSTASH_URL}/scan/{cursor}?match={pattern}&count=500"
+            req = Request(url, headers={"Authorization": f"Bearer {UPSTASH_TOKEN}"})
+            with urlopen(req, timeout=10) as r:
+                data = json.loads(r.read())
+            result = data.get("result", [0, []])
+            cursor = int(result[0])
+            for key in (result[1] if len(result) > 1 else []):
+                sent.add(key)
+            if cursor == 0:
+                break
+    except Exception as e:
+        _log(f"[gcal_sync] sent cache load error: {e}")
+        return None
+    _log(f"[gcal_sync] sent cache loaded: {len(sent)} keys for {auto_id}")
+    return sent
+
+def already_sent(auto_id, email, sent_cache=None):
     key = f"gcal:{auto_id}:{email.lower()}"
+    if sent_cache is not None:
+        return key in sent_cache
     url = f"{UPSTASH_URL}/get/{key}"
     req = Request(url, headers={"Authorization": f"Bearer {UPSTASH_TOKEN}"})
     with urlopen(req, timeout=5) as r:
         result = json.loads(r.read())
     return result.get("result") is not None
 
-def mark_sent(auto_id, email):
+def mark_sent(auto_id, email, sent_cache=None):
     _redis_set_raw(f"gcal:{auto_id}:{email.lower()}", 1)
+    if sent_cache is not None:
+        sent_cache.add(f"gcal:{auto_id}:{email.lower()}")
 
 def log_enrollment(auto_id, email):
     key     = f"logs:{auto_id}"
@@ -306,13 +332,14 @@ def run_gcal_sync(automation):
         _log(f"[gcal_sync] {auto_name}: token error: {e}")
         return
 
-    contacts = get_list_contacts(list_id, extra_properties=extra_props)
+    contacts   = get_list_contacts(list_id, extra_properties=extra_props)
+    sent_cache = load_sent_cache(auto_id)
     sent = skipped = errors = 0
 
     for contact in contacts:
         email = contact["email"]
 
-        if already_sent(auto_id, email):
+        if already_sent(auto_id, email, sent_cache):
             skipped += 1
             continue
 
@@ -328,7 +355,7 @@ def run_gcal_sync(automation):
 
         try:
             create_calendar_event(access_token, send_from, email, title, description, start_dt, end_dt, google_meet)
-            mark_sent(auto_id, email)
+            mark_sent(auto_id, email, sent_cache)
             sent += 1
             _log(f"[gcal_sync] {auto_name}: invite sent to {email}")
         except Exception as e:
