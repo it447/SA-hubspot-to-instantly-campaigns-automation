@@ -4,6 +4,7 @@ import sys
 import requests
 from http.server import BaseHTTPRequestHandler
 from urllib.request import urlopen, Request
+from urllib.parse import quote
 
 UPSTASH_URL     = os.environ.get("UPSTASH_REDIS_REST_URL", "")
 UPSTASH_TOKEN   = os.environ.get("UPSTASH_REDIS_REST_TOKEN", "")
@@ -77,11 +78,9 @@ def mark_as_sent(email, target_id, sent_cache=None):
 def log_enrollment(auto_id, email):
     key   = f"logs:{auto_id}"
     entry = json.dumps({"email": email, "ts": __import__("time").time(), "type": "enrichment"})
-    body  = json.dumps([entry]).encode()
-    req   = Request(f"{UPSTASH_URL}/lpush/{key}", data=body, headers={
-        "Authorization": f"Bearer {UPSTASH_TOKEN}",
-        "Content-Type":  "application/json"
-    }, method="POST")
+    encoded = quote(entry, safe="")
+    url = f"{UPSTASH_URL}/lpush/{key}/{encoded}"
+    req = Request(url, headers={"Authorization": f"Bearer {UPSTASH_TOKEN}"})
     with urlopen(req, timeout=5) as r:
         r.read()
 

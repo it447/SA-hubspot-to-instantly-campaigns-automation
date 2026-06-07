@@ -6,6 +6,7 @@ import time
 import requests
 from http.server import BaseHTTPRequestHandler
 from urllib.request import urlopen, Request
+from urllib.parse import quote
 
 UPSTASH_URL     = os.environ.get("UPSTASH_REDIS_REST_URL", "")
 UPSTASH_TOKEN   = os.environ.get("UPSTASH_REDIS_REST_TOKEN", "")
@@ -53,13 +54,12 @@ def mark_sent(auto_id, email):
 def log_enrollment(auto_id, email):
     key   = f"logs:{auto_id}"
     entry = json.dumps({"email": email, "ts": time.time(), "type": "fb_conversions"})
-    body  = json.dumps([entry]).encode()
-    req   = Request(f"{UPSTASH_URL}/lpush/{key}", data=body, headers={
-        "Authorization": f"Bearer {UPSTASH_TOKEN}",
-        "Content-Type":  "application/json"
-    }, method="POST")
+    encoded = quote(entry, safe="")
+    url = f"{UPSTASH_URL}/lpush/{key}/{encoded}"
+    req = Request(url, headers={"Authorization": f"Bearer {UPSTASH_TOKEN}"})
     with urlopen(req, timeout=5) as r:
-        r.read()
+        resp_body = r.read()
+    _log(f"[fb_sync] log_enrollment redis response: {resp_body}")
 
 # ── Last run timestamp ────────────────────────────────────────
 
@@ -270,12 +270,17 @@ def run_fb_sync(automation):
         try:
             push_fb_event(pixel_id, access_token, event_name, email, user_data, ts, event_source_url)
             mark_sent(auto_id, email)
-            log_enrollment(auto_id, email)
             sent += 1
             _log(f"[fb_sync] {auto_name}: sent event for {email}")
         except Exception as e:
             _log(f"[fb_sync] {auto_name}: error sending {email}: {e}")
             errors += 1
+            continue
+
+        try:
+            log_enrollment(auto_id, email)
+        except Exception as e:
+            _log(f"[fb_sync] {auto_name}: log_enrollment error for {email}: {e}")
 
     _log(f"[fb_sync] {auto_name}: done. sent={sent} skipped={skipped} errors={errors}")
 
