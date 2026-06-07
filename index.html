@@ -1706,15 +1706,16 @@ async function createGcalAutomation() {
 
   btn.disabled = true; btn.textContent = editingId ? 'Saving…' : 'Creating…';
   try {
-    const method = editingId ? 'PATCH' : 'POST';
-    const url    = editingId ? `/api/automations/${editingId}` : '/api/automations';
-    const resp   = await fetch(url, { method, headers: {'Content-Type':'application/json','X-Auth-Token':authToken}, body: JSON.stringify(payload) });
-    const data   = await resp.json();
-    if (!resp.ok) { errEl.textContent = data.error||'Error'; errEl.style.display='block'; return; }
-    await loadAutomations();
-    showPage('dashboard');
-    showToast(editingId ? 'Automation updated!' : 'Calendar automation created!');
-    editingId = null;
+    const {ok, data} = editingId
+      ? await api('PATCH', '/automations/' + editingId, payload)
+      : await api('POST',  '/automations', payload);
+    if (ok) {
+      editingId = null; btn.textContent = 'Create automation';
+      document.getElementById('add-page-title').textContent = 'New automation';
+      document.getElementById('view-logs-btn').style.display = 'none';
+      showToast('Calendar automation created!');
+      showPage('dashboard'); loadAutomations();
+    } else { errEl.textContent = data.error||'Something went wrong.'; errEl.style.display='block'; }
   } catch(e) { errEl.textContent='Network error. Try again.'; errEl.style.display='block'; }
   btn.disabled=false; btn.textContent=editingId?'Save changes':'Create automation';
 }
