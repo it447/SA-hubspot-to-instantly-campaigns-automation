@@ -99,17 +99,14 @@ def update_automation_last_run(auto_id):
 # ── HubSpot ───────────────────────────────────────────────────
 
 def get_new_list_contacts(list_id, since_ts, extra_properties=None):
-    """Fetch only contacts added to the list recently, filtered by createdate >= since_ts."""
+    """Fetch all contacts in the list — dedup keys handle skipping already-sent ones."""
     headers    = {"Authorization": f"Bearer {HUBSPOT_API_KEY}"}
     contacts   = []
     vid_offset = None
 
-    base_props = ["email", "firstname", "lastname", "createdate"]
+    base_props = ["email", "firstname", "lastname"]
     all_props  = base_props + [p for p in (extra_properties or []) if p not in base_props]
     prop_str   = "&".join(f"property={p}" for p in all_props)
-
-    # Convert since_ts to milliseconds for HubSpot comparison
-    since_ms = int(since_ts * 1000) if since_ts else 0
 
     while True:
         url = f"https://api.hubapi.com/contacts/v1/lists/{list_id}/contacts/all?count=100&{prop_str}"
@@ -123,40 +120,21 @@ def get_new_list_contacts(list_id, since_ts, extra_properties=None):
             _log(f"[fb_sync] HubSpot list {list_id} fetch error: {e}")
             break
 
-        page_contacts = body.get("contacts", [])
-        found_old = False
-
-        for c in page_contacts:
+        for c in body.get("contacts", []):
             props = c.get("properties", {})
             email = props.get("email", {}).get("value", "").strip().lower()
             if not email:
                 continue
-
-            # Filter by createdate if we have a since_ts
-            if since_ms:
-                createdate_ms = props.get("createdate", {}).get("value", "")
-                try:
-                    cd_ms = int(createdate_ms) if createdate_ms else 0
-                except (ValueError, TypeError):
-                    cd_ms = 0
-                if cd_ms < since_ms:
-                    found_old = True
-                    continue
-
             contact = {"email": email}
             for p in all_props:
                 contact[p] = props.get(p, {}).get("value", "")
             contacts.append(contact)
 
-        # HubSpot returns contacts newest-first — stop paginating once we hit old ones
-        if found_old:
-            break
-
         if not body.get("has-more", False):
             break
         vid_offset = body.get("vid-offset")
 
-    _log(f"[fb_sync] list {list_id} has {len(contacts)} new contacts since last run")
+    _log(f"[fb_sync] list {list_id} has {len(contacts)} contacts")
     return contacts
 
 # ── Slack ─────────────────────────────────────────────────────
