@@ -1860,6 +1860,7 @@ function renderAutomations() {
       <div class="auto-actions" style="display:flex;align-items:center;gap:10px;" onclick="event.stopPropagation()">
         ${count24hChip}
         ${lastRunLabel}
+        <button class="btn-icon" onclick="viewLogs('${esc(a.id)}')" title="View logs" style="opacity:0.6;padding:4px 6px;font-size:12px;">📋</button>
         <label class="toggle" title="${active?'Pause':'Activate'}" onclick="event.stopPropagation()">
           <input type="checkbox" ${active?'checked':''} onchange="toggleAutomation('${esc(a.id)}',this.checked)">
           <span class="toggle-slider"></span>
