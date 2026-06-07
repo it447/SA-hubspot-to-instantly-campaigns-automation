@@ -314,6 +314,19 @@
   .gs-sched-btn.active { background:var(--teal); color:#0f1f2e; border-color:var(--teal); font-weight:600; }
   .gs-sched-btn:not(.active):hover { background:rgba(254,242,222,0.08); color:var(--cream); }
   .gs-sched-details { margin-top:0.9rem; display:flex; gap:0.75rem; }
+
+  /* Source selector cards */
+  .source-card { flex:1; cursor:pointer; border:2px solid var(--border); border-radius:14px; padding:28px 24px; text-align:center; transition:all .18s; background:rgba(254,242,222,0.03); }
+  .source-card:hover { border-color:var(--orange); background:rgba(255,100,50,0.06); }
+  .source-card-icon { font-size:28px; margin-bottom:12px; }
+  .source-card-label { font-size:17px; font-weight:600; color:var(--cream); margin-bottom:8px; }
+  .source-card-desc { font-size:13px; color:var(--muted); line-height:1.5; }
+
+  /* HubSpot type options */
+  .hs-type-options { display:flex; gap:10px; flex-wrap:wrap; }
+  .hs-type-opt { padding:8px 18px; border-radius:20px; border:1.5px solid var(--border); font-size:13px; font-weight:500; cursor:pointer; color:var(--muted); transition:all .15s; background:rgba(254,242,222,0.03); }
+  .hs-type-opt:hover { border-color:var(--cream); color:var(--cream); }
+  .hs-type-opt.active { border-color:var(--orange); color:var(--orange); background:rgba(255,100,50,0.08); font-weight:600; }
 </style>
 </head>
 <body>
@@ -427,7 +440,7 @@
         <div>
           <h2 id="add-page-title">New automation</h2>
           <div class="orange-bar" style="margin-top:8px;margin-bottom:0;"></div>
-          <p style="margin-top:10px;">Choose how to reach contacts from your HubSpot list</p>
+          <p id="add-page-subtitle" style="margin-top:10px;">Choose a source to get started</p>
         </div>
         <div style="display:flex;gap:8px;align-items:center;margin-top:4px;">
           <button class="btn-icon" id="view-logs-btn" onclick="viewCurrentLogs()" style="display:none;">
@@ -441,7 +454,7 @@
         </div>
       </div>
 
-      <div class="tab-bar">
+      <div class="tab-bar" style="display:none;">
         <button class="tab-btn active"  id="tab-btn-instantly"    onclick="switchTab('instantly')">Instantly Automation</button>
         <button class="tab-btn teal"    id="tab-btn-hubspot_form" onclick="switchTab('hubspot_form')">HS Form Fill Sequence</button>
         <button class="tab-btn gs-tab"  id="tab-btn-gsheet_sync"  onclick="switchTab('gsheet_sync')">GSheet → HubSpot Sync</button>
@@ -450,6 +463,37 @@
         <button class="tab-btn" id="tab-btn-fb_conversions" onclick="switchTab('fb_conversions')" style="color:#1877F2;">⬡ FB Conversions</button>
       </div>
 
+      <!-- Source selector shown when creating a new automation -->
+      <div id="source-selector" style="display:none; padding:32px 0 0;">
+        <div style="display:flex; gap:20px; max-width:600px;">
+          <div class="source-card" onclick="selectSource('hubspot')">
+            <div class="source-card-icon" style="color:#ff6432;">&#9670;</div>
+            <div class="source-card-label">HubSpot</div>
+            <div class="source-card-desc">Send contacts to Instantly, Facebook, Clay, and more</div>
+          </div>
+          <div class="source-card" onclick="selectSource('gsheet')">
+            <div class="source-card-icon" style="color:#34a853;">&#9632;</div>
+            <div class="source-card-label">Google Sheet</div>
+            <div class="source-card-desc">Sync a Google Sheet to HubSpot contacts</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- HubSpot automation type selector (shown after source=hubspot is chosen) -->
+      <div id="hs-type-bar" style="display:none; padding:28px 0 0;">
+        <div class="form-row" style="max-width:600px;">
+          <label style="margin-bottom:10px; display:block;">Type of automation</label>
+          <div class="hs-type-options">
+            <div class="hs-type-opt active" id="hs-type-instantly"    onclick="selectHsType('instantly')">Instantly</div>
+            <div class="hs-type-opt"        id="hs-type-hubspot_form" onclick="selectHsType('hubspot_form')">HS Form Fill</div>
+            <div class="hs-type-opt"        id="hs-type-fb_conversions" onclick="selectHsType('fb_conversions')" style="color:#1877F2;">FB Conversions</div>
+            <div class="hs-type-opt"        id="hs-type-clay"         onclick="selectHsType('clay')" style="color:#7C3AED;">Clay Push</div>
+            <div class="hs-type-opt"        id="hs-type-calendly"     onclick="selectHsType('calendly')" style="color:#006BFF;">Calendly</div>
+          </div>
+        </div>
+      </div>
+
+      <div id="form-area" style="display:none;">
       <div class="edit-grid">
       <div>
 
@@ -994,6 +1038,7 @@
       </div>
 
       </div><!-- close edit-grid -->
+      </div><!-- close form-area -->
     </div>
   </main>
 </div>
@@ -1578,11 +1623,35 @@ async function createClayAutomation() {
 }
 
 // ── New / Cancel ─────────────────────────────────────────────
+function selectSource(source) {
+  document.getElementById('source-selector').style.display = 'none';
+  document.getElementById('add-page-subtitle').textContent = source === 'hubspot' ? 'Choose how to reach contacts from your HubSpot list' : 'Sync a Google Sheet to HubSpot';
+  document.getElementById('form-area').style.display = '';
+  if (source === 'hubspot') {
+    document.getElementById('hs-type-bar').style.display = '';
+    switchTab('instantly');
+    selectHsType('instantly');
+  } else {
+    document.getElementById('hs-type-bar').style.display = 'none';
+    switchTab('gsheet_sync');
+  }
+}
+
+function selectHsType(type) {
+  document.querySelectorAll('.hs-type-opt').forEach(el => el.classList.remove('active'));
+  const btn = document.getElementById(`hs-type-${type}`);
+  if (btn) btn.classList.add('active');
+  switchTab(type);
+}
+
 function newAutomation() {
   editingId = null;
   currentAction = 'enroll';
   document.getElementById('add-page-title').textContent = 'New automation';
-  document.querySelector('.tab-bar').style.display = '';
+  document.getElementById('add-page-subtitle').textContent = 'Choose a source to get started';
+  document.getElementById('source-selector').style.display = '';
+  document.getElementById('hs-type-bar').style.display = 'none';
+  document.getElementById('form-area').style.display = 'none';
   document.getElementById('view-logs-btn').style.display = 'none';
   ['instantly','hubspot_form','gsheet_sync','calendly'].forEach(dt => {
     const btn = document.getElementById(`create-btn-${dt}`);
@@ -1620,7 +1689,6 @@ function newAutomation() {
   resetCalendlyForm();
   resetClayForm();
   resetFbForm();
-  switchTab('instantly');
   showPage('add');
 }
 
@@ -1631,7 +1699,6 @@ function cancelEdit() {
     if (btn) btn.textContent = 'Create automation';
   });
   document.getElementById('add-page-title').textContent = 'New automation';
-  document.querySelector('.tab-bar').style.display = '';
   document.getElementById('view-logs-btn').style.display = 'none';
   resetFbForm();
   showPage('dashboard');
@@ -2117,7 +2184,10 @@ async function editAutomation(id) {
   const isClay     = a.delivery_type==='enrichment' && a.clay_enabled;
   const isFb       = a.delivery_type==='fb_conversions';
   document.getElementById('add-page-title').textContent='Edit automation';
-  document.querySelector('.tab-bar').style.display='none';
+  document.getElementById('add-page-subtitle').textContent = isGsheet ? 'Sync a Google Sheet to HubSpot' : 'Choose how to reach contacts from your HubSpot list';
+  document.getElementById('source-selector').style.display='none';
+  document.getElementById('hs-type-bar').style.display='none';
+  document.getElementById('form-area').style.display='';
   document.getElementById('view-logs-btn').style.display = 'flex';
   showPage('add');
   switchTab(isFb?'fb_conversions':isClay?'clay':isCalendly?'calendly':isGsheet?'gsheet_sync':isForm?'hubspot_form':'instantly');
