@@ -256,6 +256,8 @@
   .slack-icon { display:inline-flex; align-items:center; }
   .slack-body { margin-top:1rem; display:flex; flex-direction:column; gap:0.9rem; }
   .token-hint { font-size:11px; color:var(--muted); margin-top:5px; }
+  .token-chip { display:inline-block; padding:2px 8px; background:rgba(254,242,222,0.08); border:1px solid var(--border); border-radius:10px; cursor:pointer; font-size:11px; margin:2px 2px 0; transition:background .15s; }
+  .token-chip:hover { background:rgba(254,242,222,0.15); }
 
   .edit-grid { display:flex; gap:2rem; align-items:start; }
   .edit-grid > :first-child { flex-shrink:0; }
@@ -461,6 +463,7 @@
         <button class="tab-btn" id="tab-btn-calendly" onclick="switchTab('calendly')" style="color:#006BFF;">⊙ Calendly</button>
         <button class="tab-btn" id="tab-btn-clay" onclick="switchTab('clay')" style="color:#7C3AED;">▦ Clay Push</button>
         <button class="tab-btn" id="tab-btn-fb_conversions" onclick="switchTab('fb_conversions')" style="color:#1877F2;">⬡ FB Conversions</button>
+        <button class="tab-btn" id="tab-btn-gcal" onclick="switchTab('gcal')" style="color:#34a853;">&#128197; Google Calendar</button>
       </div>
 
       <!-- Source selector shown when creating a new automation -->
@@ -489,6 +492,7 @@
             <div class="hs-type-opt"        id="hs-type-fb_conversions" onclick="selectHsType('fb_conversions')" style="color:#1877F2;">FB Conversions</div>
             <div class="hs-type-opt"        id="hs-type-clay"         onclick="selectHsType('clay')" style="color:#7C3AED;">Clay Push</div>
             <div class="hs-type-opt"        id="hs-type-calendly"     onclick="selectHsType('calendly')" style="color:#006BFF;">Calendly</div>
+            <div class="hs-type-opt"        id="hs-type-gcal"         onclick="selectHsType('gcal')" style="color:#34a853;">&#128197; Google Calendar</div>
           </div>
         </div>
       </div>
@@ -979,6 +983,150 @@
         </div>
       </div>
 
+      <!-- ── Tab: Google Calendar ── -->
+      <div class="tab-panel" id="tab-gcal">
+        <div class="form-card">
+          <h3>&#128197; Google Calendar Invite</h3>
+          <p class="form-desc">Send a Google Calendar invite to contacts when they join a HubSpot list. Each contact is invited only once.</p>
+
+          <div class="form-row">
+            <label>Automation name</label>
+            <input type="text" id="auto-name-gcal" placeholder="e.g. New Lead — Discovery Call Invite">
+          </div>
+
+          <div class="form-row">
+            <label>HubSpot list</label>
+            <div class="search-select">
+              <input type="text" id="hs-search-gcal" placeholder="Search HubSpot lists…" autocomplete="off">
+              <div class="search-dropdown" id="hs-dropdown-gcal"></div>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <label>Send invite from (Google account email)</label>
+            <div style="display:flex;gap:8px;align-items:center;">
+              <div class="search-select" style="flex:1;">
+                <input type="text" id="gcal-send-from" placeholder="e.g. john@thescalearmy.com" autocomplete="off">
+                <div class="search-dropdown" id="gcal-account-dropdown"></div>
+              </div>
+              <button class="btn btn-cream" onclick="connectGoogleAccount()" style="white-space:nowrap;flex-shrink:0;">+ Connect account</button>
+            </div>
+            <div style="font-size:12px;color:var(--muted);margin-top:6px;">Connect the Google account you want to send invites from. Only needs to be done once per email.</div>
+          </div>
+
+          <div class="form-row">
+            <label>When to send the invite</label>
+            <select id="gcal-timing-type" onchange="onGcalTimingChange()" style="width:100%;padding:10px 12px;background:rgba(254,242,222,0.07);border:1px solid var(--border);border-radius:8px;color:var(--cream);font-family:'DM Sans',sans-serif;font-size:14px;">
+              <option value="relative">X days after joining the list</option>
+              <option value="fixed">Fixed date &amp; time</option>
+              <option value="hs_property">From a HubSpot date property</option>
+            </select>
+          </div>
+
+          <!-- Relative timing fields -->
+          <div id="gcal-timing-relative" class="form-row" style="display:flex;gap:12px;">
+            <div style="flex:1;">
+              <label>Days after joining</label>
+              <input type="number" id="gcal-relative-days" value="1" min="0" style="width:100%;padding:10px 12px;background:rgba(254,242,222,0.07);border:1px solid var(--border);border-radius:8px;color:var(--cream);font-family:'DM Sans',sans-serif;font-size:14px;">
+            </div>
+            <div style="flex:1;">
+              <label>Time of day (UTC)</label>
+              <input type="time" id="gcal-relative-time" value="09:00" style="width:100%;padding:10px 12px;background:rgba(254,242,222,0.07);border:1px solid var(--border);border-radius:8px;color:var(--cream);font-family:'DM Sans',sans-serif;font-size:14px;">
+            </div>
+          </div>
+
+          <!-- Fixed timing fields -->
+          <div id="gcal-timing-fixed" class="form-row" style="display:none;">
+            <label>Date &amp; time (UTC)</label>
+            <input type="datetime-local" id="gcal-fixed-datetime" style="width:100%;padding:10px 12px;background:rgba(254,242,222,0.07);border:1px solid var(--border);border-radius:8px;color:var(--cream);font-family:'DM Sans',sans-serif;font-size:14px;">
+          </div>
+
+          <!-- HubSpot property timing fields -->
+          <div id="gcal-timing-hs" class="form-row" style="display:none;gap:12px;flex-wrap:wrap;">
+            <div style="flex:1;min-width:180px;">
+              <label>HubSpot date property</label>
+              <div class="search-select">
+                <input type="text" id="gcal-hs-prop-search" placeholder="Search date properties…" autocomplete="off">
+                <div class="search-dropdown" id="gcal-hs-prop-dropdown"></div>
+              </div>
+            </div>
+            <div style="flex:1;min-width:140px;">
+              <label>Time of day (UTC)</label>
+              <input type="time" id="gcal-hs-prop-time" value="09:00" style="width:100%;padding:10px 12px;background:rgba(254,242,222,0.07);border:1px solid var(--border);border-radius:8px;color:var(--cream);font-family:'DM Sans',sans-serif;font-size:14px;">
+            </div>
+          </div>
+
+          <div class="form-row">
+            <label>Meeting title</label>
+            <input type="text" id="gcal-meeting-title" placeholder="e.g. Discovery Call with {{firstname}} {{lastname}}">
+            <div class="token-hint" style="margin-top:6px;">
+              Placeholders:
+              <span class="token-chip" onclick="insertGcalPlaceholder('gcal-meeting-title','{{firstname}}')">{{firstname}}</span>
+              <span class="token-chip" onclick="insertGcalPlaceholder('gcal-meeting-title','{{lastname}}')">{{lastname}}</span>
+              <span class="token-chip" onclick="insertGcalPlaceholder('gcal-meeting-title','{{company}}')">{{company}}</span>
+              <span class="token-chip" onclick="insertGcalPlaceholder('gcal-meeting-title','{{email}}')">{{email}}</span>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <label>Meeting description</label>
+            <textarea id="gcal-meeting-description" rows="4" placeholder="e.g. Hi {{firstname}}, looking forward to connecting with you and the team at {{company}}!"></textarea>
+            <div class="token-hint" style="margin-top:6px;">
+              Placeholders:
+              <span class="token-chip" onclick="insertGcalPlaceholder('gcal-meeting-description','{{firstname}}')">{{firstname}}</span>
+              <span class="token-chip" onclick="insertGcalPlaceholder('gcal-meeting-description','{{lastname}}')">{{lastname}}</span>
+              <span class="token-chip" onclick="insertGcalPlaceholder('gcal-meeting-description','{{company}}')">{{company}}</span>
+              <span class="token-chip" onclick="insertGcalPlaceholder('gcal-meeting-description','{{email}}')">{{email}}</span>
+              <span class="token-chip" onclick="insertGcalPlaceholder('gcal-meeting-description','{{phone}}')">{{phone}}</span>
+            </div>
+          </div>
+
+          <div class="form-row" style="display:flex;gap:12px;">
+            <div style="flex:1;">
+              <label>Duration</label>
+              <select id="gcal-duration" style="width:100%;padding:10px 12px;background:rgba(254,242,222,0.07);border:1px solid var(--border);border-radius:8px;color:var(--cream);font-family:'DM Sans',sans-serif;font-size:14px;">
+                <option value="15">15 minutes</option>
+                <option value="30" selected>30 minutes</option>
+                <option value="45">45 minutes</option>
+                <option value="60">1 hour</option>
+                <option value="90">1.5 hours</option>
+              </select>
+            </div>
+            <div style="flex:1;display:flex;align-items:flex-end;padding-bottom:2px;">
+              <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:14px;">
+                <input type="checkbox" id="gcal-google-meet" style="width:16px;height:16px;accent-color:var(--orange);">
+                Add Google Meet link
+              </label>
+            </div>
+          </div>
+
+          <div class="slack-section">
+            <div class="slack-toggle-row" onclick="toggleSlackSection('gcal', !document.getElementById('slack-enabled-gcal').checked)">
+              <span class="slack-toggle-label">&#43; Slack notification</span>
+              <label class="toggle-switch" onclick="event.stopPropagation()">
+                <input type="checkbox" id="slack-enabled-gcal" onchange="toggleSlackSection('gcal', this.checked)">
+                <span class="toggle-knob"></span>
+              </label>
+            </div>
+            <div class="slack-body" id="slack-body-gcal" style="display:none;">
+              <div><label>Slack channel</label>
+                <div class="search-select">
+                  <input type="text" id="slack-ch-search-gcal" placeholder="Search channels…" autocomplete="off">
+                  <div class="search-dropdown" id="slack-ch-dropdown-gcal"></div>
+                </div>
+              </div>
+              <div><label>Message template</label><textarea id="slack-msg-gcal" rows="3" placeholder="e.g. ✅ {{name}} — sent {{pushed}} calendar invite(s)."></textarea><div class="token-hint">Tokens: {{name}}, {{pushed}}</div></div>
+            </div>
+          </div>
+
+          <div class="form-footer">
+            <button class="btn btn-cream" onclick="cancelEdit()">Cancel</button>
+            <button class="btn btn-primary" onclick="createGcalAutomation()" id="create-btn-gcal">Create automation</button>
+          </div>
+          <div class="error-msg" id="form-error-gcal"></div>
+        </div>
+      </div>
+
       </div><!-- close form col -->
 
       <!-- Right column -->
@@ -1175,6 +1323,15 @@ async function login() {
       document.getElementById('app').style.display = 'block';
       loadAutomations();
       loadServiceAccountEmail();
+      // Handle OAuth callback redirect
+      const urlParams = new URLSearchParams(window.location.search);
+      if (urlParams.get('oauth') === 'success') {
+        showToast(`Google account connected: ${urlParams.get('email')}`);
+        history.replaceState({}, '', window.location.pathname);
+      } else if (urlParams.get('oauth') === 'error') {
+        showToast(`Google auth error: ${urlParams.get('email')}`, 'error');
+        history.replaceState({}, '', window.location.pathname);
+      }
     } else { err.style.display = 'block'; }
   } catch(e) { err.style.display = 'block'; err.textContent = 'Connection error.'; }
   btn.disabled = false; btn.textContent = 'Sign in';
@@ -1230,7 +1387,8 @@ function updateAlertPanelVisibility() {
   const isCalendly = document.getElementById('tab-calendly')?.classList.contains('active');
   const isClay     = document.getElementById('tab-clay')?.classList.contains('active');
   const isFbTab    = document.getElementById('tab-fb_conversions')?.classList.contains('active');
-  document.getElementById('alert-panel').style.display = (isGsheet || isCalendly || isClay || isFbTab) ? 'none' : '';
+  const isGcalTab = document.getElementById('tab-gcal')?.classList.contains('active');
+  document.getElementById('alert-panel').style.display = (isGsheet || isCalendly || isClay || isFbTab || isGcalTab) ? 'none' : '';
 }
 function toggleSlackSection(deliveryType, enabled) {
   document.getElementById(`slack-body-${deliveryType}`).style.display = enabled ? 'flex' : 'none';
@@ -1241,7 +1399,8 @@ function toggleSlackSection(deliveryType, enabled) {
       'gsheet_sync':    slackChSelectedGsheet,
       'calendly':       slackChSelectedCalendly,
       'clay':           slackChSelectedClay,
-      'fb_conversions': slackChSelectedFb
+      'fb_conversions': slackChSelectedFb,
+      'gcal':           slackChSelectedGcal
     };
     const sel = selMap[deliveryType];
     if (sel) initSearchSelect(`slack-ch-search-${deliveryType}`,`slack-ch-dropdown-${deliveryType}`,slackChannels,sel,'Search channels…');
@@ -1268,6 +1427,18 @@ function switchTab(tab) {
     setFbMode(currentMode);
     renderFbMappings();
     if (hsList.length) initSearchSelect('hs-search-fb','hs-dropdown-fb',hsList,hsSelectedFb,'Search HubSpot lists…');
+  }
+  if (tab === 'gcal') {
+    if (hsList.length) initSearchSelect('hs-search-gcal','hs-dropdown-gcal',hsList,hsSelectedGcal,'Search HubSpot lists…');
+    loadGcalConnectedAccounts();
+    // Wire up account search dropdown
+    const fromInput = document.getElementById('gcal-send-from');
+    if (fromInput && !fromInput._gcalWired) {
+      fromInput._gcalWired = true;
+      fromInput.addEventListener('input', () => renderGcalAccountDropdown(fromInput.value));
+      fromInput.addEventListener('focus', () => renderGcalAccountDropdown(fromInput.value));
+      document.addEventListener('click', e => { if (!fromInput.contains(e.target)) document.getElementById('gcal-account-dropdown').style.display='none'; });
+    }
   }
 }
 
@@ -1411,6 +1582,141 @@ function resetFbForm() {
   resetSearchSelect('slack-ch-search-fb_conversions','slack-ch-dropdown-fb_conversions',slackChSelectedFb);
   const ta = document.getElementById('slack-msg-fb_conversions'); if (ta) ta.value = '';
   const errEl = document.getElementById('form-error-fb'); if (errEl) errEl.style.display = 'none';
+}
+
+// ── Google Calendar ────────────────────────────────────────────
+
+let hsSelectedGcal     = {id:'', name:''};
+let slackChSelectedGcal = {id:'', name:''};
+let gcalHsPropSelected  = {name:'', label:''};
+let gcalConnectedAccounts = [];
+
+function onGcalTimingChange() {
+  const val = document.getElementById('gcal-timing-type').value;
+  document.getElementById('gcal-timing-relative').style.display = val === 'relative' ? 'flex' : 'none';
+  document.getElementById('gcal-timing-fixed').style.display    = val === 'fixed'    ? '' : 'none';
+  document.getElementById('gcal-timing-hs').style.display       = val === 'hs_property' ? 'flex' : 'none';
+}
+
+function insertGcalPlaceholder(fieldId, placeholder) {
+  const el = document.getElementById(fieldId);
+  if (!el) return;
+  const start = el.selectionStart, end = el.selectionEnd;
+  const val   = el.value;
+  el.value = val.substring(0, start) + placeholder + val.substring(end);
+  el.selectionStart = el.selectionEnd = start + placeholder.length;
+  el.focus();
+}
+
+async function connectGoogleAccount() {
+  const email = document.getElementById('gcal-send-from').value.trim();
+  const url = `/api/google/oauth${email ? '?email=' + encodeURIComponent(email) : ''}`;
+  window.open(url, '_blank', 'width=500,height=600');
+  // After user completes OAuth, refresh account list
+  setTimeout(loadGcalConnectedAccounts, 3000);
+}
+
+async function loadGcalConnectedAccounts() {
+  try {
+    const resp = await fetch('/api/google/connected-accounts', { headers: { 'X-Auth-Token': TOKEN } });
+    const data = await resp.json();
+    gcalConnectedAccounts = data.accounts || [];
+    renderGcalAccountDropdown('');
+  } catch(e) {}
+}
+
+function renderGcalAccountDropdown(query) {
+  const dd = document.getElementById('gcal-account-dropdown');
+  if (!dd) return;
+  const matches = gcalConnectedAccounts.filter(e => e.toLowerCase().includes(query.toLowerCase()));
+  if (!matches.length) { dd.style.display = 'none'; return; }
+  dd.innerHTML = matches.map(e => `<div class="search-option" onclick="selectGcalAccount('${e}')">${e}</div>`).join('');
+  dd.style.display = 'block';
+}
+
+function selectGcalAccount(email) {
+  document.getElementById('gcal-send-from').value = email;
+  document.getElementById('gcal-account-dropdown').style.display = 'none';
+}
+
+function resetGcalForm() {
+  document.getElementById('auto-name-gcal').value = '';
+  resetSearchSelect('hs-search-gcal','hs-dropdown-gcal', hsSelectedGcal);
+  document.getElementById('gcal-send-from').value = '';
+  document.getElementById('gcal-timing-type').value = 'relative';
+  document.getElementById('gcal-relative-days').value = '1';
+  document.getElementById('gcal-relative-time').value = '09:00';
+  document.getElementById('gcal-fixed-datetime').value = '';
+  document.getElementById('gcal-hs-prop-time').value = '09:00';
+  gcalHsPropSelected = {name:'', label:''};
+  document.getElementById('gcal-hs-prop-search').value = '';
+  document.getElementById('gcal-meeting-title').value = '';
+  document.getElementById('gcal-meeting-description').value = '';
+  document.getElementById('gcal-duration').value = '30';
+  document.getElementById('gcal-google-meet').checked = false;
+  onGcalTimingChange();
+  const cb = document.getElementById('slack-enabled-gcal');
+  if (cb) { cb.checked = false; toggleSlackSection('gcal', false); }
+  resetSearchSelect('slack-ch-search-gcal','slack-ch-dropdown-gcal', slackChSelectedGcal);
+  const ta = document.getElementById('slack-msg-gcal'); if (ta) ta.value = '';
+  const errEl = document.getElementById('form-error-gcal'); if (errEl) errEl.style.display = 'none';
+}
+
+async function createGcalAutomation() {
+  const errEl = document.getElementById('form-error-gcal');
+  const btn   = document.getElementById('create-btn-gcal');
+  errEl.style.display = 'none';
+  const name      = document.getElementById('auto-name-gcal').value.trim();
+  const sendFrom  = document.getElementById('gcal-send-from').value.trim();
+  const title     = document.getElementById('gcal-meeting-title').value.trim();
+  const desc      = document.getElementById('gcal-meeting-description').value.trim();
+  const duration  = parseInt(document.getElementById('gcal-duration').value);
+  const meet      = document.getElementById('gcal-google-meet').checked;
+  const timingType = document.getElementById('gcal-timing-type').value;
+
+  if (!name)      { errEl.textContent='Automation name required'; errEl.style.display='block'; return; }
+  if (!hsSelectedGcal.id) { errEl.textContent='Select a HubSpot list'; errEl.style.display='block'; return; }
+  if (!sendFrom)  { errEl.textContent='Send from email required'; errEl.style.display='block'; return; }
+  if (!title)     { errEl.textContent='Meeting title required'; errEl.style.display='block'; return; }
+
+  const payload = {
+    delivery_type:       'gcal',
+    name,
+    hubspot_list_id:     hsSelectedGcal.id,
+    hubspot_list_name:   hsSelectedGcal.name,
+    send_from_email:     sendFrom,
+    meeting_title:       title,
+    meeting_description: desc,
+    duration_minutes:    duration,
+    google_meet:         meet,
+    timing_type:         timingType,
+    timing_relative_days: parseInt(document.getElementById('gcal-relative-days').value) || 1,
+    timing_relative_time: document.getElementById('gcal-relative-time').value || '09:00',
+    timing_fixed_datetime: document.getElementById('gcal-fixed-datetime').value || '',
+    timing_hs_property:   gcalHsPropSelected.name || '',
+  };
+
+  const slackCb = document.getElementById('slack-enabled-gcal');
+  if (slackCb?.checked) {
+    payload.slack_enabled     = true;
+    payload.slack_channel     = slackChSelectedGcal.id;
+    payload.slack_channel_name = slackChSelectedGcal.name;
+    payload.slack_message     = document.getElementById('slack-msg-gcal')?.value || '';
+  }
+
+  btn.disabled = true; btn.textContent = editingId ? 'Saving…' : 'Creating…';
+  try {
+    const method = editingId ? 'PATCH' : 'POST';
+    const url    = editingId ? `/api/automations/${editingId}` : '/api/automations';
+    const resp   = await fetch(url, { method, headers: {'Content-Type':'application/json','X-Auth-Token':authToken}, body: JSON.stringify(payload) });
+    const data   = await resp.json();
+    if (!resp.ok) { errEl.textContent = data.error||'Error'; errEl.style.display='block'; return; }
+    await loadAutomations();
+    showPage('dashboard');
+    showToast(editingId ? 'Automation updated!' : 'Calendar automation created!');
+    editingId = null;
+  } catch(e) { errEl.textContent='Network error. Try again.'; errEl.style.display='block'; }
+  btn.disabled=false; btn.textContent=editingId?'Save changes':'Create automation';
 }
 
 function renderFbMappings() {
@@ -1689,6 +1995,7 @@ function newAutomation() {
   resetCalendlyForm();
   resetClayForm();
   resetFbForm();
+  resetGcalForm();
   showPage('add');
 }
 
@@ -2015,6 +2322,7 @@ async function loadDropdowns() {
       initSearchSelect('hs-search-hubspot_form','hs-dropdown-hubspot_form',hsList,hsSelectedForm,     'Search HubSpot lists…');
       initSearchSelect('hs-search-clay',        'hs-dropdown-clay',        hsList,hsSelectedClay,     'Search HubSpot lists…');
       initSearchSelect('hs-search-fb',          'hs-dropdown-fb',          hsList,hsSelectedFb,       'Search HubSpot lists…');
+      initSearchSelect('hs-search-gcal',        'hs-dropdown-gcal',        hsList,hsSelectedGcal,     'Search HubSpot lists…');
     } else { ['hs-search-instantly','hs-search-hubspot_form'].forEach(id=>{const el=document.getElementById(id);if(el)el.placeholder=`Error: ${(l.data&&l.data.error)||'failed'}`;}); }
     if (c.ok && Array.isArray(c.data)) {
       campList = c.data;
@@ -2183,6 +2491,7 @@ async function editAutomation(id) {
   const isCalendly = a.delivery_type==='calendly';
   const isClay     = a.delivery_type==='enrichment' && a.clay_enabled;
   const isFb       = a.delivery_type==='fb_conversions';
+  const isGcal     = a.delivery_type==='gcal';
   document.getElementById('add-page-title').textContent='Edit automation';
   document.getElementById('add-page-subtitle').textContent = isGsheet ? 'Sync a Google Sheet to HubSpot' : 'Choose how to reach contacts from your HubSpot list';
   document.getElementById('source-selector').style.display='none';
@@ -2190,7 +2499,32 @@ async function editAutomation(id) {
   document.getElementById('form-area').style.display='';
   document.getElementById('view-logs-btn').style.display = 'flex';
   showPage('add');
-  switchTab(isFb?'fb_conversions':isClay?'clay':isCalendly?'calendly':isGsheet?'gsheet_sync':isForm?'hubspot_form':'instantly');
+  switchTab(isGcal?'gcal':isFb?'fb_conversions':isClay?'clay':isCalendly?'calendly':isGsheet?'gsheet_sync':isForm?'hubspot_form':'instantly');
+
+  if (isGcal) {
+    document.getElementById('auto-name-gcal').value = a.name||'';
+    hsSelectedGcal.id=a.hubspot_list_id||''; hsSelectedGcal.name=a.hubspot_list_name||'';
+    const hgi=document.getElementById('hs-search-gcal');
+    if(hgi){hgi.value=a.hubspot_list_name||'';hgi.classList.toggle('has-value',!!a.hubspot_list_id);}
+    document.getElementById('gcal-send-from').value       = a.send_from_email||'';
+    document.getElementById('gcal-timing-type').value     = a.timing_type||'relative';
+    document.getElementById('gcal-relative-days').value   = String(a.timing_relative_days||1);
+    document.getElementById('gcal-relative-time').value   = a.timing_relative_time||'09:00';
+    document.getElementById('gcal-fixed-datetime').value  = a.timing_fixed_datetime||'';
+    document.getElementById('gcal-hs-prop-time').value    = a.timing_relative_time||'09:00';
+    gcalHsPropSelected.name = a.timing_hs_property||'';
+    document.getElementById('gcal-hs-prop-search').value  = a.timing_hs_property||'';
+    document.getElementById('gcal-meeting-title').value   = a.meeting_title||'';
+    document.getElementById('gcal-meeting-description').value = a.meeting_description||'';
+    document.getElementById('gcal-duration').value        = String(a.duration_minutes||30);
+    document.getElementById('gcal-google-meet').checked   = !!a.google_meet;
+    onGcalTimingChange();
+    loadGcalConnectedAccounts();
+    const slackCbGcal=document.getElementById('slack-enabled-gcal');
+    if(slackCbGcal){slackCbGcal.checked=!!a.slack_enabled;toggleSlackSection('gcal',!!a.slack_enabled);if(a.slack_enabled){slackChSelectedGcal.id=a.slack_channel||'';slackChSelectedGcal.name=a.slack_channel_name||'';const sci=document.getElementById('slack-ch-search-gcal');if(sci){sci.value=a.slack_channel_name||'';sci.classList.toggle('has-value',!!a.slack_channel);}const ta=document.getElementById('slack-msg-gcal');if(ta)ta.value=a.slack_message||'';}}
+    document.getElementById('create-btn-gcal').textContent='Save changes';
+    return;
+  }
 
   if (isFb) {
     document.getElementById('auto-name-fb').value = a.name||'';

@@ -440,6 +440,26 @@ class handler(BaseHTTPRequestHandler):
             email = get_service_account_email()
             if email:
                 self._json(200, {"email": email})
+
+        elif path.endswith("/google/connected-accounts"):
+            try:
+                # Scan for gcal_token:* keys
+                accounts = []
+                cursor = 0
+                while True:
+                    scan_url = f"{UPSTASH_URL}/scan/{cursor}?match=gcal_token:*&count=100"
+                    scan_req = Request(scan_url, headers={"Authorization": f"Bearer {UPSTASH_TOKEN}"})
+                    with urlopen(scan_req, timeout=8) as r:
+                        result = json.loads(r.read()).get("result", [0, []])
+                    cursor = int(result[0])
+                    for key in (result[1] if len(result) > 1 else []):
+                        email = key.replace("gcal_token:", "")
+                        accounts.append(email)
+                    if cursor == 0:
+                        break
+                self._json(200, {"accounts": accounts})
+            except Exception as e:
+                self._json(500, {"error": str(e)})
             else:
                 self._json(404, {"error": "GOOGLE_SERVICE_ACCOUNT_JSON not configured"})
         elif path.endswith('/activity'):
@@ -462,7 +482,7 @@ class handler(BaseHTTPRequestHandler):
                         continue
 
                     # GSheet / Calendly / Clay / FB automations — read from Redis logs
-                    if delivery_type in ('gsheet_sync', 'calendly', 'fb_conversions') or (delivery_type == 'enrichment' and a.get('clay_enabled')):
+                    if delivery_type in ('gsheet_sync', 'calendly', 'fb_conversions', 'gcal') or (delivery_type == 'enrichment' and a.get('clay_enabled')):
                         try:
                             log_url = f"{UPSTASH_URL}/lrange/logs:{auto_id}/0/999"
                             log_req = Request(log_url, headers={"Authorization": f"Bearer {UPSTASH_TOKEN}"})
@@ -538,7 +558,7 @@ class handler(BaseHTTPRequestHandler):
                 delivery_type = auto.get("delivery_type", "")
 
                 # Calendly + GSheet + FB Conversions + Clay read from Redis logs
-                if delivery_type in ("calendly", "fb_conversions") or (delivery_type == "enrichment" and auto.get("clay_enabled")) or (delivery_type == "gsheet_sync" and not auto.get("sheet_url")):
+                if delivery_type in ("calendly", "fb_conversions", "gcal") or (delivery_type == "enrichment" and auto.get("clay_enabled")) or (delivery_type == "gsheet_sync" and not auto.get("sheet_url")):
                     log_url = f"{UPSTASH_URL}/lrange/logs:{auto_id}/0/999"
                     log_req = Request(log_url, headers={"Authorization": f"Bearer {UPSTASH_TOKEN}"})
                     with urlopen(log_req, timeout=8) as r:
@@ -860,6 +880,34 @@ class handler(BaseHTTPRequestHandler):
                 "active":           True,
             }
 
+        elif delivery_type == "gcal":
+            send_from   = body.get("send_from_email", "").strip()
+            title_tpl   = body.get("meeting_title", "").strip()
+            timing_type = body.get("timing_type", "relative")
+            if not send_from:
+                self._json(400, {"error": "Missing send from email"}); return
+            if not title_tpl:
+                self._json(400, {"error": "Missing meeting title"}); return
+            import hashlib as _hl
+            new_auto = {
+                "id":                    f"gcal_{list_id}_{_hl.md5((send_from+title_tpl).encode()).hexdigest()[:8]}",
+                "name":                  name,
+                "delivery_type":         "gcal",
+                "hubspot_list_id":       list_id,
+                "hubspot_list_name":     list_name,
+                "send_from_email":       send_from,
+                "meeting_title":         title_tpl,
+                "meeting_description":   body.get("meeting_description", ""),
+                "duration_minutes":      int(body.get("duration_minutes", 30)),
+                "google_meet":           bool(body.get("google_meet", False)),
+                "timing_type":           timing_type,
+                "timing_fixed_datetime": body.get("timing_fixed_datetime", ""),
+                "timing_relative_days":  int(body.get("timing_relative_days", 1)),
+                "timing_relative_time":  body.get("timing_relative_time", "09:00"),
+                "timing_hs_property":    body.get("timing_hs_property", ""),
+                "active":                True,
+            }
+
         else:
             self._json(400, {"error": "Invalid delivery_type"})
             return
@@ -920,6 +968,18 @@ class handler(BaseHTTPRequestHandler):
                             m for m in body["clay_column_mappings"]
                             if isinstance(m, dict) and m.get("hs_property") and m.get("clay_column")
                         ]
+                    if "slack_enabled" in body:
+                        _apply_slack_fields(a, body)
+
+                elif a.get("delivery_type") == "gcal":
+                    gcal_keys = {"hubspot_list_id", "send_from_email", "meeting_title",
+                                 "meeting_description", "duration_minutes", "google_meet",
+                                 "timing_type", "timing_fixed_datetime", "timing_relative_days",
+                                 "timing_relative_time", "timing_hs_property"}
+                    for k in gcal_keys & body.keys():
+                        a[k] = body[k]
+                    if "hubspot_list_id" in body:
+                        a["hubspot_list_name"] = body.get("hubspot_list_name", "")
                     if "slack_enabled" in body:
                         _apply_slack_fields(a, body)
 
