@@ -1219,13 +1219,13 @@
 
           <div class="form-row">
             <label>Automation name</label>
-            <input type="text" id="auto-name-instantly_inbound" placeholder="e.g. Mark replied contacts" />
+            <input type="text" id="auto-name-instantly_inbound" placeholder="e.g. Mark replied contacts">
           </div>
 
           <div class="form-row">
-            <label>Instantly campaign <span style="color:var(--muted);font-weight:400;">(optional — leave blank to match all)</span></label>
+            <label>Instantly campaign <span style="font-size:11px;opacity:0.6;">(optional — leave blank to match all)</span></label>
             <div class="search-select" id="ss-camp-inbound">
-              <input type="text" id="camp-inbound-search" placeholder="Search campaigns…" autocomplete="off" />
+              <input type="text" id="camp-inbound-search" placeholder="Search campaigns…" autocomplete="off">
               <div class="search-dropdown" id="camp-inbound-dropdown"></div>
             </div>
           </div>
@@ -1253,33 +1253,47 @@
           <div class="form-row">
             <label>HubSpot property to update</label>
             <div class="search-select" id="ss-inbound-prop">
-              <input type="text" id="inbound-prop-search" placeholder="Search properties…" autocomplete="off" />
+              <input type="text" id="inbound-prop-search" placeholder="Search properties…" autocomplete="off">
               <div class="search-dropdown" id="inbound-prop-dropdown"></div>
             </div>
           </div>
 
           <div class="form-row">
             <label>Value to set</label>
-            <input type="text" id="inbound-hs-value" placeholder="e.g. replied" />
+            <input type="text" id="inbound-hs-value" placeholder="e.g. replied">
           </div>
 
-          <!-- Slack -->
-          <div style="margin-top:18px;padding-top:16px;border-top:1px solid var(--border);">
-            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-weight:500;">
-              <input type="checkbox" id="slack-toggle-instantly_inbound" onchange="toggleSlackSection('instantly_inbound',this.checked)" />
-              Send Slack notification
+          <hr class="slack-divider">
+          <div style="display:flex;align-items:center;justify-content:space-between;">
+            <div style="display:flex;align-items:center;gap:10px;">
+              <img src="https://cdn.jsdelivr.net/npm/simple-icons@v9/icons/slack.svg" width="18" height="18" style="filter:invert(1);opacity:0.7;" onerror="this.style.display='none'">
+              <span style="font-size:14px;font-weight:500;">Slack notification</span>
+            </div>
+            <label class="toggle">
+              <input type="checkbox" id="slack-toggle-instantly_inbound" onchange="toggleSlackSection('instantly_inbound',this.checked)">
+              <span class="toggle-slider"></span>
             </label>
-            <div id="slack-body-instantly_inbound" style="display:none;flex-direction:column;gap:10px;margin-top:12px;">
+          </div>
+          <div id="slack-body-instantly_inbound" class="slack-body" style="display:none;">
+            <div>
+              <label>Channel</label>
               <div class="search-select">
-                <input type="text" id="slack-ch-search-instantly_inbound" placeholder="Search channels…" autocomplete="off" />
+                <input type="text" id="slack-ch-search-instantly_inbound" placeholder="Search channels…" autocomplete="off">
                 <div class="search-dropdown" id="slack-ch-dropdown-instantly_inbound"></div>
               </div>
-              <input type="text" id="slack-msg-instantly_inbound" placeholder="Message (use {{name}}, {{email}}, {{event}})" />
+            </div>
+            <div>
+              <label>Message template</label>
+              <textarea id="slack-msg-instantly_inbound" rows="3" placeholder="e.g. ✅ {{name}} — {{email}} triggered {{event}}"></textarea>
+              <div class="token-hint">Tokens: {{name}}, {{email}}, {{event}}</div>
             </div>
           </div>
 
           <div class="error-msg" id="form-error-instantly_inbound"></div>
-          <button class="btn-primary" id="create-btn-instantly_inbound" onclick="createInstantlyInboundAutomation()" style="margin-top:18px;">Create automation</button>
+          <div class="form-footer">
+            <button class="btn btn-cream" onclick="cancelEdit()">Cancel</button>
+            <button class="btn btn-primary" id="create-btn-instantly_inbound" onclick="createInstantlyInboundAutomation()">Create automation</button>
+          </div>
         </div>
       </div>
 
@@ -1901,8 +1915,17 @@ function renderTriggerChips() {
     placeholder.style.display = '';
   } else {
     placeholder.style.display = 'none';
-    container.innerHTML = checked.map(v => `<span class="trigger-chip">${_triggerLabels[v]||v}</span>`).join('') + placeholder.outerHTML.replace('style=""','style="display:none"');
+    container.innerHTML = checked.map(v =>
+      `<span class="trigger-chip">${_triggerLabels[v]||v}<button type="button" onclick="removeTriggerChip(event,'${v}')" style="background:none;border:none;color:inherit;cursor:pointer;padding:0 0 0 4px;font-size:13px;line-height:1;opacity:0.7;" title="Remove">✕</button></span>`
+    ).join('');
+    container.appendChild(placeholder);
   }
+}
+function removeTriggerChip(e, value) {
+  e.stopPropagation();
+  const cb = document.querySelector(`.inbound-trigger-cb[value="${value}"]`);
+  if (cb) cb.checked = false;
+  renderTriggerChips();
 }
 // Close trigger dropdown when clicking outside
 document.addEventListener('click', e => {
