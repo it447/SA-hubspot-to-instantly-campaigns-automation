@@ -128,13 +128,14 @@ class handler(BaseHTTPRequestHandler):
         for auto in inbound:
             auto_id       = auto.get("id", "")
             auto_name     = auto.get("name", auto_id)
-            trigger_event = auto.get("trigger_event", "")
-            auto_campaign = auto.get("instantly_campaign_id", "")
-            hs_property   = auto.get("hs_property", "")
-            hs_value      = auto.get("hs_value", "")
-            slack_channel = auto.get("slack_channel", "")
+            # Support both legacy single trigger_event and new trigger_events list
+            trigger_events = auto.get("trigger_events") or ([auto["trigger_event"]] if auto.get("trigger_event") else [])
+            auto_campaign  = auto.get("instantly_campaign_id", "")
+            hs_property    = auto.get("hs_property", "")
+            hs_value       = auto.get("hs_value", "")
+            slack_channel  = auto.get("slack_channel", "")
 
-            if trigger_event and trigger_event != event_type:
+            if trigger_events and event_type not in trigger_events:
                 continue
             if auto_campaign and auto_campaign != campaign_id:
                 continue

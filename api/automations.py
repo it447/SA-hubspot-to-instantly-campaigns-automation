@@ -909,21 +909,21 @@ class handler(BaseHTTPRequestHandler):
             }
 
         elif delivery_type == "instantly_inbound":
-            trigger_event = body.get("trigger_event", "").strip()
-            hs_property   = body.get("hs_property", "").strip()
-            hs_value      = body.get("hs_value", "").strip()
-            camp_id       = str(body.get("instantly_campaign_id", "")).strip()
-            camp_name     = body.get("instantly_campaign_name", "").strip()
-            if not trigger_event:
-                self._json(400, {"error": "Missing trigger event"}); return
+            trigger_events = [e for e in body.get("trigger_events", []) if isinstance(e, str) and e]
+            hs_property    = body.get("hs_property", "").strip()
+            hs_value       = body.get("hs_value", "").strip()
+            camp_id        = str(body.get("instantly_campaign_id", "")).strip()
+            camp_name      = body.get("instantly_campaign_name", "").strip()
+            if not trigger_events:
+                self._json(400, {"error": "Select at least one trigger event"}); return
             if not hs_property:
                 self._json(400, {"error": "Missing HubSpot property"}); return
             import hashlib as _hl
             new_auto = {
-                "id":                      f"inbound_{_hl.md5((trigger_event+hs_property+camp_id).encode()).hexdigest()[:8]}",
+                "id":                      f"inbound_{_hl.md5((''.join(sorted(trigger_events))+hs_property+camp_id).encode()).hexdigest()[:8]}",
                 "name":                    name,
                 "delivery_type":           "instantly_inbound",
-                "trigger_event":           trigger_event,
+                "trigger_events":          trigger_events,
                 "instantly_campaign_id":   camp_id,
                 "instantly_campaign_name": camp_name,
                 "hs_property":             hs_property,
@@ -1023,7 +1023,9 @@ class handler(BaseHTTPRequestHandler):
                         _apply_slack_fields(a, body)
 
                 elif a.get("delivery_type") == "instantly_inbound":
-                    for k in {"trigger_event", "instantly_campaign_id", "instantly_campaign_name",
+                    if "trigger_events" in body:
+                        a["trigger_events"] = [e for e in body["trigger_events"] if isinstance(e, str) and e]
+                    for k in {"instantly_campaign_id", "instantly_campaign_name",
                               "hs_property", "hs_value"} & body.keys():
                         a[k] = body[k]
                     if "slack_enabled" in body:

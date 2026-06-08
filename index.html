@@ -1226,15 +1226,15 @@
           </div>
 
           <div class="form-row">
-            <label>Trigger event</label>
-            <select id="inbound-trigger-event">
-              <option value="reply_received">Contact replied</option>
-              <option value="unsubscribed">Contact unsubscribed / opted out</option>
-              <option value="bounced">Contact bounced</option>
-              <option value="interested">Marked as interested</option>
-              <option value="not_interested">Marked as not interested</option>
-              <option value="out_of_office">Out of office</option>
-            </select>
+            <label>Trigger events <span style="color:var(--muted);font-weight:400;">(select all that apply)</span></label>
+            <div style="display:flex;flex-direction:column;gap:8px;margin-top:4px;">
+              <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-weight:400;font-size:14px;"><input type="checkbox" class="inbound-trigger-cb" value="reply_received" style="width:15px;height:15px;accent-color:var(--orange);cursor:pointer;"> Contact replied</label>
+              <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-weight:400;font-size:14px;"><input type="checkbox" class="inbound-trigger-cb" value="unsubscribed" style="width:15px;height:15px;accent-color:var(--orange);cursor:pointer;"> Contact unsubscribed / opted out</label>
+              <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-weight:400;font-size:14px;"><input type="checkbox" class="inbound-trigger-cb" value="bounced" style="width:15px;height:15px;accent-color:var(--orange);cursor:pointer;"> Contact bounced</label>
+              <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-weight:400;font-size:14px;"><input type="checkbox" class="inbound-trigger-cb" value="interested" style="width:15px;height:15px;accent-color:var(--orange);cursor:pointer;"> Marked as interested</label>
+              <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-weight:400;font-size:14px;"><input type="checkbox" class="inbound-trigger-cb" value="not_interested" style="width:15px;height:15px;accent-color:var(--orange);cursor:pointer;"> Marked as not interested</label>
+              <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-weight:400;font-size:14px;"><input type="checkbox" class="inbound-trigger-cb" value="out_of_office" style="width:15px;height:15px;accent-color:var(--orange);cursor:pointer;"> Out of office</label>
+            </div>
           </div>
 
           <div class="form-row">
@@ -1874,13 +1874,13 @@ async function createInstantlyInboundAutomation() {
   const errEl = document.getElementById('form-error-instantly_inbound');
   errEl.style.display = 'none';
 
-  const name         = document.getElementById('auto-name-instantly_inbound').value.trim();
-  const triggerEvent = document.getElementById('inbound-trigger-event').value;
-  const hsProperty   = inboundPropSelected.id || '';
-  const hsValue      = document.getElementById('inbound-hs-value').value.trim();
+  const name          = document.getElementById('auto-name-instantly_inbound').value.trim();
+  const triggerEvents = [...document.querySelectorAll('.inbound-trigger-cb:checked')].map(cb => cb.value);
+  const hsProperty    = inboundPropSelected.id || '';
+  const hsValue       = document.getElementById('inbound-hs-value').value.trim();
 
-  if (!name)         { errEl.textContent='Enter a name.'; errEl.style.display='block'; return; }
-  if (!triggerEvent) { errEl.textContent='Select a trigger event.'; errEl.style.display='block'; return; }
+  if (!name)                  { errEl.textContent='Enter a name.'; errEl.style.display='block'; return; }
+  if (!triggerEvents.length)  { errEl.textContent='Select at least one trigger event.'; errEl.style.display='block'; return; }
   if (!hsProperty)   { errEl.textContent='Select a HubSpot property.'; errEl.style.display='block'; return; }
   if (!hsValue)      { errEl.textContent='Enter a value to set.'; errEl.style.display='block'; return; }
 
@@ -1888,7 +1888,7 @@ async function createInstantlyInboundAutomation() {
 
   const payload = {
     name, delivery_type: 'instantly_inbound',
-    trigger_event:           triggerEvent,
+    trigger_events:          triggerEvents,
     instantly_campaign_id:   campInboundSelected.id   || '',
     instantly_campaign_name: campInboundSelected.name || '',
     hs_property: hsProperty,
@@ -2225,6 +2225,7 @@ function newAutomation() {
   // Reset instantly_inbound form
   const autoNameInbound = document.getElementById('auto-name-instantly_inbound');
   if (autoNameInbound) autoNameInbound.value = '';
+  document.querySelectorAll('.inbound-trigger-cb').forEach(cb => { cb.checked = false; });
   const inboundHsVal = document.getElementById('inbound-hs-value');
   if (inboundHsVal) inboundHsVal.value = '';
   campInboundSelected = {}; inboundPropSelected = {};
@@ -2430,8 +2431,10 @@ function renderAutomations() {
     let sourceChip, deliveryChip;
     if (isInbound) {
       sourceChip   = `<span class="chip" style="color:#2563EB;border-color:rgba(37,99,235,0.3);background:rgba(37,99,235,0.08);"><svg width="10" height="10" viewBox="0 0 100 100" fill="none" style="display:inline;margin-right:3px;"><circle cx="50" cy="50" r="50" fill="#2563EB"/><polygon points="58,10 30,55 50,55 42,90 70,45 50,45" fill="white"/></svg>Instantly</span>`;
-      const eventLabels = {reply_received:'Replied',unsubscribed:'Opted Out',bounced:'Bounced',interested:'Interested',not_interested:'Not Interested',out_of_office:'Out of Office'};
-      deliveryChip = `<span class="chip chip-hs">→ HubSpot · ${esc(eventLabels[a.trigger_event]||a.trigger_event)}</span>`;
+      const eventLabels = {reply_received:'Replied',unsubscribed:'Opted Out',bounced:'Bounced',interested:'Interested',not_interested:'Not Interested',out_of_office:'OOO'};
+      const events = Array.isArray(a.trigger_events) ? a.trigger_events : (a.trigger_event ? [a.trigger_event] : []);
+      const evtLabel = events.map(e => eventLabels[e]||e).join(', ') || '—';
+      deliveryChip = `<span class="chip chip-hs">→ HubSpot · ${esc(evtLabel)}</span>`;
     } else if (isGcal) {
       sourceChip   = `<span class="chip chip-hs">HubSpot · ${esc(a.hubspot_list_name || a.hubspot_list_id)}</span>`;
       deliveryChip = `<span class="chip" style="color:#34a853;border-color:rgba(52,168,83,0.3);background:rgba(52,168,83,0.08);">📅 Google Calendar</span>`;
@@ -2765,8 +2768,8 @@ async function editAutomation(id) {
 
   if (isInbound) {
     document.getElementById('auto-name-instantly_inbound').value = a.name||'';
-    const triggerSel = document.getElementById('inbound-trigger-event');
-    if (triggerSel) triggerSel.value = a.trigger_event||'reply_received';
+    const savedEvents = Array.isArray(a.trigger_events) ? a.trigger_events : (a.trigger_event ? [a.trigger_event] : []);
+    document.querySelectorAll('.inbound-trigger-cb').forEach(cb => { cb.checked = savedEvents.includes(cb.value); });
     inboundPropSelected.id = a.hs_property||''; inboundPropSelected.name = a.hs_property||'';
     const propInput = document.getElementById('inbound-prop-search');
     if (propInput) { propInput.value = a.hs_property||''; propInput.classList.toggle('has-value',!!a.hs_property); }
