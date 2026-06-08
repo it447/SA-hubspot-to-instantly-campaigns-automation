@@ -235,6 +235,11 @@
   .search-option-empty { padding:12px 14px; font-size:13px; color:var(--muted); font-style:italic; }
   .search-dropdown::-webkit-scrollbar { width:4px; }
   .search-dropdown::-webkit-scrollbar-thumb { background:rgba(254,242,222,0.15); border-radius:2px; }
+  .trigger-opt { display:flex;align-items:center;gap:10px;padding:10px 14px;font-size:14px;color:var(--cream);cursor:pointer;border-bottom:1px solid rgba(254,242,222,0.05);transition:background 0.1s; }
+  .trigger-opt:last-child { border-bottom:none; }
+  .trigger-opt:hover { background:rgba(255,100,50,0.08); }
+  .trigger-opt input[type=checkbox] { width:15px;height:15px;accent-color:var(--orange);cursor:pointer;flex-shrink:0; }
+  .trigger-chip { display:inline-flex;align-items:center;gap:5px;background:rgba(255,100,50,0.15);color:var(--orange);border:1px solid rgba(255,100,50,0.3);border-radius:4px;padding:2px 8px;font-size:12px;white-space:nowrap; }
 
   .modal-overlay { position:fixed; inset:0; background:rgba(15,31,46,0.88); z-index:200; display:flex; align-items:center; justify-content:center; padding:1rem; }
   .modal { background:var(--navy-soft); border:1px solid var(--border2); border-radius:var(--radius); width:100%; max-width:580px; max-height:80vh; display:flex; flex-direction:column; }
@@ -1226,14 +1231,22 @@
           </div>
 
           <div class="form-row">
-            <label>Trigger events <span style="color:var(--muted);font-weight:400;">(select all that apply)</span></label>
-            <div style="display:flex;flex-direction:column;gap:8px;margin-top:4px;">
-              <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-weight:400;font-size:14px;"><input type="checkbox" class="inbound-trigger-cb" value="reply_received" style="width:15px;height:15px;accent-color:var(--orange);cursor:pointer;"> Contact replied</label>
-              <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-weight:400;font-size:14px;"><input type="checkbox" class="inbound-trigger-cb" value="unsubscribed" style="width:15px;height:15px;accent-color:var(--orange);cursor:pointer;"> Contact unsubscribed / opted out</label>
-              <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-weight:400;font-size:14px;"><input type="checkbox" class="inbound-trigger-cb" value="bounced" style="width:15px;height:15px;accent-color:var(--orange);cursor:pointer;"> Contact bounced</label>
-              <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-weight:400;font-size:14px;"><input type="checkbox" class="inbound-trigger-cb" value="interested" style="width:15px;height:15px;accent-color:var(--orange);cursor:pointer;"> Marked as interested</label>
-              <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-weight:400;font-size:14px;"><input type="checkbox" class="inbound-trigger-cb" value="not_interested" style="width:15px;height:15px;accent-color:var(--orange);cursor:pointer;"> Marked as not interested</label>
-              <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-weight:400;font-size:14px;"><input type="checkbox" class="inbound-trigger-cb" value="out_of_office" style="width:15px;height:15px;accent-color:var(--orange);cursor:pointer;"> Out of office</label>
+            <label>Trigger events</label>
+            <div style="position:relative;">
+              <div id="trigger-multiselect-btn" onclick="toggleTriggerDropdown()" style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:var(--navy-mid);border:1px solid var(--border2);border-radius:var(--radius-sm);cursor:pointer;min-height:42px;user-select:none;">
+                <div id="trigger-selected-chips" style="display:flex;flex-wrap:wrap;gap:6px;flex:1;">
+                  <span style="color:var(--muted);font-size:14px;" id="trigger-placeholder">Select trigger events…</span>
+                </div>
+                <svg width="12" height="12" viewBox="0 0 12 12" fill="none" style="flex-shrink:0;margin-left:8px;opacity:0.5;"><path fill="var(--cream)" d="M6 8L1 3h10z"/></svg>
+              </div>
+              <div id="trigger-dropdown" style="display:none;position:absolute;top:calc(100% + 4px);left:0;right:0;background:var(--navy-deep);border:1px solid var(--border2);border-radius:var(--radius-sm);z-index:50;box-shadow:0 8px 24px rgba(0,0,0,0.4);overflow:hidden;">
+                <label class="trigger-opt" onclick="toggleTriggerOption('reply_received')"><input type="checkbox" class="inbound-trigger-cb" value="reply_received"> Contact replied</label>
+                <label class="trigger-opt" onclick="toggleTriggerOption('unsubscribed')"><input type="checkbox" class="inbound-trigger-cb" value="unsubscribed"> Contact unsubscribed / opted out</label>
+                <label class="trigger-opt" onclick="toggleTriggerOption('bounced')"><input type="checkbox" class="inbound-trigger-cb" value="bounced"> Contact bounced</label>
+                <label class="trigger-opt" onclick="toggleTriggerOption('interested')"><input type="checkbox" class="inbound-trigger-cb" value="interested"> Marked as interested</label>
+                <label class="trigger-opt" onclick="toggleTriggerOption('not_interested')"><input type="checkbox" class="inbound-trigger-cb" value="not_interested"> Marked as not interested</label>
+                <label class="trigger-opt" onclick="toggleTriggerOption('out_of_office')"><input type="checkbox" class="inbound-trigger-cb" value="out_of_office"> Out of office</label>
+              </div>
             </div>
           </div>
 
@@ -1869,6 +1882,39 @@ async function createGcalAutomation() {
   btn.disabled=false; btn.textContent=editingId?'Save changes':'Create automation';
 }
 
+const _triggerLabels = {reply_received:'Replied',unsubscribed:'Opted Out',bounced:'Bounced',interested:'Interested',not_interested:'Not Interested',out_of_office:'Out of Office'};
+function toggleTriggerDropdown() {
+  const dd = document.getElementById('trigger-dropdown');
+  dd.style.display = dd.style.display === 'none' ? 'block' : 'none';
+}
+function toggleTriggerOption(value) {
+  // checkbox state is already toggled by the label click — just re-render chips
+  renderTriggerChips();
+}
+function renderTriggerChips() {
+  const checked = [...document.querySelectorAll('.inbound-trigger-cb:checked')].map(cb => cb.value);
+  const container = document.getElementById('trigger-selected-chips');
+  const placeholder = document.getElementById('trigger-placeholder');
+  if (checked.length === 0) {
+    container.innerHTML = '';
+    container.appendChild(placeholder);
+    placeholder.style.display = '';
+  } else {
+    placeholder.style.display = 'none';
+    container.innerHTML = checked.map(v => `<span class="trigger-chip">${_triggerLabels[v]||v}</span>`).join('') + placeholder.outerHTML.replace('style=""','style="display:none"');
+  }
+}
+// Close trigger dropdown when clicking outside
+document.addEventListener('click', e => {
+  const btn = document.getElementById('trigger-multiselect-btn');
+  const dd  = document.getElementById('trigger-dropdown');
+  if (dd && btn && !btn.contains(e.target) && !dd.contains(e.target)) dd.style.display = 'none';
+});
+function resetTriggerMultiselect() {
+  document.querySelectorAll('.inbound-trigger-cb').forEach(cb => { cb.checked = false; });
+  renderTriggerChips();
+}
+
 async function createInstantlyInboundAutomation() {
   const btn   = document.getElementById('create-btn-instantly_inbound');
   const errEl = document.getElementById('form-error-instantly_inbound');
@@ -2225,7 +2271,7 @@ function newAutomation() {
   // Reset instantly_inbound form
   const autoNameInbound = document.getElementById('auto-name-instantly_inbound');
   if (autoNameInbound) autoNameInbound.value = '';
-  document.querySelectorAll('.inbound-trigger-cb').forEach(cb => { cb.checked = false; });
+  resetTriggerMultiselect();
   const inboundHsVal = document.getElementById('inbound-hs-value');
   if (inboundHsVal) inboundHsVal.value = '';
   campInboundSelected = {}; inboundPropSelected = {};
@@ -2770,6 +2816,7 @@ async function editAutomation(id) {
     document.getElementById('auto-name-instantly_inbound').value = a.name||'';
     const savedEvents = Array.isArray(a.trigger_events) ? a.trigger_events : (a.trigger_event ? [a.trigger_event] : []);
     document.querySelectorAll('.inbound-trigger-cb').forEach(cb => { cb.checked = savedEvents.includes(cb.value); });
+    renderTriggerChips();
     inboundPropSelected.id = a.hs_property||''; inboundPropSelected.name = a.hs_property||'';
     const propInput = document.getElementById('inbound-prop-search');
     if (propInput) { propInput.value = a.hs_property||''; propInput.classList.toggle('has-value',!!a.hs_property); }
