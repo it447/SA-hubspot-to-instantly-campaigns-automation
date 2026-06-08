@@ -369,6 +369,7 @@
     <button class="nav-item" id="nav-filter-clay" onclick="showPage('dashboard');setFilter('clay')" style="padding-left:28px;font-size:13px;display:flex;align-items:center;gap:7px;"><svg width="14" height="14" viewBox="0 0 100 100" fill="none" style="flex-shrink:0;"><rect x="10" y="20" width="80" height="60" rx="8" fill="#7C3AED" opacity="0.15" stroke="#7C3AED" stroke-width="5"/><rect x="22" y="35" width="56" height="6" rx="3" fill="#7C3AED"/><rect x="22" y="50" width="40" height="6" rx="3" fill="#7C3AED" opacity="0.6"/><rect x="22" y="65" width="28" height="6" rx="3" fill="#7C3AED" opacity="0.35"/></svg> Clay Push</button>
     <button class="nav-item" id="nav-filter-fb_conversions" onclick="showPage('dashboard');setFilter('fb_conversions')" style="padding-left:28px;font-size:13px;display:flex;align-items:center;gap:7px;"><svg width="14" height="14" viewBox="0 0 100 100" fill="none" style="flex-shrink:0;"><circle cx="50" cy="50" r="48" fill="#1877F2" opacity="0.15" stroke="#1877F2" stroke-width="4"/><text x="50" y="68" text-anchor="middle" font-size="60" font-family="Arial" font-weight="bold" fill="#1877F2">f</text></svg> FB Conversions</button>
     <button class="nav-item" id="nav-filter-gcal" onclick="showPage('dashboard');setFilter('gcal')" style="padding-left:28px;font-size:13px;display:flex;align-items:center;gap:7px;"><svg width="14" height="14" viewBox="0 0 100 100" fill="none" style="flex-shrink:0;"><rect x="10" y="15" width="80" height="75" rx="8" fill="#34a853" opacity="0.15" stroke="#34a853" stroke-width="5"/><rect x="10" y="30" width="80" height="18" fill="#34a853" opacity="0.5"/><rect x="28" y="5" width="8" height="22" rx="4" fill="#34a853"/><rect x="64" y="5" width="8" height="22" rx="4" fill="#34a853"/><rect x="22" y="58" width="16" height="14" rx="3" fill="#34a853" opacity="0.7"/><rect x="46" y="58" width="16" height="14" rx="3" fill="#34a853" opacity="0.7"/></svg> Google Calendar</button>
+    <button class="nav-item" id="nav-filter-instantly_inbound" onclick="showPage('dashboard');setFilter('instantly_inbound')" style="padding-left:28px;font-size:13px;display:flex;align-items:center;gap:7px;"><svg width="14" height="14" viewBox="0 0 100 100" fill="none"><circle cx="50" cy="50" r="50" fill="#2563EB"/><polygon points="58,10 30,55 50,55 42,90 70,45 50,45" fill="white"/></svg> Instantly Inbound</button>
     <button class="nav-item" onclick="newAutomation()" id="nav-add" style="margin-top:4px;">
       <span class="nav-icon">+</span> New automation
     </button>
@@ -465,6 +466,7 @@
         <button class="tab-btn" id="tab-btn-clay" onclick="switchTab('clay')" style="color:#7C3AED;">▦ Clay Push</button>
         <button class="tab-btn" id="tab-btn-fb_conversions" onclick="switchTab('fb_conversions')" style="color:#1877F2;">⬡ FB Conversions</button>
         <button class="tab-btn" id="tab-btn-gcal" onclick="switchTab('gcal')" style="color:#34a853;">&#128197; Google Calendar</button>
+        <button class="tab-btn" id="tab-btn-instantly_inbound" onclick="switchTab('instantly_inbound')" style="color:#2563EB;">⚡ Instantly → HubSpot</button>
       </div>
 
       <!-- Source selector shown when creating a new automation -->
@@ -1204,6 +1206,70 @@
         </div>
       </div>
 
+      <!-- ── Tab: Instantly Inbound ── -->
+      <div class="tab-panel" id="tab-instantly_inbound">
+        <div class="form-card">
+          <h3>⚡ Instantly → HubSpot</h3>
+          <p class="form-desc">When a contact triggers an event in Instantly (reply, opt-out, bounce…), automatically update a property on their HubSpot contact record.</p>
+
+          <div class="form-row">
+            <label>Automation name</label>
+            <input type="text" id="auto-name-instantly_inbound" placeholder="e.g. Mark replied contacts" />
+          </div>
+
+          <div class="form-row">
+            <label>Instantly campaign <span style="color:var(--muted);font-weight:400;">(optional — leave blank to match all)</span></label>
+            <div class="search-select" id="ss-camp-inbound">
+              <input type="text" id="camp-inbound-search" placeholder="Search campaigns…" autocomplete="off" />
+              <div class="search-dropdown" id="camp-inbound-dropdown"></div>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <label>Trigger event</label>
+            <select id="inbound-trigger-event">
+              <option value="reply_received">Contact replied</option>
+              <option value="unsubscribed">Contact unsubscribed / opted out</option>
+              <option value="bounced">Contact bounced</option>
+              <option value="interested">Marked as interested</option>
+              <option value="not_interested">Marked as not interested</option>
+              <option value="out_of_office">Out of office</option>
+            </select>
+          </div>
+
+          <div class="form-row">
+            <label>HubSpot property to update</label>
+            <div class="search-select" id="ss-inbound-prop">
+              <input type="text" id="inbound-prop-search" placeholder="Search properties…" autocomplete="off" />
+              <div class="search-dropdown" id="inbound-prop-dropdown"></div>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <label>Value to set</label>
+            <input type="text" id="inbound-hs-value" placeholder="e.g. replied" />
+          </div>
+
+          <!-- Slack -->
+          <div style="margin-top:18px;padding-top:16px;border-top:1px solid var(--border);">
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-weight:500;">
+              <input type="checkbox" id="slack-toggle-instantly_inbound" onchange="toggleSlackSection('instantly_inbound',this.checked)" />
+              Send Slack notification
+            </label>
+            <div id="slack-body-instantly_inbound" style="display:none;flex-direction:column;gap:10px;margin-top:12px;">
+              <div class="search-select">
+                <input type="text" id="slack-ch-search-instantly_inbound" placeholder="Search channels…" autocomplete="off" />
+                <div class="search-dropdown" id="slack-ch-dropdown-instantly_inbound"></div>
+              </div>
+              <input type="text" id="slack-msg-instantly_inbound" placeholder="Message (use {{name}}, {{email}}, {{event}})" />
+            </div>
+          </div>
+
+          <div class="error-msg" id="form-error-instantly_inbound"></div>
+          <button class="btn-primary" id="create-btn-instantly_inbound" onclick="createInstantlyInboundAutomation()" style="margin-top:18px;">Create automation</button>
+        </div>
+      </div>
+
       </div><!-- close form col -->
 
       <!-- Right column -->
@@ -1329,6 +1395,10 @@ let clayMappings             = [];
 let hsSelectedFb             = { id:'', name:'' };
 let slackChSelectedFb        = { id:'', name:'' };
 let fbMappings               = [{fb_field:'email', hs_property:'email', hs_label:'Email'}];
+let campInboundSelected      = {};
+let inboundPropSelected      = {};
+let slackChSelectedInbound   = {};
+let hsProperties             = [];
 
 const FB_FIELDS = [
   {value:'email',       label:'Email'},
@@ -1465,7 +1535,8 @@ function updateAlertPanelVisibility() {
   const isClay     = document.getElementById('tab-clay')?.classList.contains('active');
   const isFbTab    = document.getElementById('tab-fb_conversions')?.classList.contains('active');
   const isGcalTab = document.getElementById('tab-gcal')?.classList.contains('active');
-  document.getElementById('alert-panel').style.display = (isGsheet || isCalendly || isClay || isFbTab || isGcalTab) ? 'none' : '';
+  const isInboundTab = document.getElementById('tab-instantly_inbound')?.classList.contains('active');
+  document.getElementById('alert-panel').style.display = (isGsheet || isCalendly || isClay || isFbTab || isGcalTab || isInboundTab) ? 'none' : '';
 }
 function toggleSlackSection(deliveryType, enabled) {
   document.getElementById(`slack-body-${deliveryType}`).style.display = enabled ? 'flex' : 'none';
@@ -1477,7 +1548,8 @@ function toggleSlackSection(deliveryType, enabled) {
       'calendly':       slackChSelectedCalendly,
       'clay':           slackChSelectedClay,
       'fb_conversions': slackChSelectedFb,
-      'gcal':           slackChSelectedGcal
+      'gcal':             slackChSelectedGcal,
+      'instantly_inbound': slackChSelectedInbound
     };
     const sel = selMap[deliveryType];
     if (sel) initSearchSelect(`slack-ch-search-${deliveryType}`,`slack-ch-dropdown-${deliveryType}`,slackChannels,sel,'Search channels…');
@@ -1797,6 +1869,49 @@ async function createGcalAutomation() {
   btn.disabled=false; btn.textContent=editingId?'Save changes':'Create automation';
 }
 
+async function createInstantlyInboundAutomation() {
+  const btn   = document.getElementById('create-btn-instantly_inbound');
+  const errEl = document.getElementById('form-error-instantly_inbound');
+  errEl.style.display = 'none';
+
+  const name         = document.getElementById('auto-name-instantly_inbound').value.trim();
+  const triggerEvent = document.getElementById('inbound-trigger-event').value;
+  const hsProperty   = inboundPropSelected.id || '';
+  const hsValue      = document.getElementById('inbound-hs-value').value.trim();
+
+  if (!name)         { errEl.textContent='Enter a name.'; errEl.style.display='block'; return; }
+  if (!triggerEvent) { errEl.textContent='Select a trigger event.'; errEl.style.display='block'; return; }
+  if (!hsProperty)   { errEl.textContent='Select a HubSpot property.'; errEl.style.display='block'; return; }
+  if (!hsValue)      { errEl.textContent='Enter a value to set.'; errEl.style.display='block'; return; }
+
+  btn.disabled = true; btn.textContent = editingId ? 'Saving…' : 'Creating…';
+
+  const payload = {
+    name, delivery_type: 'instantly_inbound',
+    trigger_event:           triggerEvent,
+    instantly_campaign_id:   campInboundSelected.id   || '',
+    instantly_campaign_name: campInboundSelected.name || '',
+    hs_property: hsProperty,
+    hs_value:    hsValue,
+    slack_enabled:       document.getElementById('slack-toggle-instantly_inbound').checked,
+    slack_channel:       slackChSelectedInbound.id   || '',
+    slack_channel_name:  slackChSelectedInbound.name || '',
+    slack_message:       document.getElementById('slack-msg-instantly_inbound').value.trim(),
+  };
+
+  try {
+    const { ok, data } = editingId
+      ? await api('PATCH', '/automations/' + editingId, payload)
+      : await api('POST',  '/automations', payload);
+    if (ok) {
+      editingId = null; btn.textContent = 'Create automation';
+      showToast(editingId ? 'Automation updated' : 'Automation created');
+      showPage('dashboard'); loadAutomations();
+    } else { errEl.textContent = data.error || 'Something went wrong.'; errEl.style.display = 'block'; }
+  } catch(e) { errEl.textContent = 'Network error.'; errEl.style.display = 'block'; }
+  btn.disabled = false; btn.textContent = editingId ? 'Save changes' : 'Create automation';
+}
+
 function renderFbMappings() {
   const container = document.getElementById('fb-mappings-container');
   if (!container) return;
@@ -2014,11 +2129,19 @@ function selectSource(source) {
     document.getElementById('hs-type-cards').style.display = '';
     document.getElementById('gw-type-cards').style.display = 'none';
     document.getElementById('form-area').style.display = 'none';
-  } else {
+  } else if (source === 'gsheet') {
     document.getElementById('add-page-subtitle').textContent = 'Choose a Google Workspace integration';
     document.getElementById('gw-type-cards').style.display = '';
     document.getElementById('hs-type-cards').style.display = 'none';
     document.getElementById('form-area').style.display = 'none';
+  } else {
+    // instantly_inbound — go straight to form
+    document.getElementById('add-page-subtitle').textContent = 'Update HubSpot when contacts reply or opt out in Instantly';
+    document.getElementById('hs-type-cards').style.display = 'none';
+    document.getElementById('gw-type-cards').style.display = 'none';
+    document.getElementById('form-area').style.display = '';
+    document.getElementById('hs-type-bar').style.display = 'none';
+    switchTab('instantly_inbound');
   }
 }
 
@@ -2062,7 +2185,7 @@ function newAutomation() {
   document.getElementById('gw-type-cards').style.display = 'none';
   document.getElementById('form-area').style.display = 'none';
   document.getElementById('view-logs-btn').style.display = 'none';
-  ['instantly','hubspot_form','gsheet_sync','calendly'].forEach(dt => {
+  ['instantly','hubspot_form','gsheet_sync','calendly','instantly_inbound'].forEach(dt => {
     const btn = document.getElementById(`create-btn-${dt}`);
     if (btn) btn.textContent = 'Create automation';
     const err = document.getElementById(`form-error-${dt}`);
@@ -2099,6 +2222,18 @@ function newAutomation() {
   resetClayForm();
   resetFbForm();
   resetGcalForm();
+  // Reset instantly_inbound form
+  const autoNameInbound = document.getElementById('auto-name-instantly_inbound');
+  if (autoNameInbound) autoNameInbound.value = '';
+  const inboundHsVal = document.getElementById('inbound-hs-value');
+  if (inboundHsVal) inboundHsVal.value = '';
+  campInboundSelected = {}; inboundPropSelected = {};
+  const campInboundInput = document.getElementById('camp-inbound-search');
+  if (campInboundInput) { campInboundInput.value = ''; campInboundInput.classList.remove('has-value'); }
+  const inboundPropInput = document.getElementById('inbound-prop-search');
+  if (inboundPropInput) { inboundPropInput.value = ''; inboundPropInput.classList.remove('has-value'); }
+  const slackToggleInbound = document.getElementById('slack-toggle-instantly_inbound');
+  if (slackToggleInbound) { slackToggleInbound.checked = false; toggleSlackSection('instantly_inbound', false); }
   showPage('add');
 }
 
@@ -2239,6 +2374,7 @@ function setFilter(filter) {
   if (filter === 'clay')          document.getElementById('nav-filter-clay')?.classList.add('active');
   if (filter === 'fb_conversions') document.getElementById('nav-filter-fb_conversions')?.classList.add('active');
   if (filter === 'gcal')           document.getElementById('nav-filter-gcal')?.classList.add('active');
+  if (filter === 'instantly_inbound') document.getElementById('nav-filter-instantly_inbound')?.classList.add('active');
   renderAutomations();
 }
 
@@ -2260,6 +2396,7 @@ function renderAutomations() {
   if (currentFilter === 'clay')           filtered = filtered.filter(a => a.delivery_type === 'enrichment' && a.clay_enabled);
   if (currentFilter === 'fb_conversions') filtered = filtered.filter(a => a.delivery_type === 'fb_conversions');
   if (currentFilter === 'gcal')           filtered = filtered.filter(a => a.delivery_type === 'gcal');
+  if (currentFilter === 'instantly_inbound') filtered = filtered.filter(a => a.delivery_type === 'instantly_inbound');
   if (currentFilter === '24h')            filtered = filtered.filter(a => (dailyCounts[a.id]||0) > 0);
   if (searchQuery) filtered = filtered.filter(a =>
     (a.name||'').toLowerCase().includes(searchQuery) ||
@@ -2287,10 +2424,15 @@ function renderAutomations() {
     const isClay     = a.delivery_type === 'enrichment' && a.clay_enabled;
     const isFb       = a.delivery_type === 'fb_conversions';
     const isGcal     = a.delivery_type === 'gcal';
+    const isInbound  = a.delivery_type === 'instantly_inbound';
     const active   = a.active !== false;
 
     let sourceChip, deliveryChip;
-    if (isGcal) {
+    if (isInbound) {
+      sourceChip   = `<span class="chip" style="color:#2563EB;border-color:rgba(37,99,235,0.3);background:rgba(37,99,235,0.08);"><svg width="10" height="10" viewBox="0 0 100 100" fill="none" style="display:inline;margin-right:3px;"><circle cx="50" cy="50" r="50" fill="#2563EB"/><polygon points="58,10 30,55 50,55 42,90 70,45 50,45" fill="white"/></svg>Instantly</span>`;
+      const eventLabels = {reply_received:'Replied',unsubscribed:'Opted Out',bounced:'Bounced',interested:'Interested',not_interested:'Not Interested',out_of_office:'Out of Office'};
+      deliveryChip = `<span class="chip chip-hs">→ HubSpot · ${esc(eventLabels[a.trigger_event]||a.trigger_event)}</span>`;
+    } else if (isGcal) {
       sourceChip   = `<span class="chip chip-hs">HubSpot · ${esc(a.hubspot_list_name || a.hubspot_list_id)}</span>`;
       deliveryChip = `<span class="chip" style="color:#34a853;border-color:rgba(52,168,83,0.3);background:rgba(52,168,83,0.08);">📅 Google Calendar</span>`;
     } else if (isFb) {
@@ -2316,12 +2458,12 @@ function renderAutomations() {
         : `<span class="chip chip-in">Instantly · ${esc(a.instantly_campaign_name || a.instantly_campaign_id)}</span>`;
     }
 
-    const actionChip = (!isForm && !isGsheet && !isCalendly && !isClay && !isFb)
+    const actionChip = (!isForm && !isGsheet && !isCalendly && !isClay && !isFb && !isInbound)
       ? (a.action === 'unenroll'
           ? `<span class="chip chip-unenroll">⊖ Unenroll</span>`
           : `<span class="chip chip-enroll">⊕ Enroll</span>`)
       : '';
-    const delayLabel = (!isForm && !isGsheet && !isCalendly && !isClay && !isFb && a.delay_hours > 0)
+    const delayLabel = (!isForm && !isGsheet && !isCalendly && !isClay && !isFb && !isInbound && a.delay_hours > 0)
       ? `<span class="chip chip-hs">⏱ ${a.delay_hours>=24?(a.delay_hours/24)+'d':a.delay_hours+'h'} delay</span>` : '';
     const alertChip = a.alert_enabled ? `<span class="chip chip-alert">🔔 Alert</span>` : '';
     const slackChip = a.slack_enabled
@@ -2449,7 +2591,17 @@ async function loadDropdowns() {
       initSearchSelect('alert-slack-ch-search',       'alert-slack-ch-dropdown',       slackChannels,alertSlackChSelected,   'Search channels…');
       initSearchSelect('slack-ch-search-fb_conversions','slack-ch-dropdown-fb_conversions',slackChannels,slackChSelectedFb,'Search channels…');
     }
-    if (pr.ok && Array.isArray(pr.data)) hsPropList = pr.data;
+    if (pr.ok && Array.isArray(pr.data)) {
+      hsPropList = pr.data;
+      hsProperties = pr.data.map(p => ({ id: p.name, name: p.label || p.name }));
+      initSearchSelect('inbound-prop-search','inbound-prop-dropdown',hsProperties,inboundPropSelected,'Search properties…');
+    }
+    if (c.ok && Array.isArray(c.data)) {
+      initSearchSelect('camp-inbound-search','camp-inbound-dropdown',campList,campInboundSelected,'Search campaigns…');
+    }
+    if (s.ok && Array.isArray(s.data)) {
+      initSearchSelect('slack-ch-search-instantly_inbound','slack-ch-dropdown-instantly_inbound',slackChannels,slackChSelectedInbound,'Search channels…');
+    }
   } catch(e) { ids.forEach(id=>{const el=document.getElementById(id);if(el)el.placeholder='Network error';}); }
   ids.forEach(id=>{const el=document.getElementById(id);if(el)el.disabled=false;});
 }
@@ -2601,14 +2753,33 @@ async function editAutomation(id) {
   const isClay     = a.delivery_type==='enrichment' && a.clay_enabled;
   const isFb       = a.delivery_type==='fb_conversions';
   const isGcal     = a.delivery_type==='gcal';
+  const isInbound  = a.delivery_type==='instantly_inbound';
   document.getElementById('add-page-title').textContent='Edit automation';
-  document.getElementById('add-page-subtitle').textContent = isGsheet ? 'Sync a Google Sheet to HubSpot' : 'Choose how to reach contacts from your HubSpot list';
+  document.getElementById('add-page-subtitle').textContent = isGsheet ? 'Sync a Google Sheet to HubSpot' : isInbound ? 'Update HubSpot when contacts reply or opt out in Instantly' : 'Choose how to reach contacts from your HubSpot list';
   document.getElementById('source-selector').style.display='none';
   document.getElementById('hs-type-bar').style.display='none';
   document.getElementById('form-area').style.display='';
   document.getElementById('view-logs-btn').style.display = 'flex';
   showPage('add');
-  switchTab(isGcal?'gcal':isFb?'fb_conversions':isClay?'clay':isCalendly?'calendly':isGsheet?'gsheet_sync':isForm?'hubspot_form':'instantly');
+  switchTab(isInbound?'instantly_inbound':isGcal?'gcal':isFb?'fb_conversions':isClay?'clay':isCalendly?'calendly':isGsheet?'gsheet_sync':isForm?'hubspot_form':'instantly');
+
+  if (isInbound) {
+    document.getElementById('auto-name-instantly_inbound').value = a.name||'';
+    const triggerSel = document.getElementById('inbound-trigger-event');
+    if (triggerSel) triggerSel.value = a.trigger_event||'reply_received';
+    inboundPropSelected.id = a.hs_property||''; inboundPropSelected.name = a.hs_property||'';
+    const propInput = document.getElementById('inbound-prop-search');
+    if (propInput) { propInput.value = a.hs_property||''; propInput.classList.toggle('has-value',!!a.hs_property); }
+    campInboundSelected.id = a.instantly_campaign_id||''; campInboundSelected.name = a.instantly_campaign_name||'';
+    const campInput = document.getElementById('camp-inbound-search');
+    if (campInput) { campInput.value = a.instantly_campaign_name||''; campInput.classList.toggle('has-value',!!a.instantly_campaign_id); }
+    const hsValInput = document.getElementById('inbound-hs-value');
+    if (hsValInput) hsValInput.value = a.hs_value||'';
+    const slackToggle = document.getElementById('slack-toggle-instantly_inbound');
+    if (slackToggle) { slackToggle.checked=!!a.slack_enabled; toggleSlackSection('instantly_inbound',!!a.slack_enabled); if(a.slack_enabled){slackChSelectedInbound.id=a.slack_channel||'';slackChSelectedInbound.name=a.slack_channel_name||'';const sci=document.getElementById('slack-ch-search-instantly_inbound');if(sci){sci.value=a.slack_channel_name||'';sci.classList.toggle('has-value',!!a.slack_channel);}const ta=document.getElementById('slack-msg-instantly_inbound');if(ta)ta.value=a.slack_message||'';}}
+    document.getElementById('create-btn-instantly_inbound').textContent='Save changes';
+    return;
+  }
 
   if (isGcal) {
     document.getElementById('auto-name-gcal').value = a.name||'';
