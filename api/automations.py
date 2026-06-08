@@ -759,6 +759,36 @@ class handler(BaseHTTPRequestHandler):
             self._json(200, new_auto)
             return
 
+        # ── Instantly Inbound (no HubSpot list needed) ───────
+        if delivery_type == "instantly_inbound":
+            trigger_events = [e for e in body.get("trigger_events", []) if isinstance(e, str) and e]
+            hs_property    = body.get("hs_property", "").strip()
+            hs_value       = body.get("hs_value", "").strip()
+            camp_id        = str(body.get("instantly_campaign_id", "")).strip()
+            camp_name      = body.get("instantly_campaign_name", "").strip()
+            if not trigger_events:
+                self._json(400, {"error": "Select at least one trigger event"}); return
+            if not hs_property:
+                self._json(400, {"error": "Missing HubSpot property"}); return
+            import hashlib as _hl
+            new_auto = {
+                "id":                      f"inbound_{_hl.md5((''.join(sorted(trigger_events))+hs_property+camp_id).encode()).hexdigest()[:8]}",
+                "name":                    name,
+                "delivery_type":           "instantly_inbound",
+                "trigger_events":          trigger_events,
+                "instantly_campaign_id":   camp_id,
+                "instantly_campaign_name": camp_name,
+                "hs_property":             hs_property,
+                "hs_value":                hs_value,
+                "active":                  True,
+            }
+            _apply_slack_fields(new_auto, body)
+            _apply_alert_fields(new_auto, body)
+            existing.append(new_auto)
+            save_automations(existing)
+            self._json(200, new_auto)
+            return
+
         # ── Instantly + HS Form: both require a HubSpot list ─
         list_id   = str(body.get("hubspot_list_id", "")).strip()
         list_name = body.get("hubspot_list_name", "").strip()
@@ -906,29 +936,6 @@ class handler(BaseHTTPRequestHandler):
                 "timing_relative_time":  body.get("timing_relative_time", "09:00"),
                 "timing_hs_property":    body.get("timing_hs_property", ""),
                 "active":                True,
-            }
-
-        elif delivery_type == "instantly_inbound":
-            trigger_events = [e for e in body.get("trigger_events", []) if isinstance(e, str) and e]
-            hs_property    = body.get("hs_property", "").strip()
-            hs_value       = body.get("hs_value", "").strip()
-            camp_id        = str(body.get("instantly_campaign_id", "")).strip()
-            camp_name      = body.get("instantly_campaign_name", "").strip()
-            if not trigger_events:
-                self._json(400, {"error": "Select at least one trigger event"}); return
-            if not hs_property:
-                self._json(400, {"error": "Missing HubSpot property"}); return
-            import hashlib as _hl
-            new_auto = {
-                "id":                      f"inbound_{_hl.md5((''.join(sorted(trigger_events))+hs_property+camp_id).encode()).hexdigest()[:8]}",
-                "name":                    name,
-                "delivery_type":           "instantly_inbound",
-                "trigger_events":          trigger_events,
-                "instantly_campaign_id":   camp_id,
-                "instantly_campaign_name": camp_name,
-                "hs_property":             hs_property,
-                "hs_value":                hs_value,
-                "active":                  True,
             }
 
         else:
