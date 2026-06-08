@@ -2830,6 +2830,7 @@ async function editAutomation(id) {
   document.getElementById('add-page-subtitle').textContent = isGsheet ? 'Sync a Google Sheet to HubSpot' : isInbound ? 'Update HubSpot when contacts reply or opt out in Instantly' : 'Choose how to reach contacts from your HubSpot list';
   document.getElementById('source-selector').style.display='none';
   document.getElementById('hs-type-bar').style.display='none';
+  document.querySelector('.tab-bar').style.display='none';
   document.getElementById('form-area').style.display='';
   document.getElementById('view-logs-btn').style.display = 'flex';
   showPage('add');
