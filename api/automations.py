@@ -482,7 +482,7 @@ class handler(BaseHTTPRequestHandler):
                         continue
 
                     # GSheet / Calendly / Clay / FB automations — read from Redis logs
-                    if delivery_type in ('gsheet_sync', 'calendly', 'fb_conversions', 'gcal') or (delivery_type == 'enrichment' and a.get('clay_enabled')):
+                    if delivery_type in ('gsheet_sync', 'calendly', 'fb_conversions', 'gcal', 'instantly_inbound') or (delivery_type == 'enrichment' and a.get('clay_enabled')):
                         try:
                             log_url = f"{UPSTASH_URL}/lrange/logs:{auto_id}/0/999"
                             log_req = Request(log_url, headers={"Authorization": f"Bearer {UPSTASH_TOKEN}"})
@@ -558,7 +558,7 @@ class handler(BaseHTTPRequestHandler):
                 delivery_type = auto.get("delivery_type", "")
 
                 # Calendly + GSheet + FB Conversions + Clay read from Redis logs
-                if delivery_type in ("calendly", "fb_conversions", "gcal") or (delivery_type == "enrichment" and auto.get("clay_enabled")) or (delivery_type == "gsheet_sync" and not auto.get("sheet_url")):
+                if delivery_type in ("calendly", "fb_conversions", "gcal", "instantly_inbound") or (delivery_type == "enrichment" and auto.get("clay_enabled")) or (delivery_type == "gsheet_sync" and not auto.get("sheet_url")):
                     log_url = f"{UPSTASH_URL}/lrange/logs:{auto_id}/0/999"
                     log_req = Request(log_url, headers={"Authorization": f"Bearer {UPSTASH_TOKEN}"})
                     with urlopen(log_req, timeout=8) as r:
@@ -908,6 +908,29 @@ class handler(BaseHTTPRequestHandler):
                 "active":                True,
             }
 
+        elif delivery_type == "instantly_inbound":
+            trigger_event = body.get("trigger_event", "").strip()
+            hs_property   = body.get("hs_property", "").strip()
+            hs_value      = body.get("hs_value", "").strip()
+            camp_id       = str(body.get("instantly_campaign_id", "")).strip()
+            camp_name     = body.get("instantly_campaign_name", "").strip()
+            if not trigger_event:
+                self._json(400, {"error": "Missing trigger event"}); return
+            if not hs_property:
+                self._json(400, {"error": "Missing HubSpot property"}); return
+            import hashlib as _hl
+            new_auto = {
+                "id":                      f"inbound_{_hl.md5((trigger_event+hs_property+camp_id).encode()).hexdigest()[:8]}",
+                "name":                    name,
+                "delivery_type":           "instantly_inbound",
+                "trigger_event":           trigger_event,
+                "instantly_campaign_id":   camp_id,
+                "instantly_campaign_name": camp_name,
+                "hs_property":             hs_property,
+                "hs_value":                hs_value,
+                "active":                  True,
+            }
+
         else:
             self._json(400, {"error": "Invalid delivery_type"})
             return
@@ -996,6 +1019,13 @@ class handler(BaseHTTPRequestHandler):
                             m for m in body["fb_field_mappings"]
                             if isinstance(m, dict) and m.get("fb_field") and m.get("hs_property")
                         ]
+                    if "slack_enabled" in body:
+                        _apply_slack_fields(a, body)
+
+                elif a.get("delivery_type") == "instantly_inbound":
+                    for k in {"trigger_event", "instantly_campaign_id", "instantly_campaign_name",
+                              "hs_property", "hs_value"} & body.keys():
+                        a[k] = body[k]
                     if "slack_enabled" in body:
                         _apply_slack_fields(a, body)
 
