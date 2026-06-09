@@ -427,11 +427,6 @@ def run_gsheet_sync(automation, sent_cache=None):
         if not pk_value:
             continue
 
-        # Skip if already synced before (deduplication)
-        auto_id = automation.get("id", "")
-        if already_sent_cached(pk_value.lower(), auto_id, sent_cache):
-            continue
-
         if pk_type in ("email", "domain"):
             upsert_inputs.append({"id": pk_value, "idProperty": pk_type, "properties": properties})
         else:
@@ -467,14 +462,13 @@ def run_gsheet_sync(automation, sent_cache=None):
                 f"{len(upsert_inputs)} upserted, {len(create_inputs)} created.")
 
     _log(f"[gsheet] {auto_name}: done. errors={len(all_errors)}")
-    # Mark as sent + log each upserted contact for activity reporting
+    # Log each upserted contact for activity reporting
     auto_id = automation.get("id", "")
     if auto_id:
         for inp in upsert_inputs:
             pk = inp.get("id", "")
             if pk:
                 try:
-                    mark_as_sent(pk.lower(), auto_id, sent_cache)
                     log_enrollment(auto_id, pk, "gsheet_sync", time.time())
                 except Exception:
                     pass
