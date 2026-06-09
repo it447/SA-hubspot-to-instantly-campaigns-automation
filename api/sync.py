@@ -162,6 +162,29 @@ def increment_enroll_count(auto_id, est_date):
 def get_enroll_count(auto_id, est_date):
     return _redis_get_int(f"enroll_count:{auto_id}:{est_date}")
 
+def get_enroll_count_last_24h(auto_id, reference_ts):
+    """Count log entries in the last 24 hours before reference_ts."""
+    cutoff = reference_ts - 86400
+    key    = f"logs:{auto_id}"
+    count  = 0
+    try:
+        url = f"{UPSTASH_URL}/lrange/{key}/0/9999"
+        req = Request(url, headers={"Authorization": f"Bearer {UPSTASH_TOKEN}"})
+        with urlopen(req, timeout=10) as r:
+            data = json.loads(r.read())
+        entries = data.get("result", [])
+        for raw in entries:
+            try:
+                entry = json.loads(raw) if isinstance(raw, str) else raw
+                ts = float(entry.get("ts", 0))
+                if ts >= cutoff:
+                    count += 1
+            except Exception:
+                pass
+    except Exception as e:
+        _log(f"[alert] log read error for {auto_id}: {e}")
+    return count
+
 def get_weekly_enroll_count(auto_id, est_now):
     total = 0
     for i in range(7):
@@ -258,7 +281,7 @@ def check_and_send_alert(automation, auto_id, est_now, est_date):
     if schedule == "daily":
         if alert_already_sent_today(auto_id, est_date):
             return
-        count = get_enroll_count(auto_id, est_date)
+        count = get_enroll_count_last_24h(auto_id, time.time())
         if count < threshold:
             msg = message_tpl
             msg = msg.replace("{{count}}", str(count))
