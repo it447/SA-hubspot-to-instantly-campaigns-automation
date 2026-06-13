@@ -920,7 +920,14 @@ class handler(BaseHTTPRequestHandler):
 
             automation["last_run"] = datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
 
-        save_automations(all_automations)
+        # Re-fetch latest automations before saving to avoid overwriting
+        # automations created/edited while this cron run was in progress
+        last_run_map = {a["id"]: a.get("last_run") for a in all_automations if a.get("id") and a.get("last_run")}
+        fresh = get_automations()
+        for a in fresh:
+            if a.get("id") in last_run_map:
+                a["last_run"] = last_run_map[a["id"]]
+        save_automations(fresh)
 
         result = {
             "processed":  total_processed,
