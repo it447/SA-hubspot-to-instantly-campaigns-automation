@@ -583,6 +583,33 @@ class handler(BaseHTTPRequestHandler):
                             })
                         except Exception:
                             continue
+
+                    # For Clay automations with no log entries, backfill from sent cache
+                    if not rows and delivery_type == "enrichment" and auto.get("clay_enabled"):
+                        clay_key = f"clay:{auto_id}"
+                        prefix   = f"sent:*:{clay_key}"
+                        cursor   = 0
+                        emails   = []
+                        try:
+                            while True:
+                                scan_url = f"{UPSTASH_URL}/scan/{cursor}?match={prefix}&count=500"
+                                scan_req = Request(scan_url, headers={"Authorization": f"Bearer {UPSTASH_TOKEN}"})
+                                with urlopen(scan_req, timeout=10) as r:
+                                    scan_data = json.loads(r.read())
+                                result = scan_data.get("result", [0, []])
+                                cursor = int(result[0])
+                                for k in (result[1] if len(result) > 1 else []):
+                                    # key format: sent:{email}:clay:{auto_id}
+                                    parts = k.split(":")
+                                    if len(parts) >= 2:
+                                        emails.append(parts[1])
+                                if cursor == 0:
+                                    break
+                        except Exception:
+                            pass
+                        for email in emails:
+                            rows.append({"email": email, "name": email, "created": "", "type": "clay_push"})
+
                     self._json(200, rows)
                     return
 
