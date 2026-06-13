@@ -536,6 +536,7 @@ def run_clay_push(automation, sent_cache):
         try:
             push_to_clay(webhook_url, row_data)
             mark_as_sent(email, clay_key, sent_cache)
+            log_enrollment(auto_id, email, "clay_push", time.time())
             pushed += 1
             _log(f"[clay] {auto_name}: pushed {email}")
         except Exception as e:
