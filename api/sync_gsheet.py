@@ -394,6 +394,7 @@ def run_gsheet_sync(automation, sent_cache=None):
         return
 
     pk_idx        = headers.index(pk_column)
+    auto_id       = automation.get("id", "")
     upsert_inputs = []
     create_inputs = []
 
@@ -466,7 +467,6 @@ def run_gsheet_sync(automation, sent_cache=None):
 
     _log(f"[gsheet] {auto_name}: done. errors={len(all_errors)}")
     # Mark as sent and log each upserted contact
-    auto_id = automation.get("id", "")
     if auto_id and not all_errors:
         for inp in upsert_inputs:
             pk = inp.get("id", "")
