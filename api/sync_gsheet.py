@@ -427,8 +427,6 @@ def run_gsheet_sync(automation, sent_cache=None):
         if not pk_value:
             continue
 
-        # Skip if already synced before (deduplication)
-        auto_id = automation.get("id", "")
         if already_sent_cached(pk_value.lower(), auto_id, sent_cache):
             continue
 
@@ -467,9 +465,9 @@ def run_gsheet_sync(automation, sent_cache=None):
                 f"{len(upsert_inputs)} upserted, {len(create_inputs)} created.")
 
     _log(f"[gsheet] {auto_name}: done. errors={len(all_errors)}")
-    # Mark as sent + log each upserted contact for activity reporting
+    # Mark as sent and log each upserted contact
     auto_id = automation.get("id", "")
-    if auto_id:
+    if auto_id and not all_errors:
         for inp in upsert_inputs:
             pk = inp.get("id", "")
             if pk:
@@ -538,6 +536,7 @@ def run_clay_push(automation, sent_cache):
         try:
             push_to_clay(webhook_url, row_data)
             mark_as_sent(email, clay_key, sent_cache)
+            log_enrollment(auto_id, email, "clay_push", time.time())
             pushed += 1
             _log(f"[clay] {auto_name}: pushed {email}")
         except Exception as e:
@@ -748,10 +747,9 @@ class handler(BaseHTTPRequestHandler):
 
                 if did_something:
                     ran += 1
+                    automation["last_run"] = datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
                 else:
                     skipped += 1
-                # Always update last_run so dashboard shows correct time
-                automation["last_run"] = datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
 
             # ── Enrichment ────────────────────────────────────
             elif delivery_type == "enrichment":

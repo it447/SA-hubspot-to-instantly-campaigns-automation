@@ -235,6 +235,11 @@
   .search-option-empty { padding:12px 14px; font-size:13px; color:var(--muted); font-style:italic; }
   .search-dropdown::-webkit-scrollbar { width:4px; }
   .search-dropdown::-webkit-scrollbar-thumb { background:rgba(254,242,222,0.15); border-radius:2px; }
+  .trigger-opt { display:flex;align-items:center;gap:10px;padding:10px 14px;font-size:14px;color:var(--cream);cursor:pointer;border-bottom:1px solid rgba(254,242,222,0.05);transition:background 0.1s; }
+  .trigger-opt:last-child { border-bottom:none; }
+  .trigger-opt:hover { background:rgba(255,100,50,0.08); }
+  .trigger-opt input[type=checkbox] { width:15px;height:15px;accent-color:var(--orange);cursor:pointer;flex-shrink:0; }
+  .trigger-chip { display:inline-flex;align-items:center;gap:5px;background:rgba(255,100,50,0.15);color:var(--orange);border:1px solid rgba(255,100,50,0.3);border-radius:4px;padding:2px 8px;font-size:12px;white-space:nowrap; }
 
   .modal-overlay { position:fixed; inset:0; background:rgba(15,31,46,0.88); z-index:200; display:flex; align-items:center; justify-content:center; padding:1rem; }
   .modal { background:var(--navy-soft); border:1px solid var(--border2); border-radius:var(--radius); width:100%; max-width:580px; max-height:80vh; display:flex; flex-direction:column; }
@@ -256,6 +261,8 @@
   .slack-icon { display:inline-flex; align-items:center; }
   .slack-body { margin-top:1rem; display:flex; flex-direction:column; gap:0.9rem; }
   .token-hint { font-size:11px; color:var(--muted); margin-top:5px; }
+  .token-chip { display:inline-block; padding:2px 8px; background:rgba(254,242,222,0.08); border:1px solid var(--border); border-radius:10px; cursor:pointer; font-size:11px; margin:2px 2px 0; transition:background .15s; }
+  .token-chip:hover { background:rgba(254,242,222,0.15); }
 
   .edit-grid { display:flex; gap:2rem; align-items:start; }
   .edit-grid > :first-child { flex-shrink:0; }
@@ -314,6 +321,19 @@
   .gs-sched-btn.active { background:var(--teal); color:#0f1f2e; border-color:var(--teal); font-weight:600; }
   .gs-sched-btn:not(.active):hover { background:rgba(254,242,222,0.08); color:var(--cream); }
   .gs-sched-details { margin-top:0.9rem; display:flex; gap:0.75rem; }
+
+  /* Source selector cards */
+  .source-card { flex:1; cursor:pointer; border:2px solid var(--border); border-radius:14px; padding:28px 24px; text-align:center; transition:all .18s; background:rgba(254,242,222,0.03); }
+  .source-card:hover { border-color:var(--orange); background:rgba(255,100,50,0.06); }
+  .source-card-icon { font-size:28px; margin-bottom:12px; }
+  .source-card-label { font-size:17px; font-weight:600; color:var(--cream); margin-bottom:8px; }
+  .source-card-desc { font-size:13px; color:var(--muted); line-height:1.5; }
+
+  /* HubSpot type options */
+  .hs-type-options { display:flex; gap:10px; flex-wrap:wrap; }
+  .hs-type-opt { padding:8px 18px; border-radius:20px; border:1.5px solid var(--border); font-size:13px; font-weight:500; cursor:pointer; color:var(--muted); transition:all .15s; background:rgba(254,242,222,0.03); }
+  .hs-type-opt:hover { border-color:var(--cream); color:var(--cream); }
+  .hs-type-opt.active { border-color:var(--orange); color:var(--orange); background:rgba(255,100,50,0.08); font-weight:600; }
 </style>
 </head>
 <body>
@@ -352,6 +372,9 @@
     <button class="nav-item" id="nav-filter-gsheet_sync" onclick="showPage('dashboard');setFilter('gsheet_sync')" style="padding-left:28px;font-size:13px;display:flex;align-items:center;gap:7px;"><svg width="14" height="14" viewBox="0 0 100 100" fill="none" style="flex-shrink:0;"><rect x="15" y="5" width="55" height="70" rx="4" fill="#0F9D58"/><rect x="30" y="5" width="40" height="18" rx="2" fill="#0F9D58"/><path d="M70 5 L85 20 L70 20 Z" fill="#087447"/><rect x="70" y="5" width="15" height="15" rx="2" fill="#34A853"/><rect x="22" y="35" width="56" height="4" rx="2" fill="white" opacity="0.7"/><rect x="22" y="47" width="56" height="4" rx="2" fill="white" opacity="0.7"/><rect x="22" y="59" width="40" height="4" rx="2" fill="white" opacity="0.7"/></svg> GSheet Sync</button>
     <button class="nav-item" id="nav-filter-calendly" onclick="showPage('dashboard');setFilter('calendly')" style="padding-left:28px;font-size:13px;display:flex;align-items:center;gap:7px;"><svg width="14" height="14" viewBox="0 0 100 100" fill="none" style="flex-shrink:0;"><circle cx="50" cy="50" r="48" fill="#006BFF" opacity="0.15" stroke="#006BFF" stroke-width="4"/><path d="M72 35 A30 30 0 1 0 72 65" stroke="#006BFF" stroke-width="10" stroke-linecap="round" fill="none"/></svg> Calendly</button>
     <button class="nav-item" id="nav-filter-clay" onclick="showPage('dashboard');setFilter('clay')" style="padding-left:28px;font-size:13px;display:flex;align-items:center;gap:7px;"><svg width="14" height="14" viewBox="0 0 100 100" fill="none" style="flex-shrink:0;"><rect x="10" y="20" width="80" height="60" rx="8" fill="#7C3AED" opacity="0.15" stroke="#7C3AED" stroke-width="5"/><rect x="22" y="35" width="56" height="6" rx="3" fill="#7C3AED"/><rect x="22" y="50" width="40" height="6" rx="3" fill="#7C3AED" opacity="0.6"/><rect x="22" y="65" width="28" height="6" rx="3" fill="#7C3AED" opacity="0.35"/></svg> Clay Push</button>
+    <button class="nav-item" id="nav-filter-fb_conversions" onclick="showPage('dashboard');setFilter('fb_conversions')" style="padding-left:28px;font-size:13px;display:flex;align-items:center;gap:7px;"><svg width="14" height="14" viewBox="0 0 100 100" fill="none" style="flex-shrink:0;"><circle cx="50" cy="50" r="48" fill="#1877F2" opacity="0.15" stroke="#1877F2" stroke-width="4"/><text x="50" y="68" text-anchor="middle" font-size="60" font-family="Arial" font-weight="bold" fill="#1877F2">f</text></svg> FB Conversions</button>
+    <button class="nav-item" id="nav-filter-gcal" onclick="showPage('dashboard');setFilter('gcal')" style="padding-left:28px;font-size:13px;display:flex;align-items:center;gap:7px;"><svg width="14" height="14" viewBox="0 0 100 100" fill="none" style="flex-shrink:0;"><rect x="10" y="15" width="80" height="75" rx="8" fill="#34a853" opacity="0.15" stroke="#34a853" stroke-width="5"/><rect x="10" y="30" width="80" height="18" fill="#34a853" opacity="0.5"/><rect x="28" y="5" width="8" height="22" rx="4" fill="#34a853"/><rect x="64" y="5" width="8" height="22" rx="4" fill="#34a853"/><rect x="22" y="58" width="16" height="14" rx="3" fill="#34a853" opacity="0.7"/><rect x="46" y="58" width="16" height="14" rx="3" fill="#34a853" opacity="0.7"/></svg> Google Calendar</button>
+    <button class="nav-item" id="nav-filter-instantly_inbound" onclick="showPage('dashboard');setFilter('instantly_inbound')" style="padding-left:28px;font-size:13px;display:flex;align-items:center;gap:7px;"><svg width="14" height="14" viewBox="0 0 100 100" fill="none"><circle cx="50" cy="50" r="50" fill="#2563EB"/><polygon points="58,10 30,55 50,55 42,90 70,45 50,45" fill="white"/></svg> Instantly Inbound</button>
     <button class="nav-item" onclick="newAutomation()" id="nav-add" style="margin-top:4px;">
       <span class="nav-icon">+</span> New automation
     </button>
@@ -398,7 +421,7 @@
           <div class="stat-label">Total automations</div>
           <div class="stat-value orange" id="stat-total">—</div>
         </div>
-        <div class="stat-card" style="cursor:pointer;" onclick="setFilter('all');showPage('dashboard')" title="Click to show all automations">
+        <div class="stat-card" style="cursor:pointer;" onclick="setFilter('24h');showPage('dashboard')" title="Click to show automations active in last 24h">
           <div class="stat-label">Contacts processed · 24h</div>
           <div class="stat-value orange" id="stat-24h">—</div>
         </div>
@@ -426,7 +449,7 @@
         <div>
           <h2 id="add-page-title">New automation</h2>
           <div class="orange-bar" style="margin-top:8px;margin-bottom:0;"></div>
-          <p style="margin-top:10px;">Choose how to reach contacts from your HubSpot list</p>
+          <p id="add-page-subtitle" style="margin-top:10px;">Choose a source to get started</p>
         </div>
         <div style="display:flex;gap:8px;align-items:center;margin-top:4px;">
           <button class="btn-icon" id="view-logs-btn" onclick="viewCurrentLogs()" style="display:none;">
@@ -440,14 +463,125 @@
         </div>
       </div>
 
-      <div class="tab-bar">
+      <div class="tab-bar" style="display:none;">
         <button class="tab-btn active"  id="tab-btn-instantly"    onclick="switchTab('instantly')">Instantly Automation</button>
         <button class="tab-btn teal"    id="tab-btn-hubspot_form" onclick="switchTab('hubspot_form')">HS Form Fill Sequence</button>
         <button class="tab-btn gs-tab"  id="tab-btn-gsheet_sync"  onclick="switchTab('gsheet_sync')">GSheet → HubSpot Sync</button>
         <button class="tab-btn" id="tab-btn-calendly" onclick="switchTab('calendly')" style="color:#006BFF;">⊙ Calendly</button>
         <button class="tab-btn" id="tab-btn-clay" onclick="switchTab('clay')" style="color:#7C3AED;">▦ Clay Push</button>
+        <button class="tab-btn" id="tab-btn-fb_conversions" onclick="switchTab('fb_conversions')" style="color:#1877F2;">⬡ FB Conversions</button>
+        <button class="tab-btn" id="tab-btn-gcal" onclick="switchTab('gcal')" style="color:#34a853;">&#128197; Google Calendar</button>
+        <button class="tab-btn" id="tab-btn-instantly_inbound" onclick="switchTab('instantly_inbound')" style="color:#2563EB;">⚡ Instantly → HubSpot</button>
       </div>
 
+      <!-- Source selector shown when creating a new automation -->
+      <div id="source-selector" style="display:none; padding:32px 0 0;">
+        <div style="display:flex; gap:20px; max-width:600px;">
+          <div class="source-card" onclick="selectSource('hubspot')">
+            <div class="source-card-icon">
+              <svg width="40" height="40" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <circle cx="62" cy="50" r="18" fill="#FF7A59"/>
+                <circle cx="62" cy="50" r="9" fill="white"/>
+                <circle cx="25" cy="28" r="8" fill="#FF7A59"/>
+                <circle cx="25" cy="72" r="8" fill="#FF7A59"/>
+                <circle cx="78" cy="18" r="7" fill="#FF7A59"/>
+                <line x1="25" y1="28" x2="50" y2="45" stroke="#FF7A59" stroke-width="8" stroke-linecap="round"/>
+                <line x1="25" y1="72" x2="50" y2="57" stroke="#FF7A59" stroke-width="8" stroke-linecap="round"/>
+                <line x1="78" y1="18" x2="68" y2="35" stroke="#FF7A59" stroke-width="8" stroke-linecap="round"/>
+              </svg>
+            </div>
+            <div class="source-card-label">HubSpot</div>
+            <div class="source-card-desc">Send contacts to Instantly, Facebook, Clay, and more</div>
+          </div>
+          <div class="source-card" onclick="selectSource('gsheet')">
+            <div class="source-card-icon">
+              <svg width="40" height="40" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M50 5 A45 45 0 0 1 95 50 L72 50 A22 22 0 0 0 50 28 Z" fill="#EA4335"/>
+                <path d="M95 50 A45 45 0 0 1 28 91 L40 71 A22 22 0 0 0 72 50 Z" fill="#FBBC05"/>
+                <path d="M28 91 A45 45 0 0 1 5 50 L28 50 A22 22 0 0 0 50 72 L40 71 Z" fill="#34A853"/>
+                <path d="M5 50 A45 45 0 0 1 50 5 L50 28 A22 22 0 0 0 28 50 Z" fill="#4285F4"/>
+                <rect x="50" y="50" width="45" height="22" fill="#4285F4"/>
+                <circle cx="50" cy="50" r="22" fill="white"/>
+              </svg>
+            </div>
+            <div class="source-card-label">Google Workspace</div>
+            <div class="source-card-desc">Sync Google Sheets or connect Google Forms to HubSpot</div>
+          </div>
+          <div class="source-card" onclick="selectSource('instantly_inbound')">
+            <div class="source-card-icon">
+              <svg width="40" height="40" viewBox="0 0 100 100" fill="none"><circle cx="50" cy="50" r="50" fill="#2563EB"/><polygon points="58,10 30,55 50,55 42,90 70,45 50,45" fill="white"/></svg>
+            </div>
+            <div class="source-card-label">Instantly</div>
+            <div class="source-card-desc">Update HubSpot when contacts reply or opt out</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- HubSpot automation type selector (shown after source=hubspot is chosen) -->
+      <div id="hs-type-bar" style="display:none; padding:28px 0 0;">
+        <div class="form-row" style="max-width:600px;">
+          <label style="margin-bottom:10px; display:block;">Type of automation</label>
+          <div class="hs-type-options">
+            <div class="hs-type-opt active" id="hs-type-instantly"    onclick="selectHsType('instantly')">Instantly</div>
+            <div class="hs-type-opt"        id="hs-type-hubspot_form" onclick="selectHsType('hubspot_form')">HS Form Fill</div>
+            <div class="hs-type-opt"        id="hs-type-fb_conversions" onclick="selectHsType('fb_conversions')" style="color:#1877F2;">FB Conversions</div>
+            <div class="hs-type-opt"        id="hs-type-clay"         onclick="selectHsType('clay')" style="color:#7C3AED;">Clay Push</div>
+            <div class="hs-type-opt"        id="hs-type-calendly"     onclick="selectHsType('calendly')" style="color:#006BFF;">Calendly</div>
+            <div class="hs-type-opt"        id="hs-type-gcal"         onclick="selectHsType('gcal')" style="color:#34a853;">&#128197; Google Calendar</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- HubSpot type cards (Level 2 for HubSpot) -->
+      <div id="hs-type-cards" style="display:none; padding:28px 0 0;">
+        <button onclick="goBackToSources()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:13px;padding:0;margin-bottom:20px;display:flex;align-items:center;gap:6px;">&#8592; Back</button>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;max-width:680px;">
+          <div class="source-card" onclick="selectHsTypeCard('instantly')">
+            <div class="source-card-icon"><svg width="32" height="32" viewBox="0 0 100 100" fill="none"><circle cx="50" cy="50" r="50" fill="#2563EB"/><polygon points="58,10 30,55 50,55 42,90 70,45 50,45" fill="white"/></svg></div>
+            <div class="source-card-label">Instantly</div>
+            <div class="source-card-desc">Enroll contacts into email campaigns</div>
+          </div>
+          <div class="source-card" onclick="selectHsTypeCard('hubspot_form')">
+            <div class="source-card-icon"><svg width="32" height="32" viewBox="0 0 100 100" fill="none"><circle cx="62" cy="50" r="18" fill="#FF7A59"/><circle cx="62" cy="50" r="9" fill="white"/><circle cx="25" cy="28" r="8" fill="#FF7A59"/><circle cx="25" cy="72" r="8" fill="#FF7A59"/><circle cx="78" cy="18" r="7" fill="#FF7A59"/><line x1="25" y1="28" x2="50" y2="45" stroke="#FF7A59" stroke-width="8" stroke-linecap="round"/><line x1="25" y1="72" x2="50" y2="57" stroke="#FF7A59" stroke-width="8" stroke-linecap="round"/><line x1="78" y1="18" x2="68" y2="35" stroke="#FF7A59" stroke-width="8" stroke-linecap="round"/></svg></div>
+            <div class="source-card-label">HS Form Fill</div>
+            <div class="source-card-desc">Trigger HubSpot form sequences</div>
+          </div>
+          <div class="source-card" onclick="selectHsTypeCard('fb_conversions')">
+            <div class="source-card-icon"><svg width="32" height="32" viewBox="0 0 100 100" fill="none"><circle cx="50" cy="50" r="48" fill="#1877F2" opacity="0.15" stroke="#1877F2" stroke-width="4"/><text x="50" y="68" text-anchor="middle" font-size="60" font-family="Arial" font-weight="bold" fill="#1877F2">f</text></svg></div>
+            <div class="source-card-label">FB Conversions</div>
+            <div class="source-card-desc">Send leads to Facebook Conversions API</div>
+          </div>
+          <div class="source-card" onclick="selectHsTypeCard('clay')">
+            <div class="source-card-icon"><svg width="32" height="32" viewBox="0 0 100 100" fill="none"><rect x="10" y="20" width="80" height="60" rx="8" fill="#7C3AED" opacity="0.15" stroke="#7C3AED" stroke-width="5"/><rect x="22" y="35" width="56" height="6" rx="3" fill="#7C3AED"/><rect x="22" y="50" width="40" height="6" rx="3" fill="#7C3AED" opacity="0.6"/><rect x="22" y="65" width="28" height="6" rx="3" fill="#7C3AED" opacity="0.35"/></svg></div>
+            <div class="source-card-label">Clay Push</div>
+            <div class="source-card-desc">Push contacts to a Clay webhook</div>
+          </div>
+          <div class="source-card" onclick="selectHsTypeCard('calendly')">
+            <div class="source-card-icon"><svg width="32" height="32" viewBox="0 0 100 100" fill="none"><circle cx="50" cy="50" r="48" fill="#006BFF" opacity="0.15" stroke="#006BFF" stroke-width="4"/><path d="M72 35 A30 30 0 1 0 72 65" stroke="#006BFF" stroke-width="10" stroke-linecap="round" fill="none"/></svg></div>
+            <div class="source-card-label">Calendly</div>
+            <div class="source-card-desc">Sync Calendly bookings to HubSpot</div>
+          </div>
+          <div class="source-card" onclick="selectHsTypeCard('gcal')">
+            <div class="source-card-icon"><svg width="32" height="32" viewBox="0 0 100 100" fill="none"><rect x="10" y="15" width="80" height="75" rx="8" fill="#34a853" opacity="0.15" stroke="#34a853" stroke-width="5"/><rect x="10" y="30" width="80" height="18" fill="#34a853" opacity="0.5"/><rect x="28" y="5" width="8" height="22" rx="4" fill="#34a853"/><rect x="64" y="5" width="8" height="22" rx="4" fill="#34a853"/><rect x="22" y="58" width="16" height="14" rx="3" fill="#34a853" opacity="0.7"/><rect x="46" y="58" width="16" height="14" rx="3" fill="#34a853" opacity="0.7"/></svg></div>
+            <div class="source-card-label">Google Calendar</div>
+            <div class="source-card-desc">Send calendar invites to new leads</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Google Workspace type cards (Level 2 for Google Workspace) -->
+      <div id="gw-type-cards" style="display:none; padding:28px 0 0;">
+        <button onclick="goBackToSources()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:13px;padding:0;margin-bottom:20px;display:flex;align-items:center;gap:6px;">&#8592; Back</button>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;max-width:680px;">
+          <div class="source-card" onclick="selectGwTypeCard('gsheet_sync')">
+            <div class="source-card-icon"><svg width="32" height="32" viewBox="0 0 100 100" fill="none"><rect x="15" y="5" width="55" height="70" rx="4" fill="#0F9D58"/><path d="M70 5 L85 20 L70 20 Z" fill="#087447"/><rect x="70" y="5" width="15" height="15" rx="2" fill="#34A853"/><rect x="22" y="35" width="56" height="4" rx="2" fill="white" opacity="0.7"/><rect x="22" y="47" width="56" height="4" rx="2" fill="white" opacity="0.7"/><rect x="22" y="59" width="40" height="4" rx="2" fill="white" opacity="0.7"/></svg></div>
+            <div class="source-card-label">Google Sheets</div>
+            <div class="source-card-desc">Sync a Google Sheet to HubSpot contacts</div>
+          </div>
+        </div>
+      </div>
+
+      <div id="form-area" style="display:none;">
       <div class="edit-grid">
       <div>
 
@@ -839,6 +973,330 @@
         </div>
       </div>
 
+      <!-- ── Tab: FB Conversions ── -->
+      <div class="tab-panel" id="tab-fb_conversions">
+        <div class="form-card" style="max-width:560px;">
+          <h3>HubSpot → Facebook Conversions</h3>
+          <p class="form-desc">Contacts from a HubSpot list are sent as Facebook Conversions API events. Each contact is only sent once — duplicates are tracked automatically.</p>
+
+          <!-- Mode selector -->
+          <div class="form-row">
+            <label>Automation type</label>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:4px;">
+              <label id="fb-mode-lead-btn" onclick="setFbMode('lead_attribution')" style="cursor:pointer;border:2px solid #1877F2;border-radius:var(--radius-sm);padding:12px;display:flex;flex-direction:column;gap:4px;">
+                <span style="display:flex;align-items:center;gap:6px;font-size:13px;font-weight:500;color:#1877F2;"><input type="radio" name="fb-mode" value="lead_attribution" id="fb-mode-lead" checked style="accent-color:#1877F2;"> Lead Attribution</span>
+                <span style="font-size:11px;color:var(--muted);padding-left:18px;">Auto-sends Lead event with fbclid from first landing page URL</span>
+              </label>
+              <label id="fb-mode-custom-btn" onclick="setFbMode('custom')" style="cursor:pointer;border:2px solid var(--border2);border-radius:var(--radius-sm);padding:12px;display:flex;flex-direction:column;gap:4px;">
+                <span style="display:flex;align-items:center;gap:6px;font-size:13px;font-weight:500;color:var(--cream);"><input type="radio" name="fb-mode" value="custom" id="fb-mode-custom" style="accent-color:#1877F2;"> Custom Event</span>
+                <span style="font-size:11px;color:var(--muted);padding-left:18px;">Choose event name and map any HubSpot fields manually</span>
+              </label>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <label>Automation name</label>
+            <input type="text" id="auto-name-fb" placeholder="e.g. Leads → FB Lead Event">
+          </div>
+
+          <div class="form-row">
+            <label>HubSpot list</label>
+            <div class="search-select"><input type="text" id="hs-search-fb" placeholder="Search HubSpot lists…" autocomplete="off"><div class="search-dropdown" id="hs-dropdown-fb"></div></div>
+          </div>
+
+          <div class="form-row">
+            <label>Pixel ID</label>
+            <input type="text" id="fb-pixel-id" placeholder="e.g. 123456789012345">
+          </div>
+
+          <div class="form-row">
+            <label>Access Token</label>
+            <input type="text" id="fb-access-token" placeholder="Meta Conversions API access token">
+            <div class="token-hint" style="margin-top:5px;">Keep this secret — it will be stored securely.</div>
+          </div>
+
+          <!-- Lead Attribution info box -->
+          <div id="fb-lead-attribution-info" class="form-row" style="background:rgba(24,119,242,0.08);border:1px solid rgba(24,119,242,0.25);border-radius:var(--radius-sm);padding:12px 14px;">
+            <div style="font-size:13px;color:#1877F2;font-weight:500;margin-bottom:6px;">⬡ Lead Attribution — auto-configured</div>
+            <div style="font-size:12px;color:var(--muted);line-height:1.6;">
+              Event: <strong style="color:var(--cream);">Lead</strong><br>
+              Fields sent automatically: Email, Phone, First Name, Last Name, Click ID (fbc extracted from first landing page URL)
+            </div>
+          </div>
+
+          <!-- Custom event fields (shown only in custom mode) -->
+          <div id="fb-custom-fields">
+            <div class="form-row">
+              <label>Event Name</label>
+              <select id="fb-event-name" style="font-size:13px;padding:8px 10px;background:var(--navy-soft);border:1px solid var(--border2);color:var(--cream);border-radius:var(--radius-sm);width:100%;">
+                <option value="Lead">Lead</option>
+                <option value="Schedule">Schedule</option>
+                <option value="Purchase">Purchase</option>
+                <option value="CompleteRegistration">CompleteRegistration</option>
+                <option value="Contact">Contact</option>
+                <option value="ViewContent">ViewContent</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+
+            <div class="form-row">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+                <label style="margin-bottom:0;">Facebook field → HubSpot property</label>
+                <button type="button" class="btn btn-cream" onclick="addFbMapping()" style="font-size:12px;padding:5px 10px;">+ Add mapping</button>
+              </div>
+              <div id="fb-mappings-container"></div>
+              <div class="token-hint" style="margin-top:6px;">Map Facebook customer info fields to your HubSpot contact properties.</div>
+            </div>
+          </div>
+
+          <hr class="slack-divider">
+          <div class="slack-toggle-row">
+            <span class="slack-toggle-label"><span class="slack-icon"><svg width="16" height="16" viewBox="0 0 54 54" xmlns="http://www.w3.org/2000/svg"><path d="M19.7 32.2c0 2.9-2.4 5.3-5.3 5.3s-5.3-2.4-5.3-5.3 2.4-5.3 5.3-5.3H19.7v5.3z" fill="#E01E5A"/><path d="M22.3 32.2c0-2.9 2.4-5.3 5.3-5.3s5.3 2.4 5.3 5.3v13.3c0 2.9-2.4 5.3-5.3 5.3s-5.3-2.4-5.3-5.3V32.2z" fill="#E01E5A"/><path d="M27.6 19.7c-2.9 0-5.3-2.4-5.3-5.3s2.4-5.3 5.3-5.3 5.3 2.4 5.3 5.3V19.7H27.6z" fill="#36C5F0"/><path d="M27.6 22.3c2.9 0 5.3 2.4 5.3 5.3s-2.4 5.3-5.3 5.3H14.4c-2.9 0-5.3-2.4-5.3-5.3s2.4-5.3 5.3-5.3H27.6z" fill="#36C5F0"/><path d="M40.1 27.6c0-2.9 2.4-5.3 5.3-5.3s5.3 2.4 5.3 5.3-2.4 5.3-5.3 5.3H40.1V27.6z" fill="#2EB67D"/><path d="M37.4 27.6c0 2.9-2.4 5.3-5.3 5.3s-5.3-2.4-5.3-5.3V14.4c0-2.9 2.4-5.3 5.3-5.3s5.3 2.4 5.3 5.3V27.6z" fill="#2EB67D"/><path d="M32.1 40.1c2.9 0 5.3 2.4 5.3 5.3s-2.4 5.3-5.3 5.3-5.3-2.4-5.3-5.3V40.1h5.3z" fill="#ECB22E"/><path d="M32.1 37.4c-2.9 0-5.3-2.4-5.3-5.3s2.4-5.3 5.3-5.3h13.3c2.9 0 5.3 2.4 5.3 5.3s-2.4 5.3-5.3 5.3H32.1z" fill="#ECB22E"/></svg></span> Slack notification</span>
+            <label class="toggle"><input type="checkbox" id="slack-enabled-fb_conversions" onchange="toggleSlackSection('fb_conversions',this.checked)"><span class="toggle-slider"></span></label>
+          </div>
+          <div id="slack-body-fb_conversions" class="slack-body" style="display:none;">
+            <div><label>Channel</label><div class="search-select"><input type="text" id="slack-ch-search-fb_conversions" placeholder="Search channels…" autocomplete="off"><div class="search-dropdown" id="slack-ch-dropdown-fb_conversions"></div></div></div>
+            <div><label>Message template</label><textarea id="slack-msg-fb_conversions" rows="3" placeholder="e.g. ✅ {{name}} — sent {{pushed}} FB Conversion event(s)."></textarea><div class="token-hint">Tokens: {{name}}, {{pushed}}</div></div>
+          </div>
+
+          <div class="form-footer">
+            <button class="btn btn-cream" onclick="cancelEdit()">Cancel</button>
+            <button class="btn btn-primary" onclick="createFbAutomation()" id="create-btn-fb">Create automation</button>
+          </div>
+          <div class="error-msg" id="form-error-fb"></div>
+        </div>
+      </div>
+
+      <!-- ── Tab: Google Calendar ── -->
+      <div class="tab-panel" id="tab-gcal">
+        <div class="form-card">
+          <h3>&#128197; Google Calendar Invite</h3>
+          <p class="form-desc">Send a Google Calendar invite to contacts when they join a HubSpot list. Each contact is invited only once.</p>
+
+          <div class="form-row">
+            <label>Automation name</label>
+            <input type="text" id="auto-name-gcal" placeholder="e.g. New Lead — Discovery Call Invite">
+          </div>
+
+          <div class="form-row">
+            <label>HubSpot list</label>
+            <div class="search-select">
+              <input type="text" id="hs-search-gcal" placeholder="Search HubSpot lists…" autocomplete="off">
+              <div class="search-dropdown" id="hs-dropdown-gcal"></div>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <label>Send invite from (Google account email)</label>
+            <div style="display:flex;gap:8px;align-items:center;">
+              <div class="search-select" style="flex:1;">
+                <input type="text" id="gcal-send-from" placeholder="e.g. john@thescalearmy.com" autocomplete="off">
+                <div class="search-dropdown" id="gcal-account-dropdown"></div>
+              </div>
+              <button class="btn btn-cream" onclick="connectGoogleAccount()" style="white-space:nowrap;flex-shrink:0;">+ Connect account</button>
+            </div>
+            <div style="font-size:12px;color:var(--muted);margin-top:6px;">Connect the Google account you want to send invites from. Only needs to be done once per email.</div>
+          </div>
+
+          <div class="form-row">
+            <label>When to send the invite</label>
+            <select id="gcal-timing-type" onchange="onGcalTimingChange()" style="width:100%;padding:10px 12px;background:rgba(254,242,222,0.07);border:1px solid var(--border);border-radius:8px;color:var(--cream);font-family:'DM Sans',sans-serif;font-size:14px;">
+              <option value="relative">X days after joining the list</option>
+              <option value="fixed">Fixed date &amp; time</option>
+              <option value="hs_property">From a HubSpot date property</option>
+            </select>
+          </div>
+
+          <!-- Relative timing fields -->
+          <div id="gcal-timing-relative" class="form-row" style="display:flex;gap:12px;">
+            <div style="flex:1;">
+              <label>Days after joining</label>
+              <input type="number" id="gcal-relative-days" value="1" min="0" style="width:100%;padding:10px 12px;background:rgba(254,242,222,0.07);border:1px solid var(--border);border-radius:8px;color:var(--cream);font-family:'DM Sans',sans-serif;font-size:14px;">
+            </div>
+            <div style="flex:1;">
+              <label>Time of day (UTC)</label>
+              <input type="time" id="gcal-relative-time" value="09:00" style="width:100%;padding:10px 12px;background:rgba(254,242,222,0.07);border:1px solid var(--border);border-radius:8px;color:var(--cream);font-family:'DM Sans',sans-serif;font-size:14px;">
+            </div>
+          </div>
+
+          <!-- Fixed timing fields -->
+          <div id="gcal-timing-fixed" class="form-row" style="display:none;">
+            <label>Date &amp; time (UTC)</label>
+            <input type="datetime-local" id="gcal-fixed-datetime" style="width:100%;padding:10px 12px;background:rgba(254,242,222,0.07);border:1px solid var(--border);border-radius:8px;color:var(--cream);font-family:'DM Sans',sans-serif;font-size:14px;">
+          </div>
+
+          <!-- HubSpot property timing fields -->
+          <div id="gcal-timing-hs" class="form-row" style="display:none;gap:12px;flex-wrap:wrap;">
+            <div style="flex:1;min-width:180px;">
+              <label>HubSpot date property</label>
+              <div class="search-select">
+                <input type="text" id="gcal-hs-prop-search" placeholder="Search date properties…" autocomplete="off">
+                <div class="search-dropdown" id="gcal-hs-prop-dropdown"></div>
+              </div>
+            </div>
+            <div style="flex:1;min-width:140px;">
+              <label>Time of day (UTC)</label>
+              <input type="time" id="gcal-hs-prop-time" value="09:00" style="width:100%;padding:10px 12px;background:rgba(254,242,222,0.07);border:1px solid var(--border);border-radius:8px;color:var(--cream);font-family:'DM Sans',sans-serif;font-size:14px;">
+            </div>
+          </div>
+
+          <div class="form-row">
+            <label>Meeting title</label>
+            <input type="text" id="gcal-meeting-title" placeholder="e.g. Discovery Call with {{firstname}} {{lastname}}">
+            <div class="token-hint" style="margin-top:6px;">
+              Placeholders:
+              <span class="token-chip" onclick="insertGcalPlaceholder('gcal-meeting-title','{{firstname}}')">{{firstname}}</span>
+              <span class="token-chip" onclick="insertGcalPlaceholder('gcal-meeting-title','{{lastname}}')">{{lastname}}</span>
+              <span class="token-chip" onclick="insertGcalPlaceholder('gcal-meeting-title','{{company}}')">{{company}}</span>
+              <span class="token-chip" onclick="insertGcalPlaceholder('gcal-meeting-title','{{email}}')">{{email}}</span>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <label>Meeting description</label>
+            <textarea id="gcal-meeting-description" rows="4" placeholder="e.g. Hi {{firstname}}, looking forward to connecting with you and the team at {{company}}!"></textarea>
+            <div class="token-hint" style="margin-top:6px;">
+              Placeholders:
+              <span class="token-chip" onclick="insertGcalPlaceholder('gcal-meeting-description','{{firstname}}')">{{firstname}}</span>
+              <span class="token-chip" onclick="insertGcalPlaceholder('gcal-meeting-description','{{lastname}}')">{{lastname}}</span>
+              <span class="token-chip" onclick="insertGcalPlaceholder('gcal-meeting-description','{{company}}')">{{company}}</span>
+              <span class="token-chip" onclick="insertGcalPlaceholder('gcal-meeting-description','{{email}}')">{{email}}</span>
+              <span class="token-chip" onclick="insertGcalPlaceholder('gcal-meeting-description','{{phone}}')">{{phone}}</span>
+            </div>
+          </div>
+
+          <div class="form-row" style="display:flex;gap:12px;">
+            <div style="flex:1;">
+              <label>Duration</label>
+              <select id="gcal-duration" style="width:100%;padding:10px 12px;background:rgba(254,242,222,0.07);border:1px solid var(--border);border-radius:8px;color:var(--cream);font-family:'DM Sans',sans-serif;font-size:14px;">
+                <option value="15">15 minutes</option>
+                <option value="30" selected>30 minutes</option>
+                <option value="45">45 minutes</option>
+                <option value="60">1 hour</option>
+                <option value="90">1.5 hours</option>
+              </select>
+            </div>
+            <div style="flex:1;display:flex;align-items:flex-end;padding-bottom:2px;">
+              <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:14px;">
+                <input type="checkbox" id="gcal-google-meet" style="width:16px;height:16px;accent-color:var(--orange);">
+                Add Google Meet link
+              </label>
+            </div>
+          </div>
+
+          <div class="slack-section">
+            <div class="slack-toggle-row" onclick="toggleSlackSection('gcal', !document.getElementById('slack-enabled-gcal').checked)">
+              <span class="slack-toggle-label">&#43; Slack notification</span>
+              <label class="toggle-switch" onclick="event.stopPropagation()">
+                <input type="checkbox" id="slack-enabled-gcal" onchange="toggleSlackSection('gcal', this.checked)">
+                <span class="toggle-knob"></span>
+              </label>
+            </div>
+            <div class="slack-body" id="slack-body-gcal" style="display:none;">
+              <div><label>Slack channel</label>
+                <div class="search-select">
+                  <input type="text" id="slack-ch-search-gcal" placeholder="Search channels…" autocomplete="off">
+                  <div class="search-dropdown" id="slack-ch-dropdown-gcal"></div>
+                </div>
+              </div>
+              <div><label>Message template</label><textarea id="slack-msg-gcal" rows="3" placeholder="e.g. ✅ {{name}} — sent {{pushed}} calendar invite(s)."></textarea><div class="token-hint">Tokens: {{name}}, {{pushed}}</div></div>
+            </div>
+          </div>
+
+          <div class="form-footer">
+            <button class="btn btn-cream" onclick="cancelEdit()">Cancel</button>
+            <button class="btn btn-primary" onclick="createGcalAutomation()" id="create-btn-gcal">Create automation</button>
+          </div>
+          <div class="error-msg" id="form-error-gcal"></div>
+        </div>
+      </div>
+
+      <!-- ── Tab: Instantly Inbound ── -->
+      <div class="tab-panel" id="tab-instantly_inbound">
+        <div class="form-card">
+          <h3>⚡ Instantly → HubSpot</h3>
+          <p class="form-desc">When a contact triggers an event in Instantly (reply, opt-out, bounce…), automatically update a property on their HubSpot contact record.</p>
+
+          <div class="form-row">
+            <label>Automation name</label>
+            <input type="text" id="auto-name-instantly_inbound" placeholder="e.g. Mark replied contacts">
+          </div>
+
+          <div class="form-row">
+            <label>Instantly campaign <span style="font-size:11px;opacity:0.6;">(optional — leave blank to match all)</span></label>
+            <div class="search-select" id="ss-camp-inbound">
+              <input type="text" id="camp-inbound-search" placeholder="Search campaigns…" autocomplete="off">
+              <div class="search-dropdown" id="camp-inbound-dropdown"></div>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <label>Trigger events</label>
+            <div style="position:relative;">
+              <div id="trigger-multiselect-btn" onclick="toggleTriggerDropdown()" style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:var(--navy-mid);border:1px solid var(--border2);border-radius:var(--radius-sm);cursor:pointer;min-height:42px;user-select:none;">
+                <div id="trigger-selected-chips" style="display:flex;flex-wrap:wrap;gap:6px;flex:1;">
+                  <span style="color:var(--muted);font-size:14px;" id="trigger-placeholder">Select trigger events…</span>
+                </div>
+                <svg width="12" height="12" viewBox="0 0 12 12" fill="none" style="flex-shrink:0;margin-left:8px;opacity:0.5;"><path fill="var(--cream)" d="M6 8L1 3h10z"/></svg>
+              </div>
+              <div id="trigger-dropdown" style="display:none;position:absolute;top:calc(100% + 4px);left:0;right:0;background:var(--navy-deep);border:1px solid var(--border2);border-radius:var(--radius-sm);z-index:50;box-shadow:0 8px 24px rgba(0,0,0,0.4);overflow:hidden;">
+                <label class="trigger-opt" onclick="toggleTriggerOption('reply_received')"><input type="checkbox" class="inbound-trigger-cb" value="reply_received"> Contact replied</label>
+                <label class="trigger-opt" onclick="toggleTriggerOption('unsubscribed')"><input type="checkbox" class="inbound-trigger-cb" value="unsubscribed"> Contact unsubscribed / opted out</label>
+                <label class="trigger-opt" onclick="toggleTriggerOption('bounced')"><input type="checkbox" class="inbound-trigger-cb" value="bounced"> Contact bounced</label>
+                <label class="trigger-opt" onclick="toggleTriggerOption('interested')"><input type="checkbox" class="inbound-trigger-cb" value="interested"> Marked as interested</label>
+                <label class="trigger-opt" onclick="toggleTriggerOption('not_interested')"><input type="checkbox" class="inbound-trigger-cb" value="not_interested"> Marked as not interested</label>
+                <label class="trigger-opt" onclick="toggleTriggerOption('out_of_office')"><input type="checkbox" class="inbound-trigger-cb" value="out_of_office"> Out of office</label>
+              </div>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <label>HubSpot property to update</label>
+            <div class="search-select" id="ss-inbound-prop">
+              <input type="text" id="inbound-prop-search" placeholder="Search properties…" autocomplete="off">
+              <div class="search-dropdown" id="inbound-prop-dropdown"></div>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <label>Value to set</label>
+            <input type="text" id="inbound-hs-value" placeholder="e.g. replied">
+          </div>
+
+          <hr class="slack-divider">
+          <div style="display:flex;align-items:center;justify-content:space-between;">
+            <div style="display:flex;align-items:center;gap:10px;">
+              <img src="https://cdn.jsdelivr.net/npm/simple-icons@v9/icons/slack.svg" width="18" height="18" style="filter:invert(1);opacity:0.7;" onerror="this.style.display='none'">
+              <span style="font-size:14px;font-weight:500;">Slack notification</span>
+            </div>
+            <label class="toggle">
+              <input type="checkbox" id="slack-toggle-instantly_inbound" onchange="toggleSlackSection('instantly_inbound',this.checked)">
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+          <div id="slack-body-instantly_inbound" class="slack-body" style="display:none;">
+            <div>
+              <label>Channel</label>
+              <div class="search-select">
+                <input type="text" id="slack-ch-search-instantly_inbound" placeholder="Search channels…" autocomplete="off">
+                <div class="search-dropdown" id="slack-ch-dropdown-instantly_inbound"></div>
+              </div>
+            </div>
+            <div>
+              <label>Message template</label>
+              <textarea id="slack-msg-instantly_inbound" rows="3" placeholder="e.g. ✅ {{name}} — {{email}} triggered {{event}}"></textarea>
+              <div class="token-hint">Tokens: {{name}}, {{email}}, {{event}}</div>
+            </div>
+          </div>
+
+          <div class="error-msg" id="form-error-instantly_inbound"></div>
+          <div class="form-footer">
+            <button class="btn btn-cream" onclick="cancelEdit()">Cancel</button>
+            <button class="btn btn-primary" id="create-btn-instantly_inbound" onclick="createInstantlyInboundAutomation()">Create automation</button>
+          </div>
+        </div>
+      </div>
+
       </div><!-- close form col -->
 
       <!-- Right column -->
@@ -898,6 +1356,7 @@
       </div>
 
       </div><!-- close edit-grid -->
+      </div><!-- close form-area -->
     </div>
   </main>
 </div>
@@ -960,6 +1419,26 @@ let slackChSelectedCalendly  = { id:'', name:'' };
 let slackChSelectedClay      = { id:'', name:'' };
 let hsSelectedClay           = { id:'', name:'' };
 let clayMappings             = [];
+let hsSelectedFb             = { id:'', name:'' };
+let slackChSelectedFb        = { id:'', name:'' };
+let fbMappings               = [{fb_field:'email', hs_property:'email', hs_label:'Email'}];
+let campInboundSelected      = {};
+let inboundPropSelected      = {};
+let slackChSelectedInbound   = {};
+let hsProperties             = [];
+
+const FB_FIELDS = [
+  {value:'email',       label:'Email'},
+  {value:'phone',       label:'Phone Number'},
+  {value:'first_name',  label:'First Name'},
+  {value:'last_name',   label:'Last Name'},
+  {value:'city',        label:'City'},
+  {value:'state',       label:'State Code'},
+  {value:'country',     label:'Country Code'},
+  {value:'zip',         label:'Zip Code'},
+  {value:'external_id', label:'External ID'},
+  {value:'fbc',         label:'Click ID (fbc)'},
+];
 let calendlyMappings         = [];
 let alertSlackChSelected     = { id:'', name:'' };
 let filtersInstantly = [];
@@ -1018,6 +1497,15 @@ async function login() {
       document.getElementById('app').style.display = 'block';
       loadAutomations();
       loadServiceAccountEmail();
+      // Handle OAuth callback redirect
+      const urlParams = new URLSearchParams(window.location.search);
+      if (urlParams.get('oauth') === 'success') {
+        showToast(`Google account connected: ${urlParams.get('email')}`);
+        history.replaceState({}, '', window.location.pathname);
+      } else if (urlParams.get('oauth') === 'error') {
+        showToast(`Google auth error: ${urlParams.get('email')}`, 'error');
+        history.replaceState({}, '', window.location.pathname);
+      }
     } else { err.style.display = 'block'; }
   } catch(e) { err.style.display = 'block'; err.textContent = 'Connection error.'; }
   btn.disabled = false; btn.textContent = 'Sign in';
@@ -1072,17 +1560,23 @@ function updateAlertPanelVisibility() {
   const isGsheet   = document.getElementById('tab-gsheet_sync').classList.contains('active');
   const isCalendly = document.getElementById('tab-calendly')?.classList.contains('active');
   const isClay     = document.getElementById('tab-clay')?.classList.contains('active');
-  document.getElementById('alert-panel').style.display = (isGsheet || isCalendly || isClay) ? 'none' : '';
+  const isFbTab    = document.getElementById('tab-fb_conversions')?.classList.contains('active');
+  const isGcalTab = document.getElementById('tab-gcal')?.classList.contains('active');
+  const isInboundTab = document.getElementById('tab-instantly_inbound')?.classList.contains('active');
+  document.getElementById('alert-panel').style.display = (isGsheet || isCalendly || isClay || isFbTab || isGcalTab || isInboundTab) ? 'none' : '';
 }
 function toggleSlackSection(deliveryType, enabled) {
   document.getElementById(`slack-body-${deliveryType}`).style.display = enabled ? 'flex' : 'none';
   if (enabled && slackChannels.length) {
     const selMap = {
-      'instantly':    slackChSelectedInstantly,
-      'hubspot_form': slackChSelectedForm,
-      'gsheet_sync':  slackChSelectedGsheet,
-      'calendly':     slackChSelectedCalendly,
-      'clay':         slackChSelectedClay
+      'instantly':      slackChSelectedInstantly,
+      'hubspot_form':   slackChSelectedForm,
+      'gsheet_sync':    slackChSelectedGsheet,
+      'calendly':       slackChSelectedCalendly,
+      'clay':           slackChSelectedClay,
+      'fb_conversions': slackChSelectedFb,
+      'gcal':             slackChSelectedGcal,
+      'instantly_inbound': slackChSelectedInbound
     };
     const sel = selMap[deliveryType];
     if (sel) initSearchSelect(`slack-ch-search-${deliveryType}`,`slack-ch-dropdown-${deliveryType}`,slackChannels,sel,'Search channels…');
@@ -1103,6 +1597,24 @@ function switchTab(tab) {
   if (tab === 'clay') {
     renderClayMappings();
     if (hsList.length) initSearchSelect('hs-search-clay','hs-dropdown-clay',hsList,hsSelectedClay,'Search HubSpot lists…');
+  }
+  if (tab === 'fb_conversions') {
+    const currentMode = document.querySelector('input[name="fb-mode"]:checked')?.value || 'lead_attribution';
+    setFbMode(currentMode);
+    renderFbMappings();
+    if (hsList.length) initSearchSelect('hs-search-fb','hs-dropdown-fb',hsList,hsSelectedFb,'Search HubSpot lists…');
+  }
+  if (tab === 'gcal') {
+    if (hsList.length) initSearchSelect('hs-search-gcal','hs-dropdown-gcal',hsList,hsSelectedGcal,'Search HubSpot lists…');
+    loadGcalConnectedAccounts();
+    // Wire up account search dropdown
+    const fromInput = document.getElementById('gcal-send-from');
+    if (fromInput && !fromInput._gcalWired) {
+      fromInput._gcalWired = true;
+      fromInput.addEventListener('input', () => renderGcalAccountDropdown(fromInput.value));
+      fromInput.addEventListener('focus', () => renderGcalAccountDropdown(fromInput.value));
+      document.addEventListener('click', e => { if (!fromInput.contains(e.target)) document.getElementById('gcal-account-dropdown').style.display='none'; });
+    }
   }
 }
 
@@ -1223,16 +1735,409 @@ function resetClayForm() {
   document.getElementById('form-error-clay').style.display = 'none';
 }
 
+function setFbMode(mode) {
+  document.getElementById('fb-mode-lead').checked   = mode === 'lead_attribution';
+  document.getElementById('fb-mode-custom').checked = mode === 'custom';
+  document.getElementById('fb-mode-lead-btn').style.borderColor   = mode === 'lead_attribution' ? '#1877F2' : 'var(--border2)';
+  document.getElementById('fb-mode-custom-btn').style.borderColor = mode === 'custom' ? '#1877F2' : 'var(--border2)';
+  document.getElementById('fb-lead-attribution-info').style.display = mode === 'lead_attribution' ? 'block' : 'none';
+  document.getElementById('fb-custom-fields').style.display         = mode === 'custom' ? 'block' : 'none';
+}
+
+function resetFbForm() {
+  document.getElementById('auto-name-fb').value = '';
+  resetSearchSelect('hs-search-fb','hs-dropdown-fb',hsSelectedFb);
+  document.getElementById('fb-pixel-id').value = '';
+  document.getElementById('fb-access-token').value = '';
+  document.getElementById('fb-event-name').value = 'Lead';
+  fbMappings = [{fb_field:'email', hs_property:'email', hs_label:'Email'}];
+  renderFbMappings();
+  setFbMode('lead_attribution');
+  const cb = document.getElementById('slack-enabled-fb_conversions');
+  if (cb) { cb.checked = false; toggleSlackSection('fb_conversions', false); }
+  resetSearchSelect('slack-ch-search-fb_conversions','slack-ch-dropdown-fb_conversions',slackChSelectedFb);
+  const ta = document.getElementById('slack-msg-fb_conversions'); if (ta) ta.value = '';
+  const errEl = document.getElementById('form-error-fb'); if (errEl) errEl.style.display = 'none';
+}
+
+// ── Google Calendar ────────────────────────────────────────────
+
+let hsSelectedGcal     = {id:'', name:''};
+let slackChSelectedGcal = {id:'', name:''};
+let gcalHsPropSelected  = {name:'', label:''};
+let gcalConnectedAccounts = [];
+
+function onGcalTimingChange() {
+  const val = document.getElementById('gcal-timing-type').value;
+  document.getElementById('gcal-timing-relative').style.display = val === 'relative' ? 'flex' : 'none';
+  document.getElementById('gcal-timing-fixed').style.display    = val === 'fixed'    ? '' : 'none';
+  document.getElementById('gcal-timing-hs').style.display       = val === 'hs_property' ? 'flex' : 'none';
+}
+
+function insertGcalPlaceholder(fieldId, placeholder) {
+  const el = document.getElementById(fieldId);
+  if (!el) return;
+  const start = el.selectionStart, end = el.selectionEnd;
+  const val   = el.value;
+  el.value = val.substring(0, start) + placeholder + val.substring(end);
+  el.selectionStart = el.selectionEnd = start + placeholder.length;
+  el.focus();
+}
+
+async function connectGoogleAccount() {
+  const email = document.getElementById('gcal-send-from').value.trim();
+  const url = `/api/google/oauth${email ? '?email=' + encodeURIComponent(email) : ''}`;
+  window.open(url, '_blank', 'width=500,height=600');
+  // After user completes OAuth, refresh account list
+  setTimeout(loadGcalConnectedAccounts, 3000);
+}
+
+async function loadGcalConnectedAccounts() {
+  try {
+    const resp = await fetch('/api/google/connected-accounts', { headers: { 'X-Auth-Token': TOKEN } });
+    const data = await resp.json();
+    gcalConnectedAccounts = data.accounts || [];
+    renderGcalAccountDropdown('');
+  } catch(e) {}
+}
+
+function renderGcalAccountDropdown(query) {
+  const dd = document.getElementById('gcal-account-dropdown');
+  if (!dd) return;
+  const matches = gcalConnectedAccounts.filter(e => e.toLowerCase().includes(query.toLowerCase()));
+  if (!matches.length) { dd.style.display = 'none'; return; }
+  dd.innerHTML = matches.map(e => `<div class="search-option" onclick="selectGcalAccount('${e}')">${e}</div>`).join('');
+  dd.style.display = 'block';
+}
+
+function selectGcalAccount(email) {
+  document.getElementById('gcal-send-from').value = email;
+  document.getElementById('gcal-account-dropdown').style.display = 'none';
+}
+
+function resetGcalForm() {
+  document.getElementById('auto-name-gcal').value = '';
+  resetSearchSelect('hs-search-gcal','hs-dropdown-gcal', hsSelectedGcal);
+  document.getElementById('gcal-send-from').value = '';
+  document.getElementById('gcal-timing-type').value = 'relative';
+  document.getElementById('gcal-relative-days').value = '1';
+  document.getElementById('gcal-relative-time').value = '09:00';
+  document.getElementById('gcal-fixed-datetime').value = '';
+  document.getElementById('gcal-hs-prop-time').value = '09:00';
+  gcalHsPropSelected = {name:'', label:''};
+  document.getElementById('gcal-hs-prop-search').value = '';
+  document.getElementById('gcal-meeting-title').value = '';
+  document.getElementById('gcal-meeting-description').value = '';
+  document.getElementById('gcal-duration').value = '30';
+  document.getElementById('gcal-google-meet').checked = false;
+  onGcalTimingChange();
+  const cb = document.getElementById('slack-enabled-gcal');
+  if (cb) { cb.checked = false; toggleSlackSection('gcal', false); }
+  resetSearchSelect('slack-ch-search-gcal','slack-ch-dropdown-gcal', slackChSelectedGcal);
+  const ta = document.getElementById('slack-msg-gcal'); if (ta) ta.value = '';
+  const errEl = document.getElementById('form-error-gcal'); if (errEl) errEl.style.display = 'none';
+}
+
+async function createGcalAutomation() {
+  const errEl = document.getElementById('form-error-gcal');
+  const btn   = document.getElementById('create-btn-gcal');
+  errEl.style.display = 'none';
+  const name      = document.getElementById('auto-name-gcal').value.trim();
+  const sendFrom  = document.getElementById('gcal-send-from').value.trim();
+  const title     = document.getElementById('gcal-meeting-title').value.trim();
+  const desc      = document.getElementById('gcal-meeting-description').value.trim();
+  const duration  = parseInt(document.getElementById('gcal-duration').value);
+  const meet      = document.getElementById('gcal-google-meet').checked;
+  const timingType = document.getElementById('gcal-timing-type').value;
+
+  if (!name)      { errEl.textContent='Automation name required'; errEl.style.display='block'; return; }
+  if (!hsSelectedGcal.id) { errEl.textContent='Select a HubSpot list'; errEl.style.display='block'; return; }
+  if (!sendFrom)  { errEl.textContent='Send from email required'; errEl.style.display='block'; return; }
+  if (!title)     { errEl.textContent='Meeting title required'; errEl.style.display='block'; return; }
+
+  const payload = {
+    delivery_type:       'gcal',
+    name,
+    hubspot_list_id:     hsSelectedGcal.id,
+    hubspot_list_name:   hsSelectedGcal.name,
+    send_from_email:     sendFrom,
+    meeting_title:       title,
+    meeting_description: desc,
+    duration_minutes:    duration,
+    google_meet:         meet,
+    timing_type:         timingType,
+    timing_relative_days: parseInt(document.getElementById('gcal-relative-days').value) || 1,
+    timing_relative_time: document.getElementById('gcal-relative-time').value || '09:00',
+    timing_fixed_datetime: document.getElementById('gcal-fixed-datetime').value || '',
+    timing_hs_property:   gcalHsPropSelected.name || '',
+  };
+
+  const slackCb = document.getElementById('slack-enabled-gcal');
+  if (slackCb?.checked) {
+    payload.slack_enabled     = true;
+    payload.slack_channel     = slackChSelectedGcal.id;
+    payload.slack_channel_name = slackChSelectedGcal.name;
+    payload.slack_message     = document.getElementById('slack-msg-gcal')?.value || '';
+  }
+
+  btn.disabled = true; btn.textContent = editingId ? 'Saving…' : 'Creating…';
+  try {
+    const {ok, data} = editingId
+      ? await api('PATCH', '/automations/' + editingId, payload)
+      : await api('POST',  '/automations', payload);
+    if (ok) {
+      editingId = null; btn.textContent = 'Create automation';
+      document.getElementById('add-page-title').textContent = 'New automation';
+      document.getElementById('view-logs-btn').style.display = 'none';
+      showToast('Calendar automation created!');
+      showPage('dashboard'); loadAutomations();
+    } else { errEl.textContent = data.error||'Something went wrong.'; errEl.style.display='block'; }
+  } catch(e) { errEl.textContent='Network error. Try again.'; errEl.style.display='block'; }
+  btn.disabled=false; btn.textContent=editingId?'Save changes':'Create automation';
+}
+
+const _triggerLabels = {reply_received:'Replied',unsubscribed:'Opted Out',bounced:'Bounced',interested:'Interested',not_interested:'Not Interested',out_of_office:'Out of Office'};
+function toggleTriggerDropdown() {
+  const dd = document.getElementById('trigger-dropdown');
+  dd.style.display = dd.style.display === 'none' ? 'block' : 'none';
+}
+function toggleTriggerOption(value) {
+  // checkbox state is already toggled by the label click — just re-render chips
+  renderTriggerChips();
+}
+function renderTriggerChips() {
+  const checked = [...document.querySelectorAll('.inbound-trigger-cb:checked')].map(cb => cb.value);
+  const container = document.getElementById('trigger-selected-chips');
+  const placeholder = document.getElementById('trigger-placeholder');
+  if (checked.length === 0) {
+    container.innerHTML = '';
+    container.appendChild(placeholder);
+    placeholder.style.display = '';
+  } else {
+    placeholder.style.display = 'none';
+    container.innerHTML = checked.map(v =>
+      `<span class="trigger-chip">${_triggerLabels[v]||v}<button type="button" onclick="removeTriggerChip(event,'${v}')" style="background:none;border:none;color:inherit;cursor:pointer;padding:0 0 0 4px;font-size:13px;line-height:1;opacity:0.7;" title="Remove">✕</button></span>`
+    ).join('');
+    container.appendChild(placeholder);
+  }
+}
+function removeTriggerChip(e, value) {
+  e.stopPropagation();
+  const cb = document.querySelector(`.inbound-trigger-cb[value="${value}"]`);
+  if (cb) cb.checked = false;
+  renderTriggerChips();
+}
+// Close trigger dropdown when clicking outside
+document.addEventListener('click', e => {
+  const btn = document.getElementById('trigger-multiselect-btn');
+  const dd  = document.getElementById('trigger-dropdown');
+  if (dd && btn && !btn.contains(e.target) && !dd.contains(e.target)) dd.style.display = 'none';
+});
+function resetTriggerMultiselect() {
+  document.querySelectorAll('.inbound-trigger-cb').forEach(cb => { cb.checked = false; });
+  renderTriggerChips();
+}
+
+async function createInstantlyInboundAutomation() {
+  const btn   = document.getElementById('create-btn-instantly_inbound');
+  const errEl = document.getElementById('form-error-instantly_inbound');
+  errEl.style.display = 'none';
+
+  const name          = document.getElementById('auto-name-instantly_inbound').value.trim();
+  const triggerEvents = [...document.querySelectorAll('.inbound-trigger-cb:checked')].map(cb => cb.value);
+  const hsProperty    = inboundPropSelected.id || '';
+  const hsValue       = document.getElementById('inbound-hs-value').value.trim();
+
+  if (!name)                  { errEl.textContent='Enter a name.'; errEl.style.display='block'; return; }
+  if (!triggerEvents.length)  { errEl.textContent='Select at least one trigger event.'; errEl.style.display='block'; return; }
+  if (!hsProperty)   { errEl.textContent='Select a HubSpot property.'; errEl.style.display='block'; return; }
+  if (!hsValue)      { errEl.textContent='Enter a value to set.'; errEl.style.display='block'; return; }
+
+  btn.disabled = true; btn.textContent = editingId ? 'Saving…' : 'Creating…';
+
+  const payload = {
+    name, delivery_type: 'instantly_inbound',
+    trigger_events:          triggerEvents,
+    instantly_campaign_id:   campInboundSelected.id   || '',
+    instantly_campaign_name: campInboundSelected.name || '',
+    hs_property: hsProperty,
+    hs_value:    hsValue,
+    slack_enabled:       document.getElementById('slack-toggle-instantly_inbound').checked,
+    slack_channel:       slackChSelectedInbound.id   || '',
+    slack_channel_name:  slackChSelectedInbound.name || '',
+    slack_message:       document.getElementById('slack-msg-instantly_inbound').value.trim(),
+  };
+
+  try {
+    const { ok, data } = editingId
+      ? await api('PATCH', '/automations/' + editingId, payload)
+      : await api('POST',  '/automations', payload);
+    if (ok) {
+      editingId = null; btn.textContent = 'Create automation';
+      showToast(editingId ? 'Automation updated' : 'Automation created');
+      showPage('dashboard'); loadAutomations();
+    } else { errEl.textContent = data.error || 'Something went wrong.'; errEl.style.display = 'block'; }
+  } catch(e) { errEl.textContent = 'Network error.'; errEl.style.display = 'block'; }
+  btn.disabled = false; btn.textContent = editingId ? 'Save changes' : 'Create automation';
+}
+
+function renderFbMappings() {
+  const container = document.getElementById('fb-mappings-container');
+  if (!container) return;
+  if (!fbMappings.length) { container.innerHTML = '<div style="font-size:12px;color:var(--muted);padding:8px 0;">No mappings added.</div>'; return; }
+  container.innerHTML = fbMappings.map((m, i) => `
+    <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:start;margin-bottom:8px;">
+      <select onchange="fbMappings[${i}].fb_field=this.value" style="font-size:13px;padding:8px 10px;background:var(--navy-soft);border:1px solid var(--border2);color:var(--cream);border-radius:var(--radius-sm);">
+        ${FB_FIELDS.map(f=>`<option value="${f.value}" ${m.fb_field===f.value?'selected':''}>${f.label}</option>`).join('')}
+      </select>
+      <div class="search-select">
+        <input type="text" id="fb-hs-prop-${i}" placeholder="Search HubSpot property…" autocomplete="off" style="font-size:13px;">
+        <div class="search-dropdown" id="fb-hs-dd-${i}"></div>
+      </div>
+      <button type="button" class="btn-trash" onclick="removeFbMapping(${i})" title="Remove">🗑</button>
+    </div>`).join('');
+  fbMappings.forEach((m, i) => initFbHsPropSearch(i, m.hs_property, m.hs_label));
+}
+
+function initFbHsPropSearch(index, currentProp, currentLabel) {
+  const input    = document.getElementById('fb-hs-prop-' + index);
+  const dropdown = document.getElementById('fb-hs-dd-' + index);
+  if (!input || !dropdown) return;
+  const propList = hsPropList || [];
+  if (currentProp) { input.value = currentLabel || currentProp; input.classList.add('has-value'); }
+  function renderOptions(q) {
+    const matches = q ? propList.filter(p => p.label.toLowerCase().includes(q) || p.name.toLowerCase().includes(q)) : propList;
+    dropdown.innerHTML = matches.length
+      ? matches.map(p => `<div class="search-option${currentProp===p.name?' selected':''}" data-name="${esc(p.name)}" data-label="${esc(p.label)}">${esc(p.label)}<span style="font-size:10px;opacity:.4;margin-left:6px;">${esc(p.name)}</span></div>`).join('')
+      : '<div class="search-option-empty">No properties found</div>';
+    dropdown.querySelectorAll('.search-option').forEach(el => {
+      el.addEventListener('mousedown', e => {
+        e.preventDefault();
+        fbMappings[index].hs_property = el.dataset.name;
+        fbMappings[index].hs_label    = el.dataset.label;
+        input.value = el.dataset.label;
+        input.classList.add('has-value');
+        dropdown.classList.remove('open');
+        currentProp = el.dataset.name;
+      });
+    });
+    dropdown.classList.add('open');
+  }
+  input.addEventListener('focus', () => renderOptions(''));
+  input.addEventListener('input', () => { input.classList.remove('has-value'); fbMappings[index].hs_property=''; renderOptions(input.value.toLowerCase()); });
+  input.addEventListener('blur',  () => { setTimeout(() => dropdown.classList.remove('open'), 150); if (!fbMappings[index].hs_property) { input.value=''; input.classList.remove('has-value'); } else { input.value = fbMappings[index].hs_label||fbMappings[index].hs_property; input.classList.add('has-value'); } });
+}
+
+function addFbMapping() {
+  fbMappings.push({ fb_field:'email', hs_property:'', hs_label:'' });
+  renderFbMappings();
+}
+
+function removeFbMapping(i) {
+  fbMappings.splice(i, 1);
+  renderFbMappings();
+}
+
+async function createFbAutomation() {
+  const errEl = document.getElementById('form-error-fb');
+  const btn   = document.getElementById('create-btn-fb');
+  errEl.style.display = 'none';
+  const name        = document.getElementById('auto-name-fb').value.trim();
+  const pixelId     = document.getElementById('fb-pixel-id').value.trim();
+  const accessToken = document.getElementById('fb-access-token').value.trim();
+  const fbMode      = document.querySelector('input[name="fb-mode"]:checked')?.value || 'lead_attribution';
+  const eventName   = fbMode === 'lead_attribution' ? 'Lead' : document.getElementById('fb-event-name').value;
+  if (!name)            { errEl.textContent='Please enter an automation name.'; errEl.style.display='block'; return; }
+  if (!hsSelectedFb.id) { errEl.textContent='Please select a HubSpot list.'; errEl.style.display='block'; return; }
+  if (!pixelId)         { errEl.textContent='Please enter the Pixel ID.'; errEl.style.display='block'; return; }
+  if (!accessToken)     { errEl.textContent='Please enter the Access Token.'; errEl.style.display='block'; return; }
+  if (!eventName)       { errEl.textContent='Please select an Event Name.'; errEl.style.display='block'; return; }
+  const leadAttributionMaps = [
+    {fb_field:'email',       hs_property:'email',     hs_label:'Email'},
+    {fb_field:'phone',       hs_property:'phone',     hs_label:'Phone Number'},
+    {fb_field:'first_name',  hs_property:'firstname', hs_label:'First Name'},
+    {fb_field:'last_name',   hs_property:'lastname',  hs_label:'Last Name'},
+    {fb_field:'fbc',         hs_property:'hs_analytics_first_url', hs_label:'First Page Seen'},
+  ];
+  const validMaps = fbMode === 'lead_attribution' ? leadAttributionMaps : fbMappings.filter(m => m.fb_field && m.hs_property);
+  let payload = {
+    name, delivery_type:'fb_conversions', fb_mode: fbMode,
+    hubspot_list_id: hsSelectedFb.id, hubspot_list_name: hsSelectedFb.name,
+    fb_pixel_id: pixelId, fb_access_token: accessToken,
+    fb_event_name: eventName, fb_field_mappings: validMaps, active: true
+  };
+  const slackEnabled = document.getElementById('slack-enabled-fb_conversions')?.checked;
+  if (slackEnabled) {
+    if (!slackChSelectedFb.id) { errEl.textContent='Please select a Slack channel.'; errEl.style.display='block'; return; }
+    payload.slack_enabled=true; payload.slack_channel=slackChSelectedFb.id;
+    payload.slack_channel_name=slackChSelectedFb.name;
+    payload.slack_message=document.getElementById('slack-msg-fb_conversions')?.value.trim()||'';
+  } else { payload.slack_enabled=false; }
+  btn.disabled=true; btn.textContent=editingId?'Saving…':'Creating…';
+  try {
+    const {ok,data} = editingId
+      ? await api('PATCH','/automations/'+editingId, payload)
+      : await api('POST', '/automations', payload);
+    if (ok) {
+      editingId=null; btn.textContent='Create automation';
+      document.getElementById('add-page-title').textContent='New automation';
+      document.querySelector('.tab-bar').style.display='';
+      document.getElementById('view-logs-btn').style.display='none';
+      await loadAutomations();
+      resetFbForm();
+      showToast('FB Conversions automation saved!');
+      showPage('dashboard');
+    } else { errEl.textContent=data.error||'Something went wrong.'; errEl.style.display='block'; }
+  } catch(e) { errEl.textContent='Network error.'; errEl.style.display='block'; }
+  btn.disabled=false; btn.textContent=editingId?'Save changes':'Create automation';
+}
+
 function renderClayMappings() {
   const container = document.getElementById('clay-mappings-container');
   if (!container) return;
   if (!clayMappings.length) { container.innerHTML = '<div style="font-size:12px;color:var(--muted);padding:8px 0;">No mappings added.</div>'; return; }
   container.innerHTML = clayMappings.map((m, i) => `
     <div class="gs-mapping-row">
-      <input type="text" placeholder="e.g. email" value="${esc(m.hs_property)}" oninput="clayMappings[${i}].hs_property=this.value">
-      <input type="text" placeholder="e.g. Email" value="${esc(m.clay_column)}" oninput="clayMappings[${i}].clay_column=this.value">
-      <button type="button" class="gs-mapping-remove" onclick="removeClayMapping(${i})">✕</button>
+      <div class="search-select" style="min-width:0;">
+        <input type="text" id="clay-hs-prop-${i}" placeholder="Search HubSpot property…" autocomplete="off"
+          style="font-size:13px;padding:8px 10px;" class="${m.hs_property?'has-value':''}">
+        <div class="search-dropdown" id="clay-hs-dd-${i}"></div>
+      </div>
+      <input type="text" placeholder="Clay column name" value="${esc(m.clay_column)}" oninput="clayMappings[${i}].clay_column=this.value" style="font-size:13px;padding:8px 10px;">
+      <button type="button" class="btn-trash" onclick="removeClayMapping(${i})" title="Remove">
+        <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M1.5 3h10M4.5 3V2a.5.5 0 01.5-.5h2.5a.5.5 0 01.5.5v1M5.5 5.5v4M7.5 5.5v4M2.5 3l.5 7.5a.5.5 0 00.5.5h6a.5.5 0 00.5-.5L10.5 3" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
     </div>`).join('');
+  clayMappings.forEach((m, i) => initClayHsPropSearch(i, m.hs_property, m.hs_label));
+}
+
+function initClayHsPropSearch(index, currentProp, currentLabel) {
+  const input    = document.getElementById('clay-hs-prop-' + index);
+  const dropdown = document.getElementById('clay-hs-dd-' + index);
+  if (!input || !dropdown) return;
+  const propList = hsPropList || [];
+  if (currentProp) { input.value = currentLabel || currentProp; input.classList.add('has-value'); }
+  function renderOptions(q) {
+    const matches = q ? propList.filter(p => p.label.toLowerCase().includes(q) || p.name.toLowerCase().includes(q)) : propList;
+    dropdown.innerHTML = matches.length
+      ? matches.map(p => `<div class="search-option${currentProp===p.name?' selected':''}" data-name="${esc(p.name)}" data-label="${esc(p.label)}">${esc(p.label)}<span style="font-size:10px;opacity:.4;margin-left:6px;">${esc(p.name)}</span></div>`).join('')
+      : '<div class="search-option-empty">No properties found</div>';
+    dropdown.querySelectorAll('.search-option').forEach(el => {
+      el.addEventListener('mousedown', e => {
+        e.preventDefault();
+        clayMappings[index].hs_property = el.dataset.name;
+        clayMappings[index].hs_label    = el.dataset.label;
+        input.value = el.dataset.label;
+        input.classList.add('has-value');
+        dropdown.classList.remove('open');
+        currentProp = el.dataset.name;
+      });
+    });
+    dropdown.classList.add('open');
+  }
+  input.addEventListener('focus', () => renderOptions(''));
+  input.addEventListener('input', () => { input.classList.remove('has-value'); clayMappings[index].hs_property=''; renderOptions(input.value.toLowerCase()); });
+  input.addEventListener('blur',  () => { setTimeout(() => dropdown.classList.remove('open'), 150); if (!clayMappings[index].hs_property) { input.value=''; input.classList.remove('has-value'); } else { input.value = clayMappings[index].hs_label||clayMappings[index].hs_property; input.classList.add('has-value'); } });
 }
 
 function addClayMapping() {
@@ -1286,13 +2191,70 @@ async function createClayAutomation() {
 }
 
 // ── New / Cancel ─────────────────────────────────────────────
+function selectSource(source) {
+  document.getElementById('source-selector').style.display = 'none';
+  if (source === 'hubspot') {
+    document.getElementById('add-page-subtitle').textContent = 'Choose the type of automation';
+    document.getElementById('hs-type-cards').style.display = '';
+    document.getElementById('gw-type-cards').style.display = 'none';
+    document.getElementById('form-area').style.display = 'none';
+  } else if (source === 'gsheet') {
+    document.getElementById('add-page-subtitle').textContent = 'Choose a Google Workspace integration';
+    document.getElementById('gw-type-cards').style.display = '';
+    document.getElementById('hs-type-cards').style.display = 'none';
+    document.getElementById('form-area').style.display = 'none';
+  } else {
+    // instantly_inbound — go straight to form
+    document.getElementById('add-page-subtitle').textContent = 'Update HubSpot when contacts reply or opt out in Instantly';
+    document.getElementById('hs-type-cards').style.display = 'none';
+    document.getElementById('gw-type-cards').style.display = 'none';
+    document.getElementById('form-area').style.display = '';
+    document.getElementById('hs-type-bar').style.display = 'none';
+    switchTab('instantly_inbound');
+  }
+}
+
+function goBackToSources() {
+  document.getElementById('hs-type-cards').style.display = 'none';
+  document.getElementById('gw-type-cards').style.display = 'none';
+  document.getElementById('form-area').style.display = 'none';
+  document.getElementById('source-selector').style.display = '';
+  document.getElementById('add-page-subtitle').textContent = 'Choose a source to get started';
+}
+
+function selectHsTypeCard(type) {
+  document.getElementById('hs-type-cards').style.display = 'none';
+  document.getElementById('form-area').style.display = '';
+  document.getElementById('hs-type-bar').style.display = 'none';
+  selectHsType(type);
+}
+
+function selectGwTypeCard(type) {
+  document.getElementById('gw-type-cards').style.display = 'none';
+  document.getElementById('form-area').style.display = '';
+  document.getElementById('hs-type-bar').style.display = 'none';
+  switchTab(type);
+}
+
+function selectHsType(type) {
+  document.querySelectorAll('.hs-type-opt').forEach(el => el.classList.remove('active'));
+  const btn = document.getElementById(`hs-type-${type}`);
+  if (btn) btn.classList.add('active');
+  switchTab(type);
+}
+
 function newAutomation() {
   editingId = null;
   currentAction = 'enroll';
   document.getElementById('add-page-title').textContent = 'New automation';
-  document.querySelector('.tab-bar').style.display = '';
+  document.getElementById('add-page-subtitle').textContent = 'Choose a source to get started';
+  document.getElementById('source-selector').style.display = '';
+  document.getElementById('hs-type-bar').style.display = 'none';
+  document.getElementById('hs-type-cards').style.display = 'none';
+  document.getElementById('gw-type-cards').style.display = 'none';
+  document.getElementById('form-area').style.display = 'none';
   document.getElementById('view-logs-btn').style.display = 'none';
-  ['instantly','hubspot_form','gsheet_sync','calendly'].forEach(dt => {
+  ['instantly','hubspot_form','gsheet_sync','calendly','instantly_inbound'].forEach(dt => {
     const btn = document.getElementById(`create-btn-${dt}`);
     if (btn) btn.textContent = 'Create automation';
     const err = document.getElementById(`form-error-${dt}`);
@@ -1327,19 +2289,33 @@ function newAutomation() {
   resetGsForm();
   resetCalendlyForm();
   resetClayForm();
-  switchTab('instantly');
+  resetFbForm();
+  resetGcalForm();
+  // Reset instantly_inbound form
+  const autoNameInbound = document.getElementById('auto-name-instantly_inbound');
+  if (autoNameInbound) autoNameInbound.value = '';
+  resetTriggerMultiselect();
+  const inboundHsVal = document.getElementById('inbound-hs-value');
+  if (inboundHsVal) inboundHsVal.value = '';
+  campInboundSelected = {}; inboundPropSelected = {};
+  const campInboundInput = document.getElementById('camp-inbound-search');
+  if (campInboundInput) { campInboundInput.value = ''; campInboundInput.classList.remove('has-value'); }
+  const inboundPropInput = document.getElementById('inbound-prop-search');
+  if (inboundPropInput) { inboundPropInput.value = ''; inboundPropInput.classList.remove('has-value'); }
+  const slackToggleInbound = document.getElementById('slack-toggle-instantly_inbound');
+  if (slackToggleInbound) { slackToggleInbound.checked = false; toggleSlackSection('instantly_inbound', false); }
   showPage('add');
 }
 
 function cancelEdit() {
   editingId = null;
-  ['instantly','hubspot_form','gsheet_sync','calendly'].forEach(dt => {
+  ['instantly','hubspot_form','gsheet_sync','calendly','fb'].forEach(dt => {
     const btn = document.getElementById(`create-btn-${dt}`);
     if (btn) btn.textContent = 'Create automation';
   });
   document.getElementById('add-page-title').textContent = 'New automation';
-  document.querySelector('.tab-bar').style.display = '';
   document.getElementById('view-logs-btn').style.display = 'none';
+  resetFbForm();
   showPage('dashboard');
 }
 
@@ -1457,7 +2433,7 @@ async function loadAutomations() {
 function setFilter(filter) {
   currentFilter = filter;
   const heading = document.getElementById('automations-heading'); if(heading) heading.textContent = 'All automations';
-  ['dashboard','filter-instantly','filter-hubspot_form','filter-gsheet_sync'].forEach(id => {
+  ['dashboard','filter-instantly','filter-hubspot_form','filter-gsheet_sync','filter-calendly','filter-clay','filter-fb_conversions'].forEach(id => {
     document.getElementById(`nav-${id}`)?.classList.remove('active');
   });
   if (filter === 'all')          document.getElementById('nav-dashboard').classList.add('active');
@@ -1466,6 +2442,9 @@ function setFilter(filter) {
   if (filter === 'gsheet_sync')  document.getElementById('nav-filter-gsheet_sync').classList.add('active');
   if (filter === 'calendly')      document.getElementById('nav-filter-calendly')?.classList.add('active');
   if (filter === 'clay')          document.getElementById('nav-filter-clay')?.classList.add('active');
+  if (filter === 'fb_conversions') document.getElementById('nav-filter-fb_conversions')?.classList.add('active');
+  if (filter === 'gcal')           document.getElementById('nav-filter-gcal')?.classList.add('active');
+  if (filter === 'instantly_inbound') document.getElementById('nav-filter-instantly_inbound')?.classList.add('active');
   renderAutomations();
 }
 
@@ -1485,6 +2464,9 @@ function renderAutomations() {
   if (currentFilter === 'gsheet_sync')  filtered = filtered.filter(a => a.delivery_type === 'gsheet_sync');
   if (currentFilter === 'calendly')       filtered = filtered.filter(a => a.delivery_type === 'calendly');
   if (currentFilter === 'clay')           filtered = filtered.filter(a => a.delivery_type === 'enrichment' && a.clay_enabled);
+  if (currentFilter === 'fb_conversions') filtered = filtered.filter(a => a.delivery_type === 'fb_conversions');
+  if (currentFilter === 'gcal')           filtered = filtered.filter(a => a.delivery_type === 'gcal');
+  if (currentFilter === 'instantly_inbound') filtered = filtered.filter(a => a.delivery_type === 'instantly_inbound');
   if (currentFilter === '24h')            filtered = filtered.filter(a => (dailyCounts[a.id]||0) > 0);
   if (searchQuery) filtered = filtered.filter(a =>
     (a.name||'').toLowerCase().includes(searchQuery) ||
@@ -1510,10 +2492,25 @@ function renderAutomations() {
     const isForm     = a.delivery_type === 'hubspot_form';
     const isCalendly = a.delivery_type === 'calendly';
     const isClay     = a.delivery_type === 'enrichment' && a.clay_enabled;
+    const isFb       = a.delivery_type === 'fb_conversions';
+    const isGcal     = a.delivery_type === 'gcal';
+    const isInbound  = a.delivery_type === 'instantly_inbound';
     const active   = a.active !== false;
 
     let sourceChip, deliveryChip;
-    if (isClay) {
+    if (isInbound) {
+      sourceChip   = `<span class="chip" style="color:#2563EB;border-color:rgba(37,99,235,0.3);background:rgba(37,99,235,0.08);"><svg width="10" height="10" viewBox="0 0 100 100" fill="none" style="display:inline;margin-right:3px;"><circle cx="50" cy="50" r="50" fill="#2563EB"/><polygon points="58,10 30,55 50,55 42,90 70,45 50,45" fill="white"/></svg>Instantly</span>`;
+      const eventLabels = {reply_received:'Replied',unsubscribed:'Opted Out',bounced:'Bounced',interested:'Interested',not_interested:'Not Interested',out_of_office:'OOO'};
+      const events = Array.isArray(a.trigger_events) ? a.trigger_events : (a.trigger_event ? [a.trigger_event] : []);
+      const evtLabel = events.map(e => eventLabels[e]||e).join(', ') || '—';
+      deliveryChip = `<span class="chip chip-hs">→ HubSpot · ${esc(evtLabel)}</span>`;
+    } else if (isGcal) {
+      sourceChip   = `<span class="chip chip-hs">HubSpot · ${esc(a.hubspot_list_name || a.hubspot_list_id)}</span>`;
+      deliveryChip = `<span class="chip" style="color:#34a853;border-color:rgba(52,168,83,0.3);background:rgba(52,168,83,0.08);">📅 Google Calendar</span>`;
+    } else if (isFb) {
+      sourceChip   = `<span class="chip chip-hs">HubSpot · ${esc(a.hubspot_list_name || a.hubspot_list_id)}</span>`;
+      deliveryChip = `<span class="chip" style="color:#1877F2;border-color:rgba(24,119,242,0.3);background:rgba(24,119,242,0.08);">⬡ FB Conversions</span>`;
+    } else if (isClay) {
       sourceChip   = `<span class="chip chip-hs">HubSpot · ${esc(a.hubspot_list_name || a.hubspot_list_id)}</span>`;
       deliveryChip = `<span class="chip" style="color:#7C3AED;border-color:rgba(124,58,237,0.3);background:rgba(124,58,237,0.08);">▦ Clay Webhook</span>`;
     } else if (isCalendly) {
@@ -1533,12 +2530,12 @@ function renderAutomations() {
         : `<span class="chip chip-in">Instantly · ${esc(a.instantly_campaign_name || a.instantly_campaign_id)}</span>`;
     }
 
-    const actionChip = (!isForm && !isGsheet && !isCalendly && !isClay)
+    const actionChip = (!isForm && !isGsheet && !isCalendly && !isClay && !isFb && !isInbound)
       ? (a.action === 'unenroll'
           ? `<span class="chip chip-unenroll">⊖ Unenroll</span>`
           : `<span class="chip chip-enroll">⊕ Enroll</span>`)
       : '';
-    const delayLabel = (!isForm && !isGsheet && !isCalendly && !isClay && a.delay_hours > 0)
+    const delayLabel = (!isForm && !isGsheet && !isCalendly && !isClay && !isFb && !isInbound && a.delay_hours > 0)
       ? `<span class="chip chip-hs">⏱ ${a.delay_hours>=24?(a.delay_hours/24)+'d':a.delay_hours+'h'} delay</span>` : '';
     const alertChip = a.alert_enabled ? `<span class="chip chip-alert">🔔 Alert</span>` : '';
     const slackChip = a.slack_enabled
@@ -1560,6 +2557,7 @@ function renderAutomations() {
       <div class="auto-actions" style="display:flex;align-items:center;gap:10px;" onclick="event.stopPropagation()">
         ${count24hChip}
         ${lastRunLabel}
+        <button class="btn-icon" onclick="viewLogs('${esc(a.id)}')" title="View logs" style="opacity:0.6;padding:4px 6px;font-size:12px;">📋</button>
         <label class="toggle" title="${active?'Pause':'Activate'}" onclick="event.stopPropagation()">
           <input type="checkbox" ${active?'checked':''} onchange="toggleAutomation('${esc(a.id)}',this.checked)">
           <span class="toggle-slider"></span>
@@ -1646,6 +2644,8 @@ async function loadDropdowns() {
       initSearchSelect('hs-search-instantly',   'hs-dropdown-instantly',   hsList,hsSelectedInstantly,'Search HubSpot lists…');
       initSearchSelect('hs-search-hubspot_form','hs-dropdown-hubspot_form',hsList,hsSelectedForm,     'Search HubSpot lists…');
       initSearchSelect('hs-search-clay',        'hs-dropdown-clay',        hsList,hsSelectedClay,     'Search HubSpot lists…');
+      initSearchSelect('hs-search-fb',          'hs-dropdown-fb',          hsList,hsSelectedFb,       'Search HubSpot lists…');
+      initSearchSelect('hs-search-gcal',        'hs-dropdown-gcal',        hsList,hsSelectedGcal,     'Search HubSpot lists…');
     } else { ['hs-search-instantly','hs-search-hubspot_form'].forEach(id=>{const el=document.getElementById(id);if(el)el.placeholder=`Error: ${(l.data&&l.data.error)||'failed'}`;}); }
     if (c.ok && Array.isArray(c.data)) {
       campList = c.data;
@@ -1661,8 +2661,19 @@ async function loadDropdowns() {
       initSearchSelect('slack-ch-search-hubspot_form','slack-ch-dropdown-hubspot_form',slackChannels,slackChSelectedForm,     'Search channels…');
       initSearchSelect('slack-ch-search-gsheet_sync', 'slack-ch-dropdown-gsheet_sync', slackChannels,slackChSelectedGsheet,  'Search channels…');
       initSearchSelect('alert-slack-ch-search',       'alert-slack-ch-dropdown',       slackChannels,alertSlackChSelected,   'Search channels…');
+      initSearchSelect('slack-ch-search-fb_conversions','slack-ch-dropdown-fb_conversions',slackChannels,slackChSelectedFb,'Search channels…');
     }
-    if (pr.ok && Array.isArray(pr.data)) hsPropList = pr.data;
+    if (pr.ok && Array.isArray(pr.data)) {
+      hsPropList = pr.data;
+      hsProperties = pr.data.map(p => ({ id: p.name, name: p.label || p.name }));
+      initSearchSelect('inbound-prop-search','inbound-prop-dropdown',hsProperties,inboundPropSelected,'Search properties…');
+    }
+    if (c.ok && Array.isArray(c.data)) {
+      initSearchSelect('camp-inbound-search','camp-inbound-dropdown',campList,campInboundSelected,'Search campaigns…');
+    }
+    if (s.ok && Array.isArray(s.data)) {
+      initSearchSelect('slack-ch-search-instantly_inbound','slack-ch-dropdown-instantly_inbound',slackChannels,slackChSelectedInbound,'Search channels…');
+    }
   } catch(e) { ids.forEach(id=>{const el=document.getElementById(id);if(el)el.placeholder='Network error';}); }
   ids.forEach(id=>{const el=document.getElementById(id);if(el)el.disabled=false;});
 }
@@ -1812,11 +2823,79 @@ async function editAutomation(id) {
   const isGsheet   = a.delivery_type==='gsheet_sync';
   const isCalendly = a.delivery_type==='calendly';
   const isClay     = a.delivery_type==='enrichment' && a.clay_enabled;
+  const isFb       = a.delivery_type==='fb_conversions';
+  const isGcal     = a.delivery_type==='gcal';
+  const isInbound  = a.delivery_type==='instantly_inbound';
   document.getElementById('add-page-title').textContent='Edit automation';
+  document.getElementById('add-page-subtitle').textContent = isGsheet ? 'Sync a Google Sheet to HubSpot' : isInbound ? 'Update HubSpot when contacts reply or opt out in Instantly' : 'Choose how to reach contacts from your HubSpot list';
+  document.getElementById('source-selector').style.display='none';
+  document.getElementById('hs-type-bar').style.display='none';
   document.querySelector('.tab-bar').style.display='none';
+  document.getElementById('form-area').style.display='';
   document.getElementById('view-logs-btn').style.display = 'flex';
   showPage('add');
-  switchTab(isClay?'clay':isCalendly?'calendly':isGsheet?'gsheet_sync':isForm?'hubspot_form':'instantly');
+  switchTab(isInbound?'instantly_inbound':isGcal?'gcal':isFb?'fb_conversions':isClay?'clay':isCalendly?'calendly':isGsheet?'gsheet_sync':isForm?'hubspot_form':'instantly');
+
+  if (isInbound) {
+    document.getElementById('auto-name-instantly_inbound').value = a.name||'';
+    const savedEvents = Array.isArray(a.trigger_events) ? a.trigger_events : (a.trigger_event ? [a.trigger_event] : []);
+    document.querySelectorAll('.inbound-trigger-cb').forEach(cb => { cb.checked = savedEvents.includes(cb.value); });
+    renderTriggerChips();
+    inboundPropSelected.id = a.hs_property||''; inboundPropSelected.name = a.hs_property||'';
+    const propInput = document.getElementById('inbound-prop-search');
+    if (propInput) { propInput.value = a.hs_property||''; propInput.classList.toggle('has-value',!!a.hs_property); }
+    campInboundSelected.id = a.instantly_campaign_id||''; campInboundSelected.name = a.instantly_campaign_name||'';
+    const campInput = document.getElementById('camp-inbound-search');
+    if (campInput) { campInput.value = a.instantly_campaign_name||''; campInput.classList.toggle('has-value',!!a.instantly_campaign_id); }
+    const hsValInput = document.getElementById('inbound-hs-value');
+    if (hsValInput) hsValInput.value = a.hs_value||'';
+    const slackToggle = document.getElementById('slack-toggle-instantly_inbound');
+    if (slackToggle) { slackToggle.checked=!!a.slack_enabled; toggleSlackSection('instantly_inbound',!!a.slack_enabled); if(a.slack_enabled){slackChSelectedInbound.id=a.slack_channel||'';slackChSelectedInbound.name=a.slack_channel_name||'';const sci=document.getElementById('slack-ch-search-instantly_inbound');if(sci){sci.value=a.slack_channel_name||'';sci.classList.toggle('has-value',!!a.slack_channel);}const ta=document.getElementById('slack-msg-instantly_inbound');if(ta)ta.value=a.slack_message||'';}}
+    document.getElementById('create-btn-instantly_inbound').textContent='Save changes';
+    return;
+  }
+
+  if (isGcal) {
+    document.getElementById('auto-name-gcal').value = a.name||'';
+    hsSelectedGcal.id=a.hubspot_list_id||''; hsSelectedGcal.name=a.hubspot_list_name||'';
+    const hgi=document.getElementById('hs-search-gcal');
+    if(hgi){hgi.value=a.hubspot_list_name||'';hgi.classList.toggle('has-value',!!a.hubspot_list_id);}
+    document.getElementById('gcal-send-from').value       = a.send_from_email||'';
+    document.getElementById('gcal-timing-type').value     = a.timing_type||'relative';
+    document.getElementById('gcal-relative-days').value   = String(a.timing_relative_days||1);
+    document.getElementById('gcal-relative-time').value   = a.timing_relative_time||'09:00';
+    document.getElementById('gcal-fixed-datetime').value  = a.timing_fixed_datetime||'';
+    document.getElementById('gcal-hs-prop-time').value    = a.timing_relative_time||'09:00';
+    gcalHsPropSelected.name = a.timing_hs_property||'';
+    document.getElementById('gcal-hs-prop-search').value  = a.timing_hs_property||'';
+    document.getElementById('gcal-meeting-title').value   = a.meeting_title||'';
+    document.getElementById('gcal-meeting-description').value = a.meeting_description||'';
+    document.getElementById('gcal-duration').value        = String(a.duration_minutes||30);
+    document.getElementById('gcal-google-meet').checked   = !!a.google_meet;
+    onGcalTimingChange();
+    loadGcalConnectedAccounts();
+    const slackCbGcal=document.getElementById('slack-enabled-gcal');
+    if(slackCbGcal){slackCbGcal.checked=!!a.slack_enabled;toggleSlackSection('gcal',!!a.slack_enabled);if(a.slack_enabled){slackChSelectedGcal.id=a.slack_channel||'';slackChSelectedGcal.name=a.slack_channel_name||'';const sci=document.getElementById('slack-ch-search-gcal');if(sci){sci.value=a.slack_channel_name||'';sci.classList.toggle('has-value',!!a.slack_channel);}const ta=document.getElementById('slack-msg-gcal');if(ta)ta.value=a.slack_message||'';}}
+    document.getElementById('create-btn-gcal').textContent='Save changes';
+    return;
+  }
+
+  if (isFb) {
+    document.getElementById('auto-name-fb').value = a.name||'';
+    hsSelectedFb.id=a.hubspot_list_id||''; hsSelectedFb.name=a.hubspot_list_name||'';
+    const hfi=document.getElementById('hs-search-fb');
+    if(hfi){hfi.value=a.hubspot_list_name||'';hfi.classList.toggle('has-value',!!a.hubspot_list_id);}
+    document.getElementById('fb-pixel-id').value = a.fb_pixel_id||'';
+    document.getElementById('fb-access-token').value = a.fb_access_token||'';
+    document.getElementById('fb-event-name').value = a.fb_event_name||'Lead';
+    setFbMode(a.fb_mode||'lead_attribution');
+    fbMappings = a.fb_field_mappings ? JSON.parse(JSON.stringify(a.fb_field_mappings)) : [{fb_field:'email',hs_property:'email',hs_label:'Email'}];
+    renderFbMappings();
+    const slackCbFb=document.getElementById('slack-enabled-fb_conversions');
+    if(slackCbFb){slackCbFb.checked=!!a.slack_enabled;toggleSlackSection('fb_conversions',!!a.slack_enabled);if(a.slack_enabled){slackChSelectedFb.id=a.slack_channel||'';slackChSelectedFb.name=a.slack_channel_name||'';const sci=document.getElementById('slack-ch-search-fb_conversions');if(sci){sci.value=a.slack_channel_name||'';sci.classList.toggle('has-value',!!a.slack_channel);}const ta=document.getElementById('slack-msg-fb_conversions');if(ta)ta.value=a.slack_message||'';}}
+    document.getElementById('create-btn-fb').textContent='Save changes';
+    return;
+  }
 
   if (isClay) {
     document.getElementById('auto-name-clay').value = a.name||'';
@@ -1944,14 +3023,15 @@ async function viewLogs(id) {
   const isGsheet=a.delivery_type==='gsheet_sync';
   const isCalendlyAuto=a.delivery_type==='calendly';
   const isClayAuto=a.delivery_type==='enrichment'&&a.clay_enabled;
-  document.getElementById('logs-modal-title').textContent=`${isGsheet?'Processed contacts':isCalendlyAuto?'Bookings':isClayAuto?'Pushed contacts':'List contacts'} · ${a.name}`;
+  const isFbAuto=a.delivery_type==='fb_conversions';
+  document.getElementById('logs-modal-title').textContent=`${isGsheet?'Processed contacts':isCalendlyAuto?'Bookings':isClayAuto?'Pushed contacts':isFbAuto?'Sent contacts':'List contacts'} · ${a.name}`;
   countEl.style.display='none';
   if(searchEl) searchEl.value='';
   logsData=[];
   document.getElementById('logs-body').innerHTML='<div class="empty-state"><p>Loading…</p></div>';
   modal.style.display='flex';
   try {
-    const endpoint = (isGsheet || isCalendlyAuto || isClayAuto) ? `/logs/${encodeURIComponent(a.id)}` : `/contacts/${a.hubspot_list_id}`;
+    const endpoint = (isGsheet || isCalendlyAuto || isClayAuto || isFbAuto) ? `/logs/${encodeURIComponent(a.id)}` : `/contacts/${a.hubspot_list_id}`;
     const {ok,data}=await api('GET', endpoint);
     if(ok&&Array.isArray(data)&&data.length){
       logsData=data; countEl.textContent=data.length; countEl.style.display='';

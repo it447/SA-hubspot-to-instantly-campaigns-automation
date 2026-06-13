@@ -440,6 +440,26 @@ class handler(BaseHTTPRequestHandler):
             email = get_service_account_email()
             if email:
                 self._json(200, {"email": email})
+
+        elif path.endswith("/google/connected-accounts"):
+            try:
+                # Scan for gcal_token:* keys
+                accounts = []
+                cursor = 0
+                while True:
+                    scan_url = f"{UPSTASH_URL}/scan/{cursor}?match=gcal_token:*&count=100"
+                    scan_req = Request(scan_url, headers={"Authorization": f"Bearer {UPSTASH_TOKEN}"})
+                    with urlopen(scan_req, timeout=8) as r:
+                        result = json.loads(r.read()).get("result", [0, []])
+                    cursor = int(result[0])
+                    for key in (result[1] if len(result) > 1 else []):
+                        email = key.replace("gcal_token:", "")
+                        accounts.append(email)
+                    if cursor == 0:
+                        break
+                self._json(200, {"accounts": accounts})
+            except Exception as e:
+                self._json(500, {"error": str(e)})
             else:
                 self._json(404, {"error": "GOOGLE_SERVICE_ACCOUNT_JSON not configured"})
         elif path.endswith('/activity'):
@@ -461,8 +481,8 @@ class handler(BaseHTTPRequestHandler):
                     if not auto_id:
                         continue
 
-                    # GSheet automations — read from Redis logs
-                    if delivery_type in ('gsheet_sync', 'calendly'):
+                    # GSheet / Calendly / Clay / FB automations — read from Redis logs
+                    if delivery_type in ('gsheet_sync', 'calendly', 'fb_conversions', 'gcal', 'instantly_inbound') or (delivery_type == 'enrichment' and a.get('clay_enabled')):
                         try:
                             log_url = f"{UPSTASH_URL}/lrange/logs:{auto_id}/0/999"
                             log_req = Request(log_url, headers={"Authorization": f"Bearer {UPSTASH_TOKEN}"})
@@ -537,8 +557,8 @@ class handler(BaseHTTPRequestHandler):
 
                 delivery_type = auto.get("delivery_type", "")
 
-                # Calendly + GSheet read from Redis logs
-                if delivery_type in ("calendly",) or (delivery_type == "gsheet_sync" and not auto.get("sheet_url")):
+                # Calendly + GSheet + FB Conversions + Clay read from Redis logs
+                if delivery_type in ("calendly", "fb_conversions", "gcal", "instantly_inbound") or (delivery_type == "enrichment" and auto.get("clay_enabled")) or (delivery_type == "gsheet_sync" and not auto.get("sheet_url")):
                     log_url = f"{UPSTASH_URL}/lrange/logs:{auto_id}/0/999"
                     log_req = Request(log_url, headers={"Authorization": f"Bearer {UPSTASH_TOKEN}"})
                     with urlopen(log_req, timeout=8) as r:
@@ -739,6 +759,36 @@ class handler(BaseHTTPRequestHandler):
             self._json(200, new_auto)
             return
 
+        # ── Instantly Inbound (no HubSpot list needed) ───────
+        if delivery_type == "instantly_inbound":
+            trigger_events = [e for e in body.get("trigger_events", []) if isinstance(e, str) and e]
+            hs_property    = body.get("hs_property", "").strip()
+            hs_value       = body.get("hs_value", "").strip()
+            camp_id        = str(body.get("instantly_campaign_id", "")).strip()
+            camp_name      = body.get("instantly_campaign_name", "").strip()
+            if not trigger_events:
+                self._json(400, {"error": "Select at least one trigger event"}); return
+            if not hs_property:
+                self._json(400, {"error": "Missing HubSpot property"}); return
+            import hashlib as _hl
+            new_auto = {
+                "id":                      f"inbound_{_hl.md5((''.join(sorted(trigger_events))+hs_property+camp_id).encode()).hexdigest()[:8]}",
+                "name":                    name,
+                "delivery_type":           "instantly_inbound",
+                "trigger_events":          trigger_events,
+                "instantly_campaign_id":   camp_id,
+                "instantly_campaign_name": camp_name,
+                "hs_property":             hs_property,
+                "hs_value":                hs_value,
+                "active":                  True,
+            }
+            _apply_slack_fields(new_auto, body)
+            _apply_alert_fields(new_auto, body)
+            existing.append(new_auto)
+            save_automations(existing)
+            self._json(200, new_auto)
+            return
+
         # ── Instantly + HS Form: both require a HubSpot list ─
         list_id   = str(body.get("hubspot_list_id", "")).strip()
         list_name = body.get("hubspot_list_name", "").strip()
@@ -798,6 +848,96 @@ class handler(BaseHTTPRequestHandler):
                 "filters":           filters,
                 "active":            True,
             }
+
+        elif delivery_type == "enrichment":
+            webhook_url     = body.get("clay_webhook_url", "").strip()
+            col_mappings    = [
+                m for m in body.get("clay_column_mappings", [])
+                if isinstance(m, dict) and m.get("hs_property") and m.get("clay_column")
+            ]
+            if not webhook_url:
+                self._json(400, {"error": "Missing Clay webhook URL"})
+                return
+            for a in existing:
+                if a.get("delivery_type") == "enrichment" and \
+                   a.get("hubspot_list_id") == list_id and \
+                   a.get("clay_webhook_url") == webhook_url:
+                    self._json(409, {"error": "Automation already exists"})
+                    return
+            import hashlib as _hl
+            new_auto = {
+                "id":                  f"clay_{list_id}_{_hl.md5(webhook_url.encode()).hexdigest()[:8]}",
+                "name":                name,
+                "delivery_type":       "enrichment",
+                "clay_enabled":        True,
+                "hubspot_list_id":     list_id,
+                "hubspot_list_name":   list_name,
+                "clay_webhook_url":    webhook_url,
+                "clay_column_mappings": col_mappings,
+                "active":              True,
+            }
+
+        elif delivery_type == "fb_conversions":
+            pixel_id     = body.get("fb_pixel_id", "").strip()
+            access_token = body.get("fb_access_token", "").strip()
+            event_name   = body.get("fb_event_name", "").strip()
+            fb_mappings  = [
+                m for m in body.get("fb_field_mappings", [])
+                if isinstance(m, dict) and m.get("fb_field") and m.get("hs_property")
+            ]
+            if not pixel_id:
+                self._json(400, {"error": "Missing Pixel ID"})
+                return
+            if not access_token:
+                self._json(400, {"error": "Missing Access Token"})
+                return
+            if not event_name:
+                self._json(400, {"error": "Missing Event Name"})
+                return
+            fb_mode = body.get("fb_mode", "lead_attribution")
+            import hashlib as _hl
+            new_auto = {
+                "id":               f"fb_{list_id}_{_hl.md5((pixel_id+event_name).encode()).hexdigest()[:8]}",
+                "name":             name,
+                "delivery_type":    "fb_conversions",
+                "fb_mode":          fb_mode,
+                "hubspot_list_id":  list_id,
+                "hubspot_list_name": list_name,
+                "fb_pixel_id":      pixel_id,
+                "fb_access_token":  access_token,
+                "fb_event_name":    event_name,
+                "fb_field_mappings": fb_mappings,
+                "active":           True,
+            }
+
+        elif delivery_type == "gcal":
+            send_from   = body.get("send_from_email", "").strip()
+            title_tpl   = body.get("meeting_title", "").strip()
+            timing_type = body.get("timing_type", "relative")
+            if not send_from:
+                self._json(400, {"error": "Missing send from email"}); return
+            if not title_tpl:
+                self._json(400, {"error": "Missing meeting title"}); return
+            import hashlib as _hl
+            new_auto = {
+                "id":                    f"gcal_{list_id}_{_hl.md5((send_from+title_tpl).encode()).hexdigest()[:8]}",
+                "name":                  name,
+                "delivery_type":         "gcal",
+                "hubspot_list_id":       list_id,
+                "hubspot_list_name":     list_name,
+                "send_from_email":       send_from,
+                "meeting_title":         title_tpl,
+                "meeting_description":   body.get("meeting_description", ""),
+                "duration_minutes":      int(body.get("duration_minutes", 30)),
+                "google_meet":           bool(body.get("google_meet", False)),
+                "timing_type":           timing_type,
+                "timing_fixed_datetime": body.get("timing_fixed_datetime", ""),
+                "timing_relative_days":  int(body.get("timing_relative_days", 1)),
+                "timing_relative_time":  body.get("timing_relative_time", "09:00"),
+                "timing_hs_property":    body.get("timing_hs_property", ""),
+                "active":                True,
+            }
+
         else:
             self._json(400, {"error": "Invalid delivery_type"})
             return
@@ -844,6 +984,57 @@ class handler(BaseHTTPRequestHandler):
                     }
                     if gsheet_keys & body.keys():
                         _apply_gsheet_fields(a, body)
+                    if "slack_enabled" in body:
+                        _apply_slack_fields(a, body)
+
+                elif a.get("delivery_type") == "enrichment":
+                    if "hubspot_list_id" in body:
+                        a["hubspot_list_id"]   = str(body["hubspot_list_id"]).strip()
+                        a["hubspot_list_name"] = body.get("hubspot_list_name", "")
+                    if "clay_webhook_url" in body:
+                        a["clay_webhook_url"] = body["clay_webhook_url"].strip()
+                    if "clay_column_mappings" in body:
+                        a["clay_column_mappings"] = [
+                            m for m in body["clay_column_mappings"]
+                            if isinstance(m, dict) and m.get("hs_property") and m.get("clay_column")
+                        ]
+                    if "slack_enabled" in body:
+                        _apply_slack_fields(a, body)
+
+                elif a.get("delivery_type") == "gcal":
+                    gcal_keys = {"hubspot_list_id", "send_from_email", "meeting_title",
+                                 "meeting_description", "duration_minutes", "google_meet",
+                                 "timing_type", "timing_fixed_datetime", "timing_relative_days",
+                                 "timing_relative_time", "timing_hs_property"}
+                    for k in gcal_keys & body.keys():
+                        a[k] = body[k]
+                    if "hubspot_list_id" in body:
+                        a["hubspot_list_name"] = body.get("hubspot_list_name", "")
+                    if "slack_enabled" in body:
+                        _apply_slack_fields(a, body)
+
+                elif a.get("delivery_type") == "fb_conversions":
+                    if "hubspot_list_id" in body:
+                        a["hubspot_list_id"]   = str(body["hubspot_list_id"]).strip()
+                        a["hubspot_list_name"] = body.get("hubspot_list_name", "")
+                    if "fb_pixel_id"      in body: a["fb_pixel_id"]      = body["fb_pixel_id"].strip()
+                    if "fb_mode"          in body: a["fb_mode"]          = body["fb_mode"]
+                    if "fb_access_token"  in body: a["fb_access_token"]  = body["fb_access_token"].strip()
+                    if "fb_event_name"    in body: a["fb_event_name"]    = body["fb_event_name"].strip()
+                    if "fb_field_mappings" in body:
+                        a["fb_field_mappings"] = [
+                            m for m in body["fb_field_mappings"]
+                            if isinstance(m, dict) and m.get("fb_field") and m.get("hs_property")
+                        ]
+                    if "slack_enabled" in body:
+                        _apply_slack_fields(a, body)
+
+                elif a.get("delivery_type") == "instantly_inbound":
+                    if "trigger_events" in body:
+                        a["trigger_events"] = [e for e in body["trigger_events"] if isinstance(e, str) and e]
+                    for k in {"instantly_campaign_id", "instantly_campaign_name",
+                              "hs_property", "hs_value"} & body.keys():
+                        a[k] = body[k]
                     if "slack_enabled" in body:
                         _apply_slack_fields(a, body)
 
