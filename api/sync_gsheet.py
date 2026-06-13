@@ -763,13 +763,21 @@ class handler(BaseHTTPRequestHandler):
                 automation["last_run"] = datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
 
         # Re-fetch latest automations before saving to avoid overwriting
-        # automations created/edited while this cron run was in progress
-        last_run_map = {a["id"]: a.get("last_run") for a in all_automations if a.get("id") and a.get("last_run")}
+        # automations created/edited while this cron run was in progress.
+        # Only merge timestamp fields — never delete or modify anything else.
+        ts_fields = ("last_run", "last_gsheet_run")
+        ts_map = {
+            a["id"]: {f: a[f] for f in ts_fields if a.get(f)}
+            for a in all_automations if a.get("id")
+        }
         fresh = get_automations()
-        for a in fresh:
-            if a.get("id") in last_run_map:
-                a["last_run"] = last_run_map[a["id"]]
-        save_automations(fresh)
+        if not fresh:
+            _log("[sync_gsheet] WARNING: re-fetch returned empty list, skipping save to protect automations")
+        else:
+            for a in fresh:
+                for f, v in ts_map.get(a.get("id"), {}).items():
+                    a[f] = v
+            save_automations(fresh)
 
         result = {"ran": ran, "skipped": skipped, "errors": errors}
         _log(f"[sync_gsheet] done: {result}")
