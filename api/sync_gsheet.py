@@ -504,21 +504,21 @@ def run_clay_push(automation, sent_cache):
         _log(f"[clay] {auto_name}: no webhook_url configured, skipping")
         return
 
-    contacts = get_list_contacts(list_id)
-    clay_key = f"clay:{auto_id}"  # separate namespace so it doesn't conflict with other automations
+    contacts  = get_list_contacts(list_id)
+    clay_key  = f"clay:{auto_id}"  # separate namespace so it doesn't conflict with other automations
+    max_per_run = int(automation.get("clay_max_per_run", 0) or 0)
 
     pushed  = 0
     skipped = 0
     errors  = 0
 
+    # Pre-filter to contacts that would actually be pushed (unsent + have row data)
+    pending = []
     for contact in contacts:
         email = contact["email"]
-
         if already_sent_cached(email, clay_key, sent_cache):
             skipped += 1
             continue
-
-        # Build row from column mappings
         row_data = {}
         for mapping in col_mappings:
             hs_prop  = mapping.get("hs_property", "")
@@ -528,11 +528,29 @@ def run_clay_push(automation, sent_cache):
             val = contact.get(hs_prop, "")
             if val:
                 row_data[clay_col] = val
-
         if not row_data:
             skipped += 1
             continue
+        pending.append((contact, row_data))
 
+    # Circuit breaker: if a max_per_run limit is set and would be exceeded, abort
+    if max_per_run > 0 and len(pending) > max_per_run:
+        alert_msg = (
+            f"🚨 *{auto_name}* — Clay push BLOCKED.\n"
+            f"{len(pending)} contacts queued but limit is {max_per_run}.\n"
+            f"Increase *clay_max_per_run* or review the list before pushing."
+        )
+        _log(f"[clay] {auto_name}: limiter triggered — {len(pending)} pending > limit {max_per_run}, aborting")
+        alert_channel = automation.get("clay_alert_channel") or slack_channel
+        if alert_channel:
+            try:
+                send_slack_message(alert_channel, alert_msg)
+            except Exception as e:
+                _log(f"[clay] slack alert error: {e}")
+        return
+
+    for contact, row_data in pending:
+        email = contact["email"]
         try:
             push_to_clay(webhook_url, row_data)
             mark_as_sent(email, clay_key, sent_cache)
