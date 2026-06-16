@@ -946,6 +946,12 @@
           </div>
 
           <div class="form-row">
+            <label>Max contacts per run <span style="font-weight:400;color:#888;">(limiter)</span></label>
+            <input type="number" id="clay-max-per-run" min="0" placeholder="0 = no limit" style="width:160px;">
+            <div class="token-hint" style="margin-top:5px;">If more contacts than this limit would be pushed in one run, the push is blocked and you get a Slack alert. Set to 0 to disable.</div>
+          </div>
+
+          <div class="form-row">
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
               <label style="margin-bottom:0;">Column mappings <span style="font-size:11px;opacity:0.6;">(HubSpot property → Clay column)</span></label>
               <button type="button" class="btn btn-cream" onclick="addClayMapping()" style="font-size:12px;padding:5px 10px;">+ Add mapping</button>
@@ -1722,6 +1728,7 @@ function resetClayForm() {
   document.getElementById('auto-name-clay').value = '';
   resetSearchSelect('hs-search-clay','hs-dropdown-clay',hsSelectedClay);
   document.getElementById('clay-table-id').value = '';
+  const mprReset = document.getElementById('clay-max-per-run'); if(mprReset) mprReset.value = '';
   clayMappings = [
     { hs_property:'email',     clay_column:'Email' },
     { hs_property:'firstname', clay_column:'First Name' },
@@ -2161,10 +2168,12 @@ async function createClayAutomation() {
   if (!tableId)        { errEl.textContent='Please enter the Clay webhook URL.'; errEl.style.display='block'; return; }
   const validMaps = clayMappings.filter(m => m.hs_property.trim() && m.clay_column.trim());
   if (!validMaps.length) { errEl.textContent='Please add at least one column mapping.'; errEl.style.display='block'; return; }
+  const maxPerRun = parseInt(document.getElementById('clay-max-per-run')?.value || '0', 10) || 0;
   let payload = {
     name, delivery_type:'enrichment', clay_enabled:true,
     hubspot_list_id:hsSelectedClay.id, hubspot_list_name:hsSelectedClay.name,
-    clay_webhook_url:tableId, clay_column_mappings:validMaps, active:true
+    clay_webhook_url:tableId, clay_column_mappings:validMaps, active:true,
+    clay_max_per_run: maxPerRun
   };
   const slackEnabled = document.getElementById('slack-enabled-clay')?.checked;
   if (slackEnabled) {
@@ -2903,6 +2912,7 @@ async function editAutomation(id) {
     const hci=document.getElementById('hs-search-clay');
     if(hci){hci.value=a.hubspot_list_name||'';hci.classList.toggle('has-value',!!a.hubspot_list_id);}
     document.getElementById('clay-table-id').value = a.clay_webhook_url||a.clay_table_id||'';
+    const mprEl = document.getElementById('clay-max-per-run'); if(mprEl) mprEl.value = a.clay_max_per_run||0;
     clayMappings = a.clay_column_mappings ? JSON.parse(JSON.stringify(a.clay_column_mappings)) : [{hs_property:'email',clay_column:'Email'}];
     renderClayMappings();
     const slackCbCl=document.getElementById('slack-enabled-clay');
