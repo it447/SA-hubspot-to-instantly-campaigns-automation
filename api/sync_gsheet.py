@@ -541,9 +541,10 @@ def run_clay_push(automation, sent_cache):
             f"Increase *clay_max_per_run* or review the list before pushing."
         )
         _log(f"[clay] {auto_name}: limiter triggered — {len(pending)} pending > limit {max_per_run}, aborting")
-        if slack_channel:
+        alert_channel = automation.get("clay_alert_channel") or slack_channel
+        if alert_channel:
             try:
-                send_slack_message(slack_channel, alert_msg)
+                send_slack_message(alert_channel, alert_msg)
             except Exception as e:
                 _log(f"[clay] slack alert error: {e}")
         return

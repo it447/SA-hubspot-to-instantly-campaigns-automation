@@ -967,8 +967,9 @@
             <label class="toggle"><input type="checkbox" id="slack-enabled-clay" onchange="toggleSlackSection('clay',this.checked)"><span class="toggle-slider"></span></label>
           </div>
           <div id="slack-body-clay" class="slack-body" style="display:none;">
-            <div><label>Channel</label><div class="search-select"><input type="text" id="slack-ch-search-clay" placeholder="Search channels…" autocomplete="off"><div class="search-dropdown" id="slack-ch-dropdown-clay"></div></div></div>
+            <div><label>Success channel</label><div class="search-select"><input type="text" id="slack-ch-search-clay" placeholder="Search channels…" autocomplete="off"><div class="search-dropdown" id="slack-ch-dropdown-clay"></div></div></div>
             <div><label>Message template</label><textarea id="slack-msg-clay" rows="3" placeholder="e.g. ✅ {{count}} contacts pushed to Clay from {{automation_name}}"></textarea><div class="token-hint">Tokens: {{automation_name}}</div></div>
+            <div style="margin-top:12px;"><label>Limiter alert channel <span style="font-weight:400;color:#888;">(blocked runs)</span></label><div class="search-select"><input type="text" id="slack-ch-search-clay-alert" placeholder="Search channels… (defaults to success channel)" autocomplete="off"><div class="search-dropdown" id="slack-ch-dropdown-clay-alert"></div></div></div>
           </div>
 
           <div class="form-footer">
@@ -1423,6 +1424,7 @@ let slackChSelectedForm      = { id:'', name:'' };
 let slackChSelectedGsheet    = { id:'', name:'' };
 let slackChSelectedCalendly  = { id:'', name:'' };
 let slackChSelectedClay      = { id:'', name:'' };
+let slackChSelectedClayAlert = { id:'', name:'' };
 let hsSelectedClay           = { id:'', name:'' };
 let clayMappings             = [];
 let hsSelectedFb             = { id:'', name:'' };
@@ -1603,6 +1605,10 @@ function switchTab(tab) {
   if (tab === 'clay') {
     renderClayMappings();
     if (hsList.length) initSearchSelect('hs-search-clay','hs-dropdown-clay',hsList,hsSelectedClay,'Search HubSpot lists…');
+    if (slackChannels.length) {
+      initSearchSelect('slack-ch-search-clay','slack-ch-dropdown-clay',slackChannels,slackChSelectedClay,'Search channels…');
+      initSearchSelect('slack-ch-search-clay-alert','slack-ch-dropdown-clay-alert',slackChannels,slackChSelectedClayAlert,'Search channels…');
+    }
   }
   if (tab === 'fb_conversions') {
     const currentMode = document.querySelector('input[name="fb-mode"]:checked')?.value || 'lead_attribution';
@@ -1738,6 +1744,7 @@ function resetClayForm() {
   const cb = document.getElementById('slack-enabled-clay');
   if (cb) { cb.checked = false; toggleSlackSection('clay', false); }
   resetSearchSelect('slack-ch-search-clay','slack-ch-dropdown-clay',slackChSelectedClay);
+  resetSearchSelect('slack-ch-search-clay-alert','slack-ch-dropdown-clay-alert',slackChSelectedClayAlert);
   const ta = document.getElementById('slack-msg-clay'); if (ta) ta.value = '';
   document.getElementById('form-error-clay').style.display = 'none';
 }
@@ -2181,7 +2188,11 @@ async function createClayAutomation() {
     payload.slack_enabled=true; payload.slack_channel=slackChSelectedClay.id;
     payload.slack_channel_name=slackChSelectedClay.name;
     payload.slack_message=document.getElementById('slack-msg-clay')?.value.trim()||'';
-  } else { payload.slack_enabled=false; }
+    if (slackChSelectedClayAlert.id) {
+      payload.clay_alert_channel=slackChSelectedClayAlert.id;
+      payload.clay_alert_channel_name=slackChSelectedClayAlert.name;
+    } else { payload.clay_alert_channel=''; payload.clay_alert_channel_name=''; }
+  } else { payload.slack_enabled=false; payload.clay_alert_channel=''; payload.clay_alert_channel_name=''; }
   btn.disabled=true; btn.textContent=editingId?'Saving…':'Creating…';
   try {
     const {ok,data} = editingId
@@ -2671,6 +2682,8 @@ async function loadDropdowns() {
       initSearchSelect('slack-ch-search-gsheet_sync', 'slack-ch-dropdown-gsheet_sync', slackChannels,slackChSelectedGsheet,  'Search channels…');
       initSearchSelect('alert-slack-ch-search',       'alert-slack-ch-dropdown',       slackChannels,alertSlackChSelected,   'Search channels…');
       initSearchSelect('slack-ch-search-fb_conversions','slack-ch-dropdown-fb_conversions',slackChannels,slackChSelectedFb,'Search channels…');
+      initSearchSelect('slack-ch-search-clay',       'slack-ch-dropdown-clay',       slackChannels,slackChSelectedClay,      'Search channels…');
+      initSearchSelect('slack-ch-search-clay-alert', 'slack-ch-dropdown-clay-alert', slackChannels,slackChSelectedClayAlert, 'Search channels…');
     }
     if (pr.ok && Array.isArray(pr.data)) {
       hsPropList = pr.data;
@@ -2916,7 +2929,7 @@ async function editAutomation(id) {
     clayMappings = a.clay_column_mappings ? JSON.parse(JSON.stringify(a.clay_column_mappings)) : [{hs_property:'email',clay_column:'Email'}];
     renderClayMappings();
     const slackCbCl=document.getElementById('slack-enabled-clay');
-    if(slackCbCl){slackCbCl.checked=!!a.slack_enabled;toggleSlackSection('clay',!!a.slack_enabled);if(a.slack_enabled){slackChSelectedClay.id=a.slack_channel||'';slackChSelectedClay.name=a.slack_channel_name||'';const sci=document.getElementById('slack-ch-search-clay');if(sci){sci.value=a.slack_channel_name||'';sci.classList.toggle('has-value',!!a.slack_channel);}const ta=document.getElementById('slack-msg-clay');if(ta)ta.value=a.slack_message||'';}}
+    if(slackCbCl){slackCbCl.checked=!!a.slack_enabled;toggleSlackSection('clay',!!a.slack_enabled);if(a.slack_enabled){slackChSelectedClay.id=a.slack_channel||'';slackChSelectedClay.name=a.slack_channel_name||'';const sci=document.getElementById('slack-ch-search-clay');if(sci){sci.value=a.slack_channel_name||'';sci.classList.toggle('has-value',!!a.slack_channel);}const ta=document.getElementById('slack-msg-clay');if(ta)ta.value=a.slack_message||'';if(a.clay_alert_channel){slackChSelectedClayAlert.id=a.clay_alert_channel||'';slackChSelectedClayAlert.name=a.clay_alert_channel_name||'';const scia=document.getElementById('slack-ch-search-clay-alert');if(scia){scia.value=a.clay_alert_channel_name||'';scia.classList.toggle('has-value',!!a.clay_alert_channel);}}}}
     document.getElementById('create-btn-clay').textContent='Save changes';
     return;
   }
