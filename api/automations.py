@@ -331,10 +331,14 @@ def _apply_slack_fields(target, body):
         target["slack_channel"]      = body.get("slack_channel", "")
         target["slack_channel_name"] = body.get("slack_channel_name", "")
         target["slack_message"]      = body.get("slack_message", "")
+        target["clay_alert_channel"]      = body.get("clay_alert_channel", "")
+        target["clay_alert_channel_name"] = body.get("clay_alert_channel_name", "")
     else:
         target["slack_channel"]      = ""
         target["slack_channel_name"] = ""
         target["slack_message"]      = ""
+        target["clay_alert_channel"]      = ""
+        target["clay_alert_channel_name"] = ""
 
 def _apply_alert_fields(target, body):
     alert_enabled = bool(body.get("alert_enabled", False))
@@ -901,6 +905,7 @@ class handler(BaseHTTPRequestHandler):
                 "hubspot_list_name":   list_name,
                 "clay_webhook_url":    webhook_url,
                 "clay_column_mappings": col_mappings,
+                "clay_max_per_run":    int(body.get("clay_max_per_run") or 0),
                 "active":              True,
             }
 
@@ -1025,6 +1030,8 @@ class handler(BaseHTTPRequestHandler):
                             m for m in body["clay_column_mappings"]
                             if isinstance(m, dict) and m.get("hs_property") and m.get("clay_column")
                         ]
+                    if "clay_max_per_run" in body:
+                        a["clay_max_per_run"] = int(body.get("clay_max_per_run") or 0)
                     if "slack_enabled" in body:
                         _apply_slack_fields(a, body)
 
