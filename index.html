@@ -653,7 +653,7 @@
           </div>
           <div id="slack-body-instantly" class="slack-body" style="display:none;">
             <div><label>Channel</label><div class="search-select"><input type="text" id="slack-ch-search-instantly" placeholder="Search channels…" autocomplete="off"><div class="search-dropdown" id="slack-ch-dropdown-instantly"></div></div></div>
-            <div><label>Message template</label><textarea id="slack-msg-instantly" rows="3" placeholder="e.g. New lead enrolled: {{first_name}} {{last_name}} ({{email}})"></textarea><div class="token-hint">Available tokens: {{first_name}} {{last_name}} {{email}} {{company}}</div></div>
+            <div><label>Message template</label><textarea id="slack-msg-instantly" rows="3" placeholder="e.g. New lead enrolled: {{first_name}} {{last_name}} ({{email}})"></textarea><div class="token-hint">Tokens: <span class="token-chip" onclick="insertToken('slack-msg-instantly','{{first_name}}')">{{first_name}}</span> <span class="token-chip" onclick="insertToken('slack-msg-instantly','{{last_name}}')">{{last_name}}</span> <span class="token-chip" onclick="insertToken('slack-msg-instantly','{{email}}')">{{email}}</span> <span class="token-chip" onclick="insertToken('slack-msg-instantly','{{company}}')">{{company}}</span></div></div>
           </div>
           <div class="form-footer">
             <button class="btn btn-cream" onclick="cancelEdit()">Cancel</button>
@@ -702,7 +702,7 @@
           </div>
           <div id="slack-body-hubspot_form" class="slack-body" style="display:none;">
             <div><label>Channel</label><div class="search-select"><input type="text" id="slack-ch-search-hubspot_form" placeholder="Search channels…" autocomplete="off"><div class="search-dropdown" id="slack-ch-dropdown-hubspot_form"></div></div></div>
-            <div><label>Message template</label><textarea id="slack-msg-hubspot_form" rows="3" placeholder="e.g. New lead enrolled: {{first_name}} {{last_name}} ({{email}})"></textarea><div class="token-hint">Available tokens: {{first_name}} {{last_name}} {{email}} {{company}}</div></div>
+            <div><label>Message template</label><textarea id="slack-msg-hubspot_form" rows="3" placeholder="e.g. New lead enrolled: {{first_name}} {{last_name}} ({{email}})"></textarea><div class="token-hint">Tokens: <span class="token-chip" onclick="insertToken('slack-msg-hubspot_form','{{first_name}}')">{{first_name}}</span> <span class="token-chip" onclick="insertToken('slack-msg-hubspot_form','{{last_name}}')">{{last_name}}</span> <span class="token-chip" onclick="insertToken('slack-msg-hubspot_form','{{email}}')">{{email}}</span> <span class="token-chip" onclick="insertToken('slack-msg-hubspot_form','{{company}}')">{{company}}</span></div></div>
           </div>
           <div class="form-footer">
             <button class="btn btn-cream" onclick="cancelEdit()">Cancel</button>
@@ -855,7 +855,7 @@
           </div>
           <div id="slack-body-gsheet_sync" class="slack-body" style="display:none;">
             <div><label>Channel</label><div class="search-select"><input type="text" id="slack-ch-search-gsheet_sync" placeholder="Search channels…" autocomplete="off"><div class="search-dropdown" id="slack-ch-dropdown-gsheet_sync"></div></div></div>
-            <div><label>Message template</label><textarea id="slack-msg-gsheet_sync" rows="3" placeholder="e.g. ✅ Sheet sync complete for {{automation_name}}"></textarea><div class="token-hint">Tokens: {{automation_name}}</div></div>
+            <div><label>Message template</label><textarea id="slack-msg-gsheet_sync" rows="3" placeholder="e.g. ✅ Sheet sync complete for {{automation_name}}"></textarea><div class="token-hint">Tokens: <span class="token-chip" onclick="insertToken('slack-msg-gsheet_sync','{{automation_name}}')">{{automation_name}}</span></div></div>
           </div>
 
           <div class="form-footer">
@@ -911,7 +911,7 @@
             <div>
               <label>Message template</label>
               <textarea id="slack-msg-calendly" rows="3" placeholder="e.g. 📅 New booking from {{email}}"></textarea>
-            <div class="token-hint" style="margin-top:5px;">Available tokens: <code>{{email}}</code> <code>{{name}}</code></div>
+            <div class="token-hint" style="margin-top:5px;">Tokens: <span class="token-chip" onclick="insertToken('slack-msg-calendly','{{email}}')">{{email}}</span> <span class="token-chip" onclick="insertToken('slack-msg-calendly','{{name}}')">{{name}}</span></div>
             </div>
           </div>
 
@@ -968,7 +968,7 @@
           </div>
           <div id="slack-body-clay" class="slack-body" style="display:none;">
             <div><label>Success channel</label><div class="search-select"><input type="text" id="slack-ch-search-clay" placeholder="Search channels…" autocomplete="off"><div class="search-dropdown" id="slack-ch-dropdown-clay"></div></div></div>
-            <div><label>Message template</label><textarea id="slack-msg-clay" rows="3" placeholder="e.g. ✅ {{count}} contacts pushed to Clay from {{automation_name}}"></textarea><div class="token-hint">Tokens: {{automation_name}}</div></div>
+            <div><label>Message template</label><textarea id="slack-msg-clay" rows="3" placeholder="e.g. ✅ {{count}} contacts pushed to Clay from {{automation_name}}"></textarea><div class="token-hint">Tokens: <span class="token-chip" onclick="insertToken('slack-msg-clay','{{automation_name}}')">{{automation_name}}</span></div></div>
             <div style="margin-top:12px;"><label>Limiter alert channel <span style="font-weight:400;color:#888;">(blocked runs)</span></label><div class="search-select"><input type="text" id="slack-ch-search-clay-alert" placeholder="Search channels… (defaults to success channel)" autocomplete="off"><div class="search-dropdown" id="slack-ch-dropdown-clay-alert"></div></div></div>
           </div>
 
@@ -1063,7 +1063,7 @@
           </div>
           <div id="slack-body-fb_conversions" class="slack-body" style="display:none;">
             <div><label>Channel</label><div class="search-select"><input type="text" id="slack-ch-search-fb_conversions" placeholder="Search channels…" autocomplete="off"><div class="search-dropdown" id="slack-ch-dropdown-fb_conversions"></div></div></div>
-            <div><label>Message template</label><textarea id="slack-msg-fb_conversions" rows="3" placeholder="e.g. ✅ {{name}} — sent {{pushed}} FB Conversion event(s)."></textarea><div class="token-hint">Tokens: {{name}}, {{pushed}}</div></div>
+            <div><label>Message template</label><textarea id="slack-msg-fb_conversions" rows="3" placeholder="e.g. ✅ {{name}} — sent {{pushed}} FB Conversion event(s)."></textarea><div class="token-hint">Tokens: <span class="token-chip" onclick="insertToken('slack-msg-fb_conversions','{{name}}')">{{name}}</span> <span class="token-chip" onclick="insertToken('slack-msg-fb_conversions','{{pushed}}')">{{pushed}}</span></div></div>
           </div>
 
           <div class="form-footer">
@@ -1206,7 +1206,7 @@
                   <div class="search-dropdown" id="slack-ch-dropdown-gcal"></div>
                 </div>
               </div>
-              <div><label>Message template</label><textarea id="slack-msg-gcal" rows="3" placeholder="e.g. ✅ {{name}} — sent {{pushed}} calendar invite(s)."></textarea><div class="token-hint">Tokens: {{name}}, {{pushed}}</div></div>
+              <div><label>Message template</label><textarea id="slack-msg-gcal" rows="3" placeholder="e.g. ✅ {{name}} — sent {{pushed}} calendar invite(s)."></textarea><div class="token-hint">Tokens: <span class="token-chip" onclick="insertToken('slack-msg-gcal','{{name}}')">{{name}}</span> <span class="token-chip" onclick="insertToken('slack-msg-gcal','{{pushed}}')">{{pushed}}</span></div></div>
             </div>
           </div>
 
@@ -1292,7 +1292,7 @@
             <div>
               <label>Message template</label>
               <textarea id="slack-msg-instantly_inbound" rows="3" placeholder="e.g. ✅ {{name}} — {{email}} triggered {{event}}"></textarea>
-              <div class="token-hint">Tokens: {{name}}, {{email}}, {{event}}</div>
+              <div class="token-hint">Tokens: <span class="token-chip" onclick="insertToken('slack-msg-instantly_inbound','{{name}}')">{{name}}</span> <span class="token-chip" onclick="insertToken('slack-msg-instantly_inbound','{{email}}')">{{email}}</span> <span class="token-chip" onclick="insertToken('slack-msg-instantly_inbound','{{event}}')">{{event}}</span></div>
             </div>
           </div>
 
@@ -1335,7 +1335,7 @@
               <div>
                 <label>Message template</label>
                 <textarea id="alert-message" rows="3" placeholder="e.g. ⚠️ {{automation_name}} had only {{count}} enrollments (threshold: {{threshold}})"></textarea>
-                <div class="token-hint">Tokens: {{count}} {{automation_name}} {{threshold}} {{date}}</div>
+                <div class="token-hint">Tokens: <span class="token-chip" onclick="insertToken('alert-message','{{count}}')">{{count}}</span> <span class="token-chip" onclick="insertToken('alert-message','{{automation_name}}')">{{automation_name}}</span> <span class="token-chip" onclick="insertToken('alert-message','{{threshold}}')">{{threshold}}</span> <span class="token-chip" onclick="insertToken('alert-message','{{date}}')">{{date}}</span></div>
               </div>
               <div>
                 <label>Schedule</label>
@@ -1806,15 +1806,16 @@ function onGcalTimingChange() {
   document.getElementById('gcal-timing-hs').style.display       = val === 'hs_property' ? 'flex' : 'none';
 }
 
-function insertGcalPlaceholder(fieldId, placeholder) {
+function insertToken(fieldId, token) {
   const el = document.getElementById(fieldId);
   if (!el) return;
   const start = el.selectionStart, end = el.selectionEnd;
   const val   = el.value;
-  el.value = val.substring(0, start) + placeholder + val.substring(end);
-  el.selectionStart = el.selectionEnd = start + placeholder.length;
+  el.value = val.substring(0, start) + token + val.substring(end);
+  el.selectionStart = el.selectionEnd = start + token.length;
   el.focus();
 }
+function insertGcalPlaceholder(fieldId, token) { insertToken(fieldId, token); }
 
 async function connectGoogleAccount() {
   const email = document.getElementById('gcal-send-from').value.trim();
@@ -2202,7 +2203,7 @@ async function createClayAutomation() {
   };
   const slackEnabled = document.getElementById('slack-enabled-clay')?.checked;
   if (slackEnabled) {
-    if (!slackChSelectedClay.id) { errEl.textContent='Please select a Slack channel.'; errEl.style.display='block'; return; }
+    if (!slackChSelectedClay.id && !slackChSelectedClayAlert.id) { errEl.textContent='Please select at least one Slack channel.'; errEl.style.display='block'; return; }
     payload.slack_enabled=true; payload.slack_channel=slackChSelectedClay.id;
     payload.slack_channel_name=slackChSelectedClay.name;
     payload.slack_message=document.getElementById('slack-msg-clay')?.value.trim()||'';
