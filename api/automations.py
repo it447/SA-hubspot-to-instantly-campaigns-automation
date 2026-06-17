@@ -1,5 +1,6 @@
 import json
 import datetime
+import time
 import os
 import sys
 import re
@@ -471,11 +472,8 @@ class handler(BaseHTTPRequestHandler):
                 automations_list = get_automations()
                 est       = datetime.timezone(datetime.timedelta(hours=-5))
                 est_now   = datetime.datetime.now(est)
-                now_utc   = datetime.datetime.now(datetime.timezone.utc)
-                # Cutoff = midnight today in Florida (EDT = UTC-4)
-                edt = datetime.timezone(datetime.timedelta(hours=-4))
-                today_edt = datetime.datetime.now(edt).replace(hour=0, minute=0, second=0, microsecond=0)
-                cutoff_24h = today_edt.astimezone(datetime.timezone.utc)
+                now_ts    = time.time()
+                cutoff_24h_ts = now_ts - 86400
                 day_totals = {}
                 daily      = {}
 
@@ -488,7 +486,7 @@ class handler(BaseHTTPRequestHandler):
                     # GSheet / Calendly / Clay / FB automations — read from Redis logs
                     if delivery_type in ('gsheet_sync', 'calendly', 'fb_conversions', 'gcal', 'instantly_inbound') or (delivery_type == 'enrichment' and a.get('clay_enabled')):
                         try:
-                            log_url = f"{UPSTASH_URL}/lrange/logs:{auto_id}/0/999"
+                            log_url = f"{UPSTASH_URL}/lrange/logs:{auto_id}/0/9999"
                             log_req = Request(log_url, headers={"Authorization": f"Bearer {UPSTASH_TOKEN}"})
                             with urlopen(log_req, timeout=8) as r:
                                 log_data = json.loads(r.read())
@@ -501,12 +499,14 @@ class handler(BaseHTTPRequestHandler):
                                     if not ts:
                                         continue
                                     try:
-                                        dt = datetime.datetime.fromtimestamp(float(ts), tz=datetime.timezone.utc)
+                                        ts_float = float(ts)
+                                        dt = datetime.datetime.fromtimestamp(ts_float, tz=datetime.timezone.utc)
                                     except (ValueError, TypeError):
                                         dt = datetime.datetime.fromisoformat(str(ts).replace("Z", "+00:00"))
+                                        ts_float = dt.timestamp()
                                     day_key = dt.astimezone(est).date().isoformat()
                                     day_totals[day_key] = day_totals.get(day_key, 0) + 1
-                                    if dt >= cutoff_24h:
+                                    if ts_float >= cutoff_24h_ts:
                                         count_24h += 1
                                 except Exception:
                                     continue
