@@ -134,22 +134,18 @@ def set_first_seen(email, target_id):
     _redis_set_raw(f"first_seen:{email.lower()}:{target_id}", time.time())
 
 def log_enrollment(auto_id, email, delivery_type, ts):
-    key   = f"logs:{auto_id}"
-    entry = json.dumps({"email": email, "ts": ts, "type": delivery_type})
-    # POST with JSON array body — correct Upstash LPUSH format
-    body  = json.dumps([entry]).encode()
-    req   = Request(f"{UPSTASH_URL}/lpush/{key}", data=body, headers={
+    key      = f"logs:{auto_id}"
+    entry    = json.dumps({"email": email, "ts": ts, "type": delivery_type})
+    pipeline = [
+        ["LPUSH", key, entry],
+        ["LTRIM", key, 0, 9999],
+    ]
+    body = json.dumps(pipeline).encode()
+    req  = Request(f"{UPSTASH_URL}/pipeline", data=body, headers={
         "Authorization": f"Bearer {UPSTASH_TOKEN}",
         "Content-Type":  "application/json"
     }, method="POST")
     with urlopen(req, timeout=5) as r:
-        r.read()
-    trim_body = json.dumps([0, 9999]).encode()
-    trim_req  = Request(f"{UPSTASH_URL}/ltrim/{key}", data=trim_body, headers={
-        "Authorization": f"Bearer {UPSTASH_TOKEN}",
-        "Content-Type":  "application/json"
-    }, method="POST")
-    with urlopen(trim_req, timeout=5) as r:
         r.read()
 
 def increment_enroll_count(auto_id, est_date):
@@ -904,8 +900,8 @@ class handler(BaseHTTPRequestHandler):
                         log_enrollment(auto_id, email,
                                        f"{delivery_type}_{action}" if delivery_type == "instantly" else delivery_type,
                                        time.time())
-                    except Exception:
-                        pass
+                    except Exception as _le:
+                        _log(f"[sync] log_enrollment error for {email} auto={auto_id}: {_le}")
                     _log(f"[sync] processed {email} -> {delivery_type} {action} {target_id}")
                     total_processed += 1
 
