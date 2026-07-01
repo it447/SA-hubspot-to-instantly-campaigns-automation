@@ -98,10 +98,28 @@ class handler(BaseHTTPRequestHandler):
         self._redirect("success", email)
 
     def _redirect(self, status, msg):
-        dest = f"{APP_URL}/?oauth={status}&email={quote(msg)}"
-        self.send_response(302)
-        self.send_header("Location", dest)
+        safe_msg = msg.replace("\\", "\\\\").replace("`", "\\`")
+        html = f"""<!DOCTYPE html><html><head><title>Google OAuth</title></head><body>
+<script>
+(function(){{
+  var payload = {{oauth:'{status}',email:`{safe_msg}`}};
+  if(window.opener){{
+    window.opener.postMessage(payload,'*');
+    setTimeout(function(){{window.close();}},300);
+  }} else {{
+    window.location.href='{APP_URL}/?oauth={status}&email={quote(msg)}';
+  }}
+}})();
+</script>
+<p style="font-family:sans-serif;text-align:center;margin-top:60px">
+{'Connected! You may close this window.' if status=='success' else 'Auth error: '+msg}
+</p></body></html>"""
+        body = html.encode()
+        self.send_response(200)
+        self.send_header("Content-Type", "text/html; charset=utf-8")
+        self.send_header("Content-Length", str(len(body)))
         self.end_headers()
+        self.wfile.write(body)
 
     def log_message(self, *args):
         pass

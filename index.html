@@ -1822,12 +1822,21 @@ function insertGcalPlaceholder(fieldId, token) { insertToken(fieldId, token); }
 async function connectGoogleAccount() {
   const email = document.getElementById('gcal-send-from').value.trim();
   const url = `/api/google/oauth${email ? '?email=' + encodeURIComponent(email) : ''}`;
-  window.open(url, '_blank', 'width=500,height=600');
-  // Reload account list at 3s, 6s, and 12s to catch slow OAuth flows
-  setTimeout(loadGcalConnectedAccounts, 3000);
-  setTimeout(loadGcalConnectedAccounts, 6000);
-  setTimeout(loadGcalConnectedAccounts, 12000);
+  window.open(url, 'googleOAuthPopup', 'width=500,height=600');
 }
+
+// Listen for postMessage from OAuth popup
+window.addEventListener('message', function(event) {
+  const d = event.data;
+  if (!d || typeof d !== 'object' || !d.oauth) return;
+  if (d.oauth === 'success') {
+    showToast('Google account connected: ' + (d.email || ''));
+    loadGcalConnectedAccounts();
+    setTimeout(loadGcalConnectedAccounts, 3000);
+  } else if (d.oauth === 'error') {
+    showToast('Google auth error: ' + (d.email || ''), 'error');
+  }
+});
 
 async function loadGcalConnectedAccounts() {
   try {
