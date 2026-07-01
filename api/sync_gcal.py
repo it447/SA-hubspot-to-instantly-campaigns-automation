@@ -22,7 +22,8 @@ def _log(msg):
 # ── Redis ─────────────────────────────────────────────────────
 
 def _redis_get(key):
-    url = f"{UPSTASH_URL}/get/{key}"
+    from urllib.parse import quote as _quote
+    url = f"{UPSTASH_URL}/get/{_quote(key, safe='')}"
     req = Request(url, headers={"Authorization": f"Bearer {UPSTASH_TOKEN}"})
     with urlopen(req, timeout=5) as r:
         data = json.loads(r.read())
@@ -30,8 +31,13 @@ def _redis_get(key):
     return json.loads(val) if val else None
 
 def _redis_set_raw(key, value):
-    url = f"{UPSTASH_URL}/set/{key}/{value}"
-    req = Request(url, headers={"Authorization": f"Bearer {UPSTASH_TOKEN}"})
+    from urllib.parse import quote as _quote
+    url  = f"{UPSTASH_URL}/set/{_quote(key, safe='')}"
+    body = json.dumps([value]).encode()
+    req  = Request(url, data=body, headers={
+        "Authorization": f"Bearer {UPSTASH_TOKEN}",
+        "Content-Type":  "application/json"
+    }, method="POST")
     with urlopen(req, timeout=5) as r:
         r.read()
 

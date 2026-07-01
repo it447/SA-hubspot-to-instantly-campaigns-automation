@@ -82,9 +82,12 @@ class handler(BaseHTTPRequestHandler):
             "email":         email,
         }
         key     = f"gcal_token:{email}"
-        encoded = quote(json.dumps(token_record), safe="")
-        url     = f"{UPSTASH_URL}/set/{key}/{encoded}"
-        req2    = Request(url, headers={"Authorization": f"Bearer {UPSTASH_TOKEN}"})
+        encoded = json.dumps(token_record)
+        url     = f"{UPSTASH_URL}/set/{quote(key, safe='')}"
+        req2    = Request(url, data=json.dumps([encoded]).encode(), headers={
+            "Authorization": f"Bearer {UPSTASH_TOKEN}",
+            "Content-Type":  "application/json"
+        }, method="POST")
         try:
             with urlopen(req2, timeout=5) as r:
                 r.read()
