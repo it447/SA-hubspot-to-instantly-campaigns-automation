@@ -74,6 +74,11 @@ class handler(BaseHTTPRequestHandler):
         except Exception:
             email = state
 
+        if not email:
+            _log("[oauth_callback] could not determine email — aborting storage")
+            self._redirect("error", "Could not determine Google account email. Please type your email address in the form first, then click Connect.")
+            return
+
         # Store token record in Redis via pipeline (guaranteed format)
         token_record = {
             "access_token":  access_token,

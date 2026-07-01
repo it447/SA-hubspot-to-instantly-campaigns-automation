@@ -4,7 +4,7 @@ from urllib.parse import urlencode, parse_qs, urlparse
 
 GOOGLE_OAUTH_CLIENT_ID = os.environ.get("GOOGLE_OAUTH_CLIENT_ID", "")
 REDIRECT_URI = "https://sa-hubspot-to-instantly-campaigns-a.vercel.app/api/google/oauth/callback"
-SCOPE = "https://www.googleapis.com/auth/calendar"
+SCOPE = "https://www.googleapis.com/auth/calendar https://www.googleapis.com/auth/userinfo.email"
 
 
 class handler(BaseHTTPRequestHandler):

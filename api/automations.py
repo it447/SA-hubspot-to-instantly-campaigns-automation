@@ -480,7 +480,7 @@ class handler(BaseHTTPRequestHandler):
                 smembers_req = Request(smembers_url, headers={"Authorization": f"Bearer {UPSTASH_TOKEN}"})
                 with urlopen(smembers_req, timeout=8) as r:
                     result = json.loads(r.read())
-                accounts = result.get("result") or []
+                accounts = [a for a in (result.get("result") or []) if a]  # strip empty strings
                 _log(f"[connected-accounts] smembers returned: {accounts}")
 
                 # Backfill: if set is empty, scan for old gcal_token:* keys and populate
