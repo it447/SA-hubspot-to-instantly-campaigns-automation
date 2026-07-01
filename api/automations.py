@@ -490,6 +490,33 @@ class handler(BaseHTTPRequestHandler):
             except Exception as e:
                 _log(f"[connected-accounts] error: {e}")
                 self._json(500, {"error": str(e)})
+        elif path.endswith("/google/debug"):
+            # Debug endpoint: show raw Redis state for gcal tokens
+            try:
+                from urllib.parse import parse_qs as _pqs, urlparse as _up
+                qp = _pqs(_up(self.path).query)
+                email_check = qp.get("email", [""])[0]
+                debug = {}
+                # SMEMBERS
+                r1 = Request(f"{UPSTASH_URL}/smembers/gcal_connected_emails",
+                             headers={"Authorization": f"Bearer {UPSTASH_TOKEN}"})
+                with urlopen(r1, timeout=5) as r: debug["smembers"] = json.loads(r.read())
+                # SCAN
+                scan_r = Request(f"{UPSTASH_URL}/scan/0?match=gcal_token%3A*&count=100",
+                                 headers={"Authorization": f"Bearer {UPSTASH_TOKEN}"})
+                with urlopen(scan_r, timeout=5) as r: debug["scan"] = json.loads(r.read())
+                # Direct GET for email if provided
+                if email_check:
+                    pipeline = [["GET", f"gcal_token:{email_check}"]]
+                    pr = Request(f"{UPSTASH_URL}/pipeline",
+                                 data=json.dumps(pipeline).encode(),
+                                 headers={"Authorization": f"Bearer {UPSTASH_TOKEN}",
+                                          "Content-Type": "application/json"},
+                                 method="POST")
+                    with urlopen(pr, timeout=5) as r: debug["get_token"] = json.loads(r.read())
+                self._json(200, debug)
+            except Exception as e:
+                self._json(500, {"error": str(e)})
         elif path.endswith('/activity'):
             try:
                 automations_list = get_automations()
