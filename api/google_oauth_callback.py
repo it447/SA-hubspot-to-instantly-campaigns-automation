@@ -74,7 +74,7 @@ class handler(BaseHTTPRequestHandler):
         except Exception:
             email = state
 
-        # Store token record in Redis
+        # Store token record in Redis via pipeline (guaranteed format)
         token_record = {
             "access_token":  access_token,
             "refresh_token": tokens.get("refresh_token", ""),
@@ -83,15 +83,23 @@ class handler(BaseHTTPRequestHandler):
         }
         key     = f"gcal_token:{email}"
         encoded = json.dumps(token_record)
-        url     = f"{UPSTASH_URL}/set/{quote(key, safe='')}"
-        req2    = Request(url, data=json.dumps([encoded]).encode(), headers={
-            "Authorization": f"Bearer {UPSTASH_TOKEN}",
-            "Content-Type":  "application/json"
-        }, method="POST")
+        pipeline = [
+            ["SET", key, encoded],
+            ["SADD", "gcal_connected_emails", email],
+        ]
+        req2 = Request(
+            f"{UPSTASH_URL}/pipeline",
+            data=json.dumps(pipeline).encode(),
+            headers={
+                "Authorization": f"Bearer {UPSTASH_TOKEN}",
+                "Content-Type":  "application/json",
+            },
+            method="POST"
+        )
         try:
             with urlopen(req2, timeout=5) as r:
-                r.read()
-            _log(f"[oauth_callback] stored token for {email}")
+                resp_body = r.read()
+            _log(f"[oauth_callback] stored token for {email}: {resp_body}")
         except Exception as e:
             _log(f"[oauth_callback] redis store error: {e}")
 

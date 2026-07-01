@@ -22,19 +22,27 @@ def _log(msg):
 # ── Redis ─────────────────────────────────────────────────────
 
 def _redis_get(key):
+    # Use pipeline GET so key encoding matches pipeline SET
     from urllib.parse import quote as _quote
-    url = f"{UPSTASH_URL}/get/{_quote(key, safe='')}"
-    req = Request(url, headers={"Authorization": f"Bearer {UPSTASH_TOKEN}"})
+    pipeline = [["GET", key]]
+    body = json.dumps(pipeline).encode()
+    req = Request(f"{UPSTASH_URL}/pipeline", data=body, headers={
+        "Authorization": f"Bearer {UPSTASH_TOKEN}",
+        "Content-Type":  "application/json"
+    }, method="POST")
     with urlopen(req, timeout=5) as r:
-        data = json.loads(r.read())
-    val = data.get("result")
+        results = json.loads(r.read())
+    val = results[0].get("result") if results else None
     return json.loads(val) if val else None
 
 def _redis_set_raw(key, value):
-    from urllib.parse import quote as _quote
-    url  = f"{UPSTASH_URL}/set/{_quote(key, safe='')}"
-    body = json.dumps([value]).encode()
-    req  = Request(url, data=body, headers={
+    # Use pipeline to guarantee SET works and keep gcal_connected_emails in sync
+    email = key.replace("gcal_token:", "") if key.startswith("gcal_token:") else None
+    pipeline = [["SET", key, value]]
+    if email:
+        pipeline.append(["SADD", "gcal_connected_emails", email])
+    body = json.dumps(pipeline).encode()
+    req  = Request(f"{UPSTASH_URL}/pipeline", data=body, headers={
         "Authorization": f"Bearer {UPSTASH_TOKEN}",
         "Content-Type":  "application/json"
     }, method="POST")

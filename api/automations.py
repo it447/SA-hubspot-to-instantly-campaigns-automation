@@ -448,25 +448,48 @@ class handler(BaseHTTPRequestHandler):
 
         elif path.endswith("/google/connected-accounts"):
             try:
-                # Scan for gcal_token:* keys
-                accounts = []
-                cursor = 0
-                while True:
-                    scan_url = f"{UPSTASH_URL}/scan/{cursor}?match=gcal_token:*&count=100"
-                    scan_req = Request(scan_url, headers={"Authorization": f"Bearer {UPSTASH_TOKEN}"})
-                    with urlopen(scan_req, timeout=8) as r:
-                        result = json.loads(r.read()).get("result", [0, []])
-                    cursor = int(result[0])
-                    for key in (result[1] if len(result) > 1 else []):
-                        email = key.replace("gcal_token:", "")
-                        accounts.append(email)
-                    if cursor == 0:
-                        break
+                # Use SMEMBERS on the set of connected emails (reliable, no SCAN needed)
+                smembers_url = f"{UPSTASH_URL}/smembers/gcal_connected_emails"
+                smembers_req = Request(smembers_url, headers={"Authorization": f"Bearer {UPSTASH_TOKEN}"})
+                with urlopen(smembers_req, timeout=8) as r:
+                    result = json.loads(r.read())
+                accounts = result.get("result") or []
+                _log(f"[connected-accounts] smembers returned: {accounts}")
+
+                # Backfill: if set is empty, scan for old gcal_token:* keys and populate
+                if not accounts:
+                    _log("[connected-accounts] set empty, scanning for legacy keys")
+                    scanned = []
+                    cursor = 0
+                    while True:
+                        scan_url = f"{UPSTASH_URL}/scan/{cursor}?match=gcal_token%3A*&count=100"
+                        scan_req = Request(scan_url, headers={"Authorization": f"Bearer {UPSTASH_TOKEN}"})
+                        with urlopen(scan_req, timeout=8) as r:
+                            scan_result = json.loads(r.read()).get("result", [0, []])
+                        cursor = int(scan_result[0])
+                        for key in (scan_result[1] if len(scan_result) > 1 else []):
+                            email = key.replace("gcal_token:", "")
+                            if email and email != key:
+                                scanned.append(email)
+                        if cursor == 0:
+                            break
+                    if scanned:
+                        _log(f"[connected-accounts] backfilling {scanned} into set")
+                        sadd_pipeline = [["SADD", "gcal_connected_emails"] + scanned]
+                        sadd_req = Request(
+                            f"{UPSTASH_URL}/pipeline",
+                            data=json.dumps(sadd_pipeline).encode(),
+                            headers={"Authorization": f"Bearer {UPSTASH_TOKEN}", "Content-Type": "application/json"},
+                            method="POST"
+                        )
+                        with urlopen(sadd_req, timeout=5) as r:
+                            r.read()
+                        accounts = scanned
+
                 self._json(200, {"accounts": accounts})
             except Exception as e:
+                _log(f"[connected-accounts] error: {e}")
                 self._json(500, {"error": str(e)})
-            else:
-                self._json(404, {"error": "GOOGLE_SERVICE_ACCOUNT_JSON not configured"})
         elif path.endswith('/activity'):
             try:
                 automations_list = get_automations()
