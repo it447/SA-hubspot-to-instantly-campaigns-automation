@@ -1625,6 +1625,7 @@ function switchTab(tab) {
       fromInput._gcalWired = true;
       fromInput.addEventListener('input', () => renderGcalAccountDropdown(fromInput.value));
       fromInput.addEventListener('focus', () => renderGcalAccountDropdown(fromInput.value));
+      fromInput.addEventListener('focus', () => renderGcalAccountDropdown(fromInput.value));
       document.addEventListener('click', e => { if (!fromInput.contains(e.target)) document.getElementById('gcal-account-dropdown').style.display='none'; });
     }
   }
@@ -1642,6 +1643,7 @@ function switchTab(tab) {
     if (fromInput && !fromInput._gcalWired) {
       fromInput._gcalWired = true;
       fromInput.addEventListener('input', () => renderGcalAccountDropdown(fromInput.value));
+      fromInput.addEventListener('focus', () => renderGcalAccountDropdown(fromInput.value));
       fromInput.addEventListener('focus', () => renderGcalAccountDropdown(fromInput.value));
       document.addEventListener('click', e => { if (!fromInput.contains(e.target)) document.getElementById('gcal-account-dropdown').style.display='none'; });
     }
@@ -1821,8 +1823,10 @@ async function connectGoogleAccount() {
   const email = document.getElementById('gcal-send-from').value.trim();
   const url = `/api/google/oauth${email ? '?email=' + encodeURIComponent(email) : ''}`;
   window.open(url, '_blank', 'width=500,height=600');
-  // After user completes OAuth, refresh account list
+  // Reload account list at 3s, 6s, and 12s to catch slow OAuth flows
   setTimeout(loadGcalConnectedAccounts, 3000);
+  setTimeout(loadGcalConnectedAccounts, 6000);
+  setTimeout(loadGcalConnectedAccounts, 12000);
 }
 
 async function loadGcalConnectedAccounts() {
