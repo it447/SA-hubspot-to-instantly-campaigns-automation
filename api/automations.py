@@ -4,6 +4,7 @@ import time
 import os
 import sys
 import re
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from http.server import BaseHTTPRequestHandler
 from urllib.request import urlopen, Request
 from urllib.error import HTTPError
@@ -520,28 +521,27 @@ class handler(BaseHTTPRequestHandler):
         elif path.endswith('/activity'):
             try:
                 automations_list = get_automations()
-                est       = datetime.timezone(datetime.timedelta(hours=-5))
-                est_now   = datetime.datetime.now(est)
-                now_ts    = time.time()
+                est           = datetime.timezone(datetime.timedelta(hours=-5))
+                est_now       = datetime.datetime.now(est)
+                now_ts        = time.time()
                 cutoff_24h_ts = now_ts - 86400
-                day_totals = {}
-                daily      = {}
 
-                for a in automations_list:
-                    auto_id       = a.get('id','')
-                    delivery_type = a.get('delivery_type','')
+                def fetch_auto(a):
+                    """Returns (auto_id, day_counts_dict, count_24h)"""
+                    auto_id       = a.get('id', '')
+                    delivery_type = a.get('delivery_type', '')
                     if not auto_id:
-                        continue
-
-                    # GSheet / Calendly / Clay / FB automations — read from Redis logs
-                    if delivery_type in ('gsheet_sync', 'calendly', 'fb_conversions', 'gcal', 'instantly_inbound') or (delivery_type == 'enrichment' and a.get('clay_enabled')):
+                        return auto_id, {}, 0
+                    day_counts = {}
+                    count_24h  = 0
+                    use_redis  = delivery_type in ('gsheet_sync', 'calendly', 'fb_conversions', 'gcal', 'instantly_inbound') \
+                                 or (delivery_type == 'enrichment' and a.get('clay_enabled'))
+                    if use_redis:
                         try:
                             log_url = f"{UPSTASH_URL}/lrange/logs:{auto_id}/0/9999"
                             log_req = Request(log_url, headers={"Authorization": f"Bearer {UPSTASH_TOKEN}"})
                             with urlopen(log_req, timeout=8) as r:
-                                log_data = json.loads(r.read())
-                            entries   = log_data.get("result", [])
-                            count_24h = 0
+                                entries = json.loads(r.read()).get("result", [])
                             for entry_str in entries:
                                 try:
                                     entry = json.loads(entry_str)
@@ -555,46 +555,63 @@ class handler(BaseHTTPRequestHandler):
                                         dt = datetime.datetime.fromisoformat(str(ts).replace("Z", "+00:00"))
                                         ts_float = dt.timestamp()
                                     day_key = dt.astimezone(est).date().isoformat()
-                                    day_totals[day_key] = day_totals.get(day_key, 0) + 1
+                                    day_counts[day_key] = day_counts.get(day_key, 0) + 1
                                     if ts_float >= cutoff_24h_ts:
                                         count_24h += 1
                                 except Exception:
                                     continue
-                            if count_24h > 0:
-                                daily[auto_id] = count_24h
                         except Exception:
                             pass
-
-                    # Instantly / Form automations — read createdate from HubSpot list
                     else:
-                        list_id = a.get('hubspot_list_id','')
-                        if not list_id:
-                            continue
+                        list_id = a.get('hubspot_list_id', '')
+                        if list_id:
+                            try:
+                                contacts = get_list_contacts(list_id)
+                                for c in contacts:
+                                    created = c.get('created', '')
+                                    if not created:
+                                        continue
+                                    try:
+                                        dt = datetime.datetime.fromisoformat(created.replace("Z", "+00:00"))
+                                        ts_float = dt.timestamp()
+                                        day_key = dt.astimezone(est).date().isoformat()
+                                        day_counts[day_key] = day_counts.get(day_key, 0) + 1
+                                        if ts_float >= cutoff_24h_ts:
+                                            count_24h += 1
+                                    except Exception:
+                                        continue
+                            except Exception:
+                                pass
+                    return auto_id, day_counts, count_24h
+
+                day_totals = {}
+                daily      = {}
+                with ThreadPoolExecutor(max_workers=10) as pool:
+                    futures = {pool.submit(fetch_auto, a): a for a in automations_list}
+                    for fut in as_completed(futures):
                         try:
-                            contacts  = get_list_contacts(list_id)
-                            count_24h = 0
-                            for c in contacts:
-                                created = c.get('created','')
-                                if not created:
-                                    continue
-                                try:
-                                    dt = datetime.datetime.fromisoformat(created.replace("Z","+00:00"))
-                                    day_key = dt.astimezone(est).date().isoformat()
-                                    day_totals[day_key] = day_totals.get(day_key, 0) + 1
-                                    if dt >= cutoff_24h:
-                                        count_24h += 1
-                                except Exception:
-                                    continue
+                            auto_id, day_counts, count_24h = fut.result()
+                            for k, v in day_counts.items():
+                                day_totals[k] = day_totals.get(k, 0) + v
                             if count_24h > 0:
                                 daily[auto_id] = count_24h
                         except Exception:
                             pass
 
+                # 30-day rolling bar (oldest→newest)
                 monthly = []
                 for i in range(29, -1, -1):
                     day = (est_now - datetime.timedelta(days=i)).date().isoformat()
                     monthly.append(day_totals.get(day, 0))
-                self._json(200, {'daily': daily, 'monthly': monthly})
+
+                # Calendar-month count: 1st of current month → today, resets monthly
+                month_start = est_now.date().replace(day=1).isoformat()
+                cal_month   = sum(
+                    v for k, v in day_totals.items()
+                    if k >= month_start
+                )
+
+                self._json(200, {'daily': daily, 'monthly': monthly, 'cal_month': cal_month})
             except Exception as e:
                 self._json(500, {'error': str(e)})
 

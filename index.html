@@ -416,7 +416,7 @@
         <button class="btn btn-primary" style="width:auto;padding:11px 20px;margin-top:4px;" onclick="newAutomation()">+ New automation</button>
       </div>
 
-      <div class="stats-row" style="grid-template-columns:200px 200px;">
+      <div class="stats-row" style="grid-template-columns:200px 200px 200px;">
         <div class="stat-card" style="cursor:default;">
           <div class="stat-label">Total automations</div>
           <div class="stat-value orange" id="stat-total">—</div>
@@ -424,6 +424,10 @@
         <div class="stat-card" style="cursor:pointer;" onclick="setFilter('24h');showPage('dashboard')" title="Click to show automations active in last 24h">
           <div class="stat-label">Contacts processed · 24h</div>
           <div class="stat-value orange" id="stat-24h">—</div>
+        </div>
+        <div class="stat-card" style="cursor:default;" title="Resets on the 1st of each month">
+          <div class="stat-label">Contacts processed · this month</div>
+          <div class="stat-value orange" id="stat-cal-month">—</div>
         </div>
       </div>
       <span id="stat-instantly" style="display:none;"></span>
@@ -3150,7 +3154,11 @@ async function loadActivityData() {
     // Total 24h stat card
     const total24h = Object.values(dailyCounts).reduce((s, v) => s + v, 0);
     const el24h = document.getElementById('stat-24h');
-    if (el24h) el24h.textContent = total24h || '0';
+    if (el24h) el24h.textContent = total24h.toLocaleString() || '0';
+
+    // Calendar-month counter (resets 1st of each month)
+    const elCalMonth = document.getElementById('stat-cal-month');
+    if (elCalMonth) elCalMonth.textContent = (data.cal_month || 0).toLocaleString();
 
     // 30-day activity bar in sidebar
     const monthly = data.monthly || [];  // array of 30 daily totals, oldest first
