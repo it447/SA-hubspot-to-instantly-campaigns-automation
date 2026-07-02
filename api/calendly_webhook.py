@@ -99,6 +99,18 @@ def get_calendly_automations():
         pass
     return []
 
+BLOCKED_DOMAINS = {
+    "gmail.com", "yahoo.com", "yahoo.co.uk", "yahoo.co.in", "ymail.com",
+    "hotmail.com", "hotmail.co.uk", "outlook.com", "live.com", "msn.com",
+    "icloud.com", "me.com", "mac.com", "aol.com", "protonmail.com",
+    "proton.me", "gmx.com", "gmx.net", "mail.com", "zoho.com",
+    "yandex.com", "yandex.ru", "tutanota.com", "fastmail.com"
+}
+
+def is_free_email(email):
+    domain = email.split("@")[-1].lower() if "@" in email else ""
+    return domain in BLOCKED_DOMAINS
+
 class handler(BaseHTTPRequestHandler):
 
     def do_POST(self):
@@ -162,6 +174,11 @@ class handler(BaseHTTPRequestHandler):
             return
 
         _log(f"[calendly] booking: email={email} name={first_name} {last_name}")
+
+        if is_free_email(email):
+            _log(f"[calendly] blocked free email domain: {email}")
+            self._json(200, {"ok": True, "skipped": "free email domain"})
+            return
 
         # Build properties from automation mappings or defaults
         automations = get_calendly_automations()
