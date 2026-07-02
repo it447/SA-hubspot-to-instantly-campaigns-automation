@@ -28,6 +28,7 @@
     { "src": "/api/sync_clay", "dest": "/api/sync_clay.py" },
     { "src": "/api/sync_fb", "dest": "/api/sync_fb.py" },
     { "src": "/api/sync_gcal", "dest": "/api/sync_gcal.py" },
+    { "src": "/api/sync_gform", "dest": "/api/sync_gform.py" },
     { "src": "/webhook/calendly", "dest": "/api/calendly_webhook.py" },
     { "src": "/webhook/instantly", "dest": "/api/instantly_webhook.py" },
     { "src": "/webhook", "dest": "/api/webhook.py" },

@@ -834,6 +834,35 @@ class handler(BaseHTTPRequestHandler):
             self._json(200, new_auto)
             return
 
+        # ── Google Forms → Slack ─────────────────────────────
+        if delivery_type == "gform":
+            import re as _re, hashlib as _hl
+            form_url    = body.get("form_url", "").strip()
+            slack_ch    = body.get("slack_channel", "").strip()
+            slack_ch_nm = body.get("slack_channel_name", "").strip()
+            if not form_url:
+                self._json(400, {"error": "Please enter your Google Form URL"}); return
+            m = _re.search(r'/forms/d/([a-zA-Z0-9-_]+)', form_url)
+            form_id = m.group(1) if m else (form_url.strip() if _re.match(r'^[a-zA-Z0-9-_]{20,}$', form_url.strip()) else None)
+            if not form_id:
+                self._json(400, {"error": "Invalid Google Form URL"}); return
+            if not slack_ch:
+                self._json(400, {"error": "Please select a Slack channel"}); return
+            new_auto = {
+                "id":               f"gform_{_hl.md5(form_id.encode()).hexdigest()[:8]}",
+                "name":             name,
+                "delivery_type":    "gform",
+                "form_url":         form_url,
+                "form_id":          form_id,
+                "slack_channel":    slack_ch,
+                "slack_channel_name": slack_ch_nm,
+                "active":           True,
+            }
+            existing.append(new_auto)
+            save_automations(existing)
+            self._json(200, new_auto)
+            return
+
         # ── Calendly ─────────────────────────────────────────
         if delivery_type == "calendly":
             event_url = body.get("calendly_event_url", "").strip()
@@ -1138,6 +1167,13 @@ class handler(BaseHTTPRequestHandler):
                         a[k] = body[k]
                     if "slack_enabled" in body:
                         _apply_slack_fields(a, body)
+
+                elif a.get("delivery_type") == "gform":
+                    if "form_url" in body:
+                        a["form_url"] = body["form_url"].strip()
+                    if "slack_channel" in body:
+                        a["slack_channel"]      = body["slack_channel"].strip()
+                        a["slack_channel_name"] = body.get("slack_channel_name", "").strip()
 
                 else:
                     if "hubspot_list_id" in body:

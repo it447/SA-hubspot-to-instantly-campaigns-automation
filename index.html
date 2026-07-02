@@ -475,6 +475,7 @@
         <button class="tab-btn" id="tab-btn-clay" onclick="switchTab('clay')" style="color:#7C3AED;">▦ Clay Push</button>
         <button class="tab-btn" id="tab-btn-fb_conversions" onclick="switchTab('fb_conversions')" style="color:#1877F2;">⬡ FB Conversions</button>
         <button class="tab-btn" id="tab-btn-gcal" onclick="switchTab('gcal')" style="color:#34a853;">&#128197; Google Calendar</button>
+        <button class="tab-btn" id="tab-btn-gform" onclick="switchTab('gform')" style="color:#4285F4;"><svg width="13" height="13" viewBox="0 0 48 48" style="display:inline;vertical-align:-2px;margin-right:4px;" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="6" y="2" width="36" height="44" rx="4" fill="#7248B9"/><rect x="12" y="14" width="24" height="3" rx="1.5" fill="white" opacity="0.85"/><rect x="12" y="21" width="24" height="3" rx="1.5" fill="white" opacity="0.85"/><rect x="12" y="28" width="16" height="3" rx="1.5" fill="white" opacity="0.85"/><circle cx="34" cy="38" r="10" fill="#4285F4"/><path d="M29 38h10M34 33v10" stroke="white" stroke-width="2.5" stroke-linecap="round"/></svg>Google Forms</button>
         <button class="tab-btn" id="tab-btn-instantly_inbound" onclick="switchTab('instantly_inbound')" style="color:#2563EB;">⚡ Instantly → HubSpot</button>
       </div>
 
@@ -581,6 +582,11 @@
             <div class="source-card-icon"><svg width="32" height="32" viewBox="0 0 100 100" fill="none"><rect x="15" y="5" width="55" height="70" rx="4" fill="#0F9D58"/><path d="M70 5 L85 20 L70 20 Z" fill="#087447"/><rect x="70" y="5" width="15" height="15" rx="2" fill="#34A853"/><rect x="22" y="35" width="56" height="4" rx="2" fill="white" opacity="0.7"/><rect x="22" y="47" width="56" height="4" rx="2" fill="white" opacity="0.7"/><rect x="22" y="59" width="40" height="4" rx="2" fill="white" opacity="0.7"/></svg></div>
             <div class="source-card-label">Google Sheets</div>
             <div class="source-card-desc">Sync a Google Sheet to HubSpot contacts</div>
+          </div>
+          <div class="source-card" onclick="selectGwTypeCard('gform')">
+            <div class="source-card-icon"><svg width="32" height="32" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="4" y="2" width="32" height="40" rx="3" fill="#7248B9"/><rect x="9" y="12" width="22" height="2.5" rx="1.25" fill="white" opacity="0.85"/><rect x="9" y="18" width="22" height="2.5" rx="1.25" fill="white" opacity="0.85"/><rect x="9" y="24" width="14" height="2.5" rx="1.25" fill="white" opacity="0.85"/><circle cx="36" cy="38" r="10" fill="#4285F4"/><path d="M31 38h10M36 33v10" stroke="white" stroke-width="2.5" stroke-linecap="round"/></svg></div>
+            <div class="source-card-label">Google Forms</div>
+            <div class="source-card-desc">Send form responses to a Slack channel</div>
           </div>
         </div>
       </div>
@@ -1222,6 +1228,44 @@
         </div>
       </div>
 
+      <!-- ── Tab: Google Forms ── -->
+      <div class="tab-panel" id="tab-gform">
+        <div class="form-card" style="max-width:560px;">
+          <h3><svg width="18" height="18" viewBox="0 0 48 48" style="display:inline;vertical-align:-3px;margin-right:6px;" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="4" y="2" width="32" height="40" rx="3" fill="#7248B9"/><rect x="9" y="12" width="22" height="2.5" rx="1.25" fill="white" opacity="0.9"/><rect x="9" y="18" width="22" height="2.5" rx="1.25" fill="white" opacity="0.9"/><rect x="9" y="24" width="14" height="2.5" rx="1.25" fill="white" opacity="0.9"/><circle cx="36" cy="38" r="10" fill="#4285F4"/><path d="M31 38h10M36 33v10" stroke="white" stroke-width="2.5" stroke-linecap="round"/></svg>Google Forms → Slack</h3>
+          <p class="form-desc">When someone submits your Google Form, automatically send their full response to a Slack channel. All questions and answers are included automatically — no manual mapping needed.</p>
+
+          <div class="form-row" style="background:rgba(66,133,244,0.06);border:1px solid rgba(66,133,244,0.2);border-radius:8px;padding:0.9rem 1rem;font-size:13px;color:var(--muted);line-height:1.7;">
+            <strong style="color:#4285F4;">Setup required</strong> — Share your Google Form with the service account as an <strong>Editor</strong>:<br>
+            Open the form → ⋮ menu → <em>Add collaborators</em> → paste the service account email → set to <strong>Editor</strong>.
+          </div>
+
+          <div class="form-row">
+            <label>Automation name</label>
+            <input type="text" id="auto-name-gform" placeholder="e.g. Contact Form → #leads">
+          </div>
+
+          <div class="form-row">
+            <label>Google Form URL</label>
+            <input type="url" id="gform-url" placeholder="https://docs.google.com/forms/d/…">
+            <div class="token-hint">Paste the full form URL — the form ID is extracted automatically.</div>
+          </div>
+
+          <div class="form-row">
+            <label>Slack channel</label>
+            <div class="search-select">
+              <input type="text" id="slack-ch-search-gform" placeholder="Search channels…" autocomplete="off">
+              <div class="search-dropdown" id="slack-ch-dropdown-gform"></div>
+            </div>
+          </div>
+
+          <div class="form-footer">
+            <button class="btn btn-cream" onclick="cancelEdit()">Cancel</button>
+            <button class="btn btn-primary" onclick="createAutomation('gform')" id="create-btn-gform">Create automation</button>
+          </div>
+          <div class="error-msg" id="form-error-gform"></div>
+        </div>
+      </div>
+
       <!-- ── Tab: Instantly Inbound ── -->
       <div class="tab-panel" id="tab-instantly_inbound">
         <div class="form-card">
@@ -1437,6 +1481,7 @@ let fbMappings               = [{fb_field:'email', hs_property:'email', hs_label
 let campInboundSelected      = {};
 let inboundPropSelected      = {};
 let slackChSelectedInbound   = {};
+let slackChSelectedGform     = { id:'', name:'' };
 let hsProperties             = [];
 
 const FB_FIELDS = [
@@ -1886,6 +1931,14 @@ function resetGcalForm() {
   resetSearchSelect('slack-ch-search-gcal','slack-ch-dropdown-gcal', slackChSelectedGcal);
   const ta = document.getElementById('slack-msg-gcal'); if (ta) ta.value = '';
   const errEl = document.getElementById('form-error-gcal'); if (errEl) errEl.style.display = 'none';
+}
+
+function resetGformForm() {
+  document.getElementById('auto-name-gform').value = '';
+  document.getElementById('gform-url').value = '';
+  slackChSelectedGform = { id:'', name:'' };
+  resetSearchSelect('slack-ch-search-gform','slack-ch-dropdown-gform', slackChSelectedGform);
+  const errEl = document.getElementById('form-error-gform'); if (errEl) errEl.style.display = 'none';
 }
 
 async function createGcalAutomation() {
@@ -2347,6 +2400,7 @@ function newAutomation() {
   resetClayForm();
   resetFbForm();
   resetGcalForm();
+  resetGformForm();
   // Reset instantly_inbound form
   const autoNameInbound = document.getElementById('auto-name-instantly_inbound');
   if (autoNameInbound) autoNameInbound.value = '';
@@ -2521,6 +2575,7 @@ function renderAutomations() {
   if (currentFilter === 'calendly')       filtered = filtered.filter(a => a.delivery_type === 'calendly');
   if (currentFilter === 'clay')           filtered = filtered.filter(a => a.delivery_type === 'enrichment' && a.clay_enabled);
   if (currentFilter === 'fb_conversions') filtered = filtered.filter(a => a.delivery_type === 'fb_conversions');
+  if (currentFilter === 'gform')          filtered = filtered.filter(a => a.delivery_type === 'gform');
   if (currentFilter === 'gcal')           filtered = filtered.filter(a => a.delivery_type === 'gcal');
   if (currentFilter === 'instantly_inbound') filtered = filtered.filter(a => a.delivery_type === 'instantly_inbound');
   if (currentFilter === '24h')            filtered = filtered.filter(a => (dailyCounts[a.id]||0) > 0);
@@ -2551,6 +2606,7 @@ function renderAutomations() {
     const isFb       = a.delivery_type === 'fb_conversions';
     const isGcal     = a.delivery_type === 'gcal';
     const isInbound  = a.delivery_type === 'instantly_inbound';
+    const isGform    = a.delivery_type === 'gform';
     const active   = a.active !== false;
 
     let sourceChip, deliveryChip;
@@ -2560,6 +2616,9 @@ function renderAutomations() {
       const events = Array.isArray(a.trigger_events) ? a.trigger_events : (a.trigger_event ? [a.trigger_event] : []);
       const evtLabel = events.map(e => eventLabels[e]||e).join(', ') || '—';
       deliveryChip = `<span class="chip chip-hs">→ HubSpot · ${esc(evtLabel)}</span>`;
+    } else if (isGform) {
+      sourceChip   = `<span class="chip" style="color:#7248B9;border-color:rgba(114,72,185,0.3);background:rgba(114,72,185,0.08);">📋 Google Forms</span>`;
+      deliveryChip = `<span class="chip" style="color:#4285F4;border-color:rgba(66,133,244,0.3);background:rgba(66,133,244,0.08);"># ${esc(a.slack_channel_name||a.slack_channel)}</span>`;
     } else if (isGcal) {
       sourceChip   = `<span class="chip chip-hs">HubSpot · ${esc(a.hubspot_list_name || a.hubspot_list_id)}</span>`;
       deliveryChip = `<span class="chip" style="color:#34a853;border-color:rgba(52,168,83,0.3);background:rgba(52,168,83,0.08);">📅 Google Calendar</span>`;
@@ -2720,6 +2779,7 @@ async function loadDropdowns() {
       initSearchSelect('slack-ch-search-fb_conversions','slack-ch-dropdown-fb_conversions',slackChannels,slackChSelectedFb,'Search channels…');
       initSearchSelect('slack-ch-search-clay',       'slack-ch-dropdown-clay',       slackChannels,slackChSelectedClay,      'Search channels…');
       initSearchSelect('slack-ch-search-clay-alert', 'slack-ch-dropdown-clay-alert', slackChannels,slackChSelectedClayAlert, 'Search channels…');
+      initSearchSelect('slack-ch-search-gform',      'slack-ch-dropdown-gform',      slackChannels,slackChSelectedGform,     'Search channels…');
     }
     if (pr.ok && Array.isArray(pr.data)) {
       hsPropList = pr.data;
@@ -2748,6 +2808,32 @@ async function createAutomation(deliveryType) {
 
   // ── GSheet sync payload ──────────────────────────────────
   if (deliveryType === 'calendly') { await createCalendlyAutomation(); return; }
+
+  if (deliveryType === 'gform') {
+    const formUrl = document.getElementById('gform-url').value.trim();
+    if (!formUrl) { errEl.textContent='Please enter the Google Form URL.'; errEl.style.display='block'; return; }
+    if (!slackChSelectedGform.id) { errEl.textContent='Please select a Slack channel.'; errEl.style.display='block'; return; }
+    const payload = {
+      name,
+      delivery_type:       'gform',
+      form_url:            formUrl,
+      slack_channel:       slackChSelectedGform.id,
+      slack_channel_name:  slackChSelectedGform.name,
+    };
+    btn.disabled=true; btn.textContent=editingId?'Saving…':'Creating…';
+    try {
+      const { ok, data } = editingId
+        ? await api('PATCH', `/automations/${editingId}`, payload)
+        : await api('POST', '/automations', payload);
+      if (ok) {
+        editingId=null;
+        showToast(editingId?'Automation updated':'Automation created');
+        showPage('dashboard'); loadAutomations();
+      } else { errEl.textContent=data.error||'Something went wrong.'; errEl.style.display='block'; }
+    } catch(e) { errEl.textContent='Network error. Try again.'; errEl.style.display='block'; }
+    btn.disabled=false; btn.textContent='Create automation';
+    return;
+  }
 
   if (deliveryType === 'gsheet_sync') {
     const sheetUrl  = document.getElementById('gs-sheet-url').value.trim();
@@ -2884,15 +2970,26 @@ async function editAutomation(id) {
   const isFb       = a.delivery_type==='fb_conversions';
   const isGcal     = a.delivery_type==='gcal';
   const isInbound  = a.delivery_type==='instantly_inbound';
+  const isGform    = a.delivery_type==='gform';
   document.getElementById('add-page-title').textContent='Edit automation';
-  document.getElementById('add-page-subtitle').textContent = isGsheet ? 'Sync a Google Sheet to HubSpot' : isInbound ? 'Update HubSpot when contacts reply or opt out in Instantly' : 'Choose how to reach contacts from your HubSpot list';
+  document.getElementById('add-page-subtitle').textContent = isGsheet ? 'Sync a Google Sheet to HubSpot' : isInbound ? 'Update HubSpot when contacts reply or opt out in Instantly' : isGform ? 'Send Google Form responses to Slack' : 'Choose how to reach contacts from your HubSpot list';
   document.getElementById('source-selector').style.display='none';
   document.getElementById('hs-type-bar').style.display='none';
   document.querySelector('.tab-bar').style.display='none';
   document.getElementById('form-area').style.display='';
   document.getElementById('view-logs-btn').style.display = 'flex';
   showPage('add');
-  switchTab(isInbound?'instantly_inbound':isGcal?'gcal':isFb?'fb_conversions':isClay?'clay':isCalendly?'calendly':isGsheet?'gsheet_sync':isForm?'hubspot_form':'instantly');
+  switchTab(isGform?'gform':isInbound?'instantly_inbound':isGcal?'gcal':isFb?'fb_conversions':isClay?'clay':isCalendly?'calendly':isGsheet?'gsheet_sync':isForm?'hubspot_form':'instantly');
+
+  if (isGform) {
+    document.getElementById('auto-name-gform').value = a.name||'';
+    document.getElementById('gform-url').value = a.form_url||'';
+    if (a.slack_channel) {
+      slackChSelectedGform = { id: a.slack_channel, name: a.slack_channel_name||a.slack_channel };
+      initSearchSelect('slack-ch-search-gform','slack-ch-dropdown-gform',slackChannels,slackChSelectedGform,'Search channels…');
+    }
+    return;
+  }
 
   if (isInbound) {
     document.getElementById('auto-name-instantly_inbound').value = a.name||'';
