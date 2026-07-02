@@ -20,7 +20,7 @@
     { "src": "/api/google/service-account-email", "dest": "/api/automations.py" },
     { "src": "/api/google/connected-accounts", "dest": "/api/automations.py" },
     { "src": "/api/google/debug", "dest": "/api/automations.py" },
-    { "src": "/api/google/oauth/callback", "dest": "/api/google_oauth_callback.py" },
+    { "src": "/api/google/oauth/callback", "dest": "/api/google_oauth.py" },
     { "src": "/api/google/oauth", "dest": "/api/google_oauth.py" },
     { "src": "/api/gsheet/(.*)", "dest": "/api/gsheet.py" },
     { "src": "/api/sync_gsheet", "dest": "/api/sync_gsheet.py" },
