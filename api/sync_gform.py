@@ -182,10 +182,18 @@ def run_gform_sync(auto):
         _log(f"[gform] {auto_name}: auth error: {e}")
         return
 
-    # Load last-seen timestamp from Redis
-    state_key  = f"gform_state:{auto_id}"
-    state      = _redis_get(state_key) or {}
-    last_ts    = state.get("last_response_ts", None)
+    state_key = f"gform_state:{auto_id}"
+    state     = _redis_get(state_key) or {}
+    last_ts   = state.get("last_response_ts", None)
+    first_run = last_ts is None
+
+    # On first run: record "now" as the baseline and send nothing.
+    # This ensures submissions that existed before the automation was
+    # created are never sent to Slack.
+    if first_run:
+        _redis_set(state_key, {"last_response_ts": time.time()})
+        _log(f"[gform] {auto_name}: first run — baseline set, no past submissions sent")
+        return
 
     try:
         form_title, questions = get_form_metadata(form_id, token)
@@ -203,7 +211,6 @@ def run_gform_sync(auto):
         _log(f"[gform] {auto_name}: no new responses")
         return
 
-    # Sort oldest first so we process in order
     def _parse_ts(r):
         try:
             return datetime.datetime.fromisoformat(r.get("lastSubmittedTime","").replace("Z","+00:00")).timestamp()
@@ -212,12 +219,12 @@ def run_gform_sync(auto):
 
     responses.sort(key=_parse_ts)
 
-    newest_ts = last_ts or 0
+    newest_ts = last_ts
     sent = 0
     for resp in responses:
         resp_ts = _parse_ts(resp)
-        if last_ts and resp_ts <= last_ts:
-            continue  # already processed
+        if resp_ts <= last_ts:
+            continue
         msg = format_response_message(form_title, questions, resp)
         try:
             result = send_slack_message(channel, msg)
@@ -231,10 +238,10 @@ def run_gform_sync(auto):
         except Exception as e:
             _log(f"[gform] send error: {e}")
 
-    if newest_ts > (last_ts or 0):
+    if newest_ts > last_ts:
         _redis_set(state_key, {"last_response_ts": newest_ts})
 
-    _log(f"[gform] {auto_name}: sent {sent} response(s) to Slack")
+    _log(f"[gform] {auto_name}: sent {sent} new response(s) to Slack")
 
 
 class handler(BaseHTTPRequestHandler):
