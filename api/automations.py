@@ -859,6 +859,12 @@ class handler(BaseHTTPRequestHandler):
                 "active":        True,
             }
             _apply_slack_fields(new_auto, body)
+            # Fallback: gform always has a channel — ensure it's stored even if
+            # the frontend omits slack_enabled from the request body.
+            if not new_auto.get("slack_channel") and slack_ch:
+                new_auto["slack_channel"]      = slack_ch
+                new_auto["slack_channel_name"] = slack_ch_nm
+                new_auto["slack_enabled"]      = True
             existing.append(new_auto)
             save_automations(existing)
             self._json(200, new_auto)
