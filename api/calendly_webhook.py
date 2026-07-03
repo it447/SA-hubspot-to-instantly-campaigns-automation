@@ -163,8 +163,13 @@ class handler(BaseHTTPRequestHandler):
 
         _log(f"[calendly] booking: email={email} name={first_name} {last_name}")
 
-        # Build properties from automation mappings or defaults
+        # Only proceed if there is at least one active Calendly automation
         automations = get_calendly_automations()
+        if not automations:
+            _log("[calendly] no active automations — skipping HubSpot upsert")
+            self._json(200, {"ok": True, "skipped": True})
+            return
+
         calendly_data = {
             "first_name": first_name,
             "last_name":  last_name,
@@ -210,7 +215,6 @@ class handler(BaseHTTPRequestHandler):
         event_uri = payload.get("event_type", {}).get("uri", "") if isinstance(payload.get("event_type"), dict) else ""
         full_name = f"{first_name} {last_name}".strip()
 
-        automations = get_calendly_automations()
         for auto in automations:
             auto_id = auto.get("id", "")
             try:
