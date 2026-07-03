@@ -27,16 +27,24 @@ def get_automations():
 
 def already_sent(email, campaign_id):
     key = f"sent:{email.lower()}:{campaign_id}"
-    url = f"{UPSTASH_URL}/get/{key}"
-    req = Request(url, headers={"Authorization": f"Bearer {os.environ.get('UPSTASH_REDIS_REST_TOKEN','')}"})
+    pipeline = [["GET", key]]
+    body = json.dumps(pipeline).encode()
+    req = Request(f"{UPSTASH_URL}/pipeline", data=body, headers={
+        "Authorization": f"Bearer {UPSTASH_TOKEN}",
+        "Content-Type": "application/json"
+    }, method="POST")
     with urlopen(req, timeout=5) as r:
-        result = json.loads(r.read())
-    return result.get("result") is not None
+        results = json.loads(r.read())
+    return results[0].get("result") is not None
 
 def mark_as_sent(email, campaign_id):
     key = f"sent:{email.lower()}:{campaign_id}"
-    url = f"{UPSTASH_URL}/set/{key}/1"
-    req = Request(url, headers={"Authorization": f"Bearer {os.environ.get('UPSTASH_REDIS_REST_TOKEN','')}"})
+    pipeline = [["SET", key, "1"]]
+    body = json.dumps(pipeline).encode()
+    req = Request(f"{UPSTASH_URL}/pipeline", data=body, headers={
+        "Authorization": f"Bearer {UPSTASH_TOKEN}",
+        "Content-Type": "application/json"
+    }, method="POST")
     with urlopen(req, timeout=5) as r:
         r.read()
 
@@ -82,7 +90,7 @@ class handler(BaseHTTPRequestHandler):
             events = [events]
 
         automations = get_automations()
-        lookup = {a["hubspot_list_id"]: a for a in automations if a.get("active")}
+        lookup = {a["hubspot_list_id"]: a for a in automations if a.get("active") and a.get("delivery_type") == "instantly" and a.get("hubspot_list_id")}
         _log(f"[webhook] active automations={list(lookup.keys())}")
 
         processed = duplicates = skipped = 0

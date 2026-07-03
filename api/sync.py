@@ -383,7 +383,7 @@ def add_to_instantly(email, first_name, last_name, company, campaign_id):
         "Authorization": f"Bearer {INSTANTLY_API_KEY}",
         "Content-Type":  "application/json"
     }
-    resp = requests.post("https://api.instantly.ai/api/v2/leads/add", headers=headers, json={
+    resp = requests.post("https://api.instantly.ai/api/v2/leads", headers=headers, json={
         "campaign_id": campaign_id,
         "leads": [{"email": email, "first_name": first_name, "last_name": last_name, "company_name": company}],
     }, timeout=10)
@@ -919,7 +919,8 @@ class handler(BaseHTTPRequestHandler):
         # Re-fetch latest automations before saving to avoid overwriting
         # automations created/edited while this cron run was in progress.
         # Only merge last_run timestamps — never delete or modify anything else.
-        last_run_map = {a["id"]: a["last_run"] for a in all_automations if a.get("id") and a.get("last_run")}
+        last_run_map      = {a["id"]: a["last_run"]       for a in all_automations if a.get("id") and a.get("last_run")}
+        last_gsheet_run_map = {a["id"]: a["last_gsheet_run"] for a in all_automations if a.get("id") and a.get("last_gsheet_run")}
         fresh = get_automations()
         if not fresh:
             _log("[sync] WARNING: re-fetch returned empty list, skipping save to protect automations")
@@ -927,6 +928,8 @@ class handler(BaseHTTPRequestHandler):
             for a in fresh:
                 if a.get("id") in last_run_map:
                     a["last_run"] = last_run_map[a["id"]]
+                if a.get("id") in last_gsheet_run_map:
+                    a["last_gsheet_run"] = last_gsheet_run_map[a["id"]]
             save_automations(fresh)
 
         result = {

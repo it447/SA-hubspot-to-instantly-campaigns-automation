@@ -473,6 +473,8 @@ class handler(BaseHTTPRequestHandler):
             email = get_service_account_email()
             if email:
                 self._json(200, {"email": email})
+            else:
+                self._json(500, {"error": "Service account not configured"})
 
         elif path.endswith("/google/connected-accounts"):
             try:
@@ -849,15 +851,14 @@ class handler(BaseHTTPRequestHandler):
             if not slack_ch:
                 self._json(400, {"error": "Please select a Slack channel"}); return
             new_auto = {
-                "id":               f"gform_{_hl.md5(form_id.encode()).hexdigest()[:8]}",
-                "name":             name,
-                "delivery_type":    "gform",
-                "form_url":         form_url,
-                "form_id":          form_id,
-                "slack_channel":    slack_ch,
-                "slack_channel_name": slack_ch_nm,
-                "active":           True,
+                "id":            f"gform_{_hl.md5(form_id.encode()).hexdigest()[:8]}",
+                "name":          name,
+                "delivery_type": "gform",
+                "form_url":      form_url,
+                "form_id":       form_id,
+                "active":        True,
             }
+            _apply_slack_fields(new_auto, body)
             existing.append(new_auto)
             save_automations(existing)
             self._json(200, new_auto)
@@ -881,6 +882,7 @@ class handler(BaseHTTPRequestHandler):
                 "active":             True,
             }
             _apply_slack_fields(new_auto, body)
+            _apply_alert_fields(new_auto, body)
             existing.append(new_auto)
             save_automations(existing)
             self._json(200, new_auto)
@@ -1100,7 +1102,8 @@ class handler(BaseHTTPRequestHandler):
                 if a.get("delivery_type") == "calendly":
                     if "calendly_event_url" in body: a["calendly_event_url"] = body["calendly_event_url"]
                     if "property_mappings"  in body: a["property_mappings"]  = body["property_mappings"]
-                    if "slack_enabled" in body: _apply_slack_fields(a, body)
+                    if "slack_enabled"  in body: _apply_slack_fields(a, body)
+                    if "alert_enabled"  in body: _apply_alert_fields(a, body)
 
                 elif a.get("delivery_type") == "gsheet_sync":
                     # Re-apply all gsheet fields if any gsheet key is present
@@ -1114,6 +1117,8 @@ class handler(BaseHTTPRequestHandler):
                         _apply_gsheet_fields(a, body)
                     if "slack_enabled" in body:
                         _apply_slack_fields(a, body)
+                    if "alert_enabled" in body:
+                        _apply_alert_fields(a, body)
 
                 elif a.get("delivery_type") == "enrichment":
                     if "hubspot_list_id" in body:
@@ -1130,6 +1135,8 @@ class handler(BaseHTTPRequestHandler):
                         a["clay_max_per_run"] = int(body.get("clay_max_per_run") or 0)
                     if "slack_enabled" in body:
                         _apply_slack_fields(a, body)
+                    if "alert_enabled" in body:
+                        _apply_alert_fields(a, body)
 
                 elif a.get("delivery_type") == "gcal":
                     gcal_keys = {"hubspot_list_id", "send_from_email", "meeting_title",
@@ -1142,6 +1149,8 @@ class handler(BaseHTTPRequestHandler):
                         a["hubspot_list_name"] = body.get("hubspot_list_name", "")
                     if "slack_enabled" in body:
                         _apply_slack_fields(a, body)
+                    if "alert_enabled" in body:
+                        _apply_alert_fields(a, body)
 
                 elif a.get("delivery_type") == "fb_conversions":
                     if "hubspot_list_id" in body:
@@ -1158,6 +1167,8 @@ class handler(BaseHTTPRequestHandler):
                         ]
                     if "slack_enabled" in body:
                         _apply_slack_fields(a, body)
+                    if "alert_enabled" in body:
+                        _apply_alert_fields(a, body)
 
                 elif a.get("delivery_type") == "instantly_inbound":
                     if "trigger_events" in body:
@@ -1167,13 +1178,19 @@ class handler(BaseHTTPRequestHandler):
                         a[k] = body[k]
                     if "slack_enabled" in body:
                         _apply_slack_fields(a, body)
+                    if "alert_enabled" in body:
+                        _apply_alert_fields(a, body)
 
                 elif a.get("delivery_type") == "gform":
                     if "form_url" in body:
                         a["form_url"] = body["form_url"].strip()
-                    if "slack_channel" in body:
+                    if "slack_enabled" in body:
+                        _apply_slack_fields(a, body)
+                    elif "slack_channel" in body:
                         a["slack_channel"]      = body["slack_channel"].strip()
                         a["slack_channel_name"] = body.get("slack_channel_name", "").strip()
+                    if "alert_enabled" in body:
+                        _apply_alert_fields(a, body)
 
                 else:
                     if "hubspot_list_id" in body:
