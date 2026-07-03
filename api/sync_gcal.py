@@ -50,9 +50,9 @@ def _redis_set_raw(key, value):
         r.read()
 
 def _redis_set_json(key, value):
-    url  = f"{UPSTASH_URL}/set/{key}"
-    body = json.dumps(value).encode()
-    req  = Request(url, data=body, headers={
+    pipeline = [["SET", key, json.dumps(value)]]
+    body = json.dumps(pipeline).encode()
+    req  = Request(f"{UPSTASH_URL}/pipeline", data=body, headers={
         "Authorization": f"Bearer {UPSTASH_TOKEN}",
         "Content-Type":  "application/json"
     }, method="POST")
@@ -151,9 +151,8 @@ def refresh_token(token_record):
     token_record["expiry"]       = time.time() + tokens.get("expires_in", 3600)
     email = token_record.get("email", "")
     if email:
-        key     = f"gcal_token:{email}"
-        encoded = quote(json.dumps(token_record), safe="")
-        _redis_set_raw(key, encoded)
+        key = f"gcal_token:{email}"
+        _redis_set_raw(key, json.dumps(token_record))
     return token_record
 
 def get_valid_access_token(email):
