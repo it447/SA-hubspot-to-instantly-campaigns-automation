@@ -703,6 +703,7 @@ class handler(BaseHTTPRequestHandler):
         if SYNC_SECRET and secret != SYNC_SECRET:
             self._json(401, {"error": "Unauthorized"})
             return
+        self._json(200, {"ok": True, "status": "sync started"})
         self._run_sync()
 
     def _run_sync(self):
@@ -799,7 +800,6 @@ class handler(BaseHTTPRequestHandler):
 
         result = {"ran": ran, "skipped": skipped, "errors": errors}
         _log(f"[sync_gsheet] done: {result}")
-        self._json(200, result)
 
     def _json(self, status, data):
         body = json.dumps(data).encode()

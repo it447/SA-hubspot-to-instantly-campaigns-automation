@@ -776,6 +776,8 @@ class handler(BaseHTTPRequestHandler):
         if SYNC_SECRET and secret != SYNC_SECRET:
             self._json(401, {"error": "Unauthorized"})
             return
+        # Respond immediately so cron-job.org doesn't timeout waiting
+        self._json(200, {"ok": True, "status": "sync started"})
         self._run_sync()
 
     def _run_sync(self):
@@ -940,7 +942,6 @@ class handler(BaseHTTPRequestHandler):
             "errors":     total_errors
         }
         _log(f"[sync] done: {result}")
-        self._json(200, result)
 
     def _json(self, status, data):
         body = json.dumps(data).encode()

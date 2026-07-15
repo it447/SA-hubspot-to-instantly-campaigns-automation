@@ -253,19 +253,20 @@ class handler(BaseHTTPRequestHandler):
             self.end_headers()
             return
 
+        body = json.dumps({"ok": True, "status": "sync started"}).encode()
+        self.send_response(200)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
         automations = get_automations()
         ran = 0
         for a in automations:
             if a.get("delivery_type") == "gform" and a.get("active"):
                 run_gform_sync(a)
                 ran += 1
-
-        body = json.dumps({"ok": True, "ran": ran}).encode()
-        self.send_response(200)
-        self.send_header("Content-Type", "application/json")
-        self.send_header("Content-Length", str(len(body)))
-        self.end_headers()
-        self.wfile.write(body)
+        _log(f"[gform] done. ran={ran}")
 
     def log_message(self, *args):
         pass

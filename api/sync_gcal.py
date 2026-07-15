@@ -402,6 +402,8 @@ class handler(BaseHTTPRequestHandler):
         if SYNC_SECRET and secret != SYNC_SECRET:
             self._json(401, {"error": "Unauthorized"})
             return
+        # Respond immediately so cron-job.org doesn't timeout waiting
+        self._json(200, {"ok": True, "status": "sync started"})
         self._run_sync()
 
     def do_POST(self):
@@ -417,7 +419,6 @@ class handler(BaseHTTPRequestHandler):
         _log(f"[gcal_sync] found {len(gcal_automations)} active GCal automations")
 
         if not gcal_automations:
-            self._json(200, {"ok": True, "processed": 0})
             return
 
         processed = 0
@@ -431,7 +432,7 @@ class handler(BaseHTTPRequestHandler):
             except Exception as e:
                 _log(f"[gcal_sync] error in {auto_name}: {e}")
 
-        self._json(200, {"ok": True, "processed": processed})
+        _log(f"[gcal_sync] done. processed={processed}")
 
     def _json(self, status, data):
         body = json.dumps(data).encode()

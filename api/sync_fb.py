@@ -334,6 +334,7 @@ class handler(BaseHTTPRequestHandler):
         if SYNC_SECRET and secret != SYNC_SECRET:
             self._json(401, {"error": "Unauthorized"})
             return
+        self._json(200, {"ok": True, "status": "sync started"})
         self._run_sync()
 
     def do_POST(self):
@@ -350,7 +351,6 @@ class handler(BaseHTTPRequestHandler):
         _log(f"[fb_sync] found {len(fb_automations)} active FB Conversions automations")
 
         if not fb_automations:
-            self._json(200, {"ok": True, "processed": 0})
             return
 
         processed = 0
@@ -365,7 +365,7 @@ class handler(BaseHTTPRequestHandler):
             except Exception as e:
                 _log(f"[fb_sync] error in {auto_name}: {e}")
 
-        self._json(200, {"ok": True, "processed": processed})
+        _log(f"[fb_sync] done. processed={processed}")
 
     def _json(self, status, data):
         body = json.dumps(data).encode()
