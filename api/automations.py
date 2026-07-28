@@ -413,60 +413,136 @@ class handler(BaseHTTPRequestHandler):
             from urllib.parse import parse_qs as _pqs, urlparse as _up
             qp = _pqs(_up(self.path).query)
             campaign_id = qp.get("campaign_id", [""])[0]
-            result = {"api_key_set": bool(INSTANTLY_API_KEY)}
-            try:
-                # Check API key works by listing campaigns
-                r = requests.get(
-                    "https://api.instantly.ai/api/v2/campaigns?limit=5",
-                    headers={"Authorization": f"Bearer {INSTANTLY_API_KEY}"},
-                    timeout=10
-                )
-                result["campaigns_status"] = r.status_code
-                if r.status_code == 200:
-                    items = r.json() if isinstance(r.json(), list) else r.json().get("items", [])
-                    result["campaigns_sample"] = [{"id": c.get("id"), "name": c.get("name"), "status": c.get("status")} for c in items[:5]]
-                else:
-                    result["campaigns_error"] = r.text[:300]
-            except Exception as e:
-                result["campaigns_exception"] = str(e)
+            auto_id     = qp.get("auto_id", [""])[0]
+            result      = {"steps": {}}
 
+            # Step 1: Instantly API key
+            result["steps"]["1_api_key"] = "SET" if INSTANTLY_API_KEY else "MISSING"
+
+            # Step 2: Campaign exists in Instantly
             if campaign_id:
                 try:
-                    # Get campaign details
-                    r2 = requests.get(
+                    r = requests.get(
                         f"https://api.instantly.ai/api/v2/campaigns/{campaign_id}",
                         headers={"Authorization": f"Bearer {INSTANTLY_API_KEY}"},
                         timeout=10
                     )
-                    result["campaign_status"] = r2.status_code
-                    if r2.status_code == 200:
-                        c = r2.json()
-                        result["campaign_detail"] = {"id": c.get("id"), "name": c.get("name"), "status": c.get("status")}
+                    if r.status_code == 200:
+                        c = r.json()
+                        status_map = {-1: "paused/stopped", 0: "draft", 1: "active", 2: "completed"}
+                        result["steps"]["2_campaign"] = {
+                            "name":   c.get("name"),
+                            "status": status_map.get(c.get("status"), str(c.get("status"))),
+                            "ok":     c.get("status") in (1,)
+                        }
                     else:
-                        result["campaign_error"] = r2.text[:300]
+                        result["steps"]["2_campaign"] = {"error": f"HTTP {r.status_code}", "body": r.text[:200]}
                 except Exception as e:
-                    result["campaign_exception"] = str(e)
+                    result["steps"]["2_campaign"] = {"exception": str(e)}
 
+            # Step 3: Automation config in Redis
+            if auto_id or campaign_id:
                 try:
-                    # Test adding a real lead to see the exact API response
-                    test_email = qp.get("test_email", [""])[0]
-                    if test_email:
-                        r_add = requests.post(
-                            "https://api.instantly.ai/api/v2/leads",
-                            headers={"Authorization": f"Bearer {INSTANTLY_API_KEY}", "Content-Type": "application/json"},
-                            json={
-                                "campaign_id": campaign_id,
-                                "email":        test_email,
-                                "first_name":   "Test",
-                                "last_name":    "Lead",
-                                "company_name": "Test Co",
-                            },
-                            timeout=10
-                        )
-                        result["test_add_status"] = r_add.status_code
-                        result["test_add_body"] = r_add.text[:500]
+                    automations = _redis_get("automations_config") or []
+                    match = None
+                    for a in automations:
+                        if (auto_id and a.get("id") == auto_id) or \
+                           (campaign_id and a.get("instantly_campaign_id") == campaign_id):
+                            match = a
+                            break
+                    if match:
+                        result["steps"]["3_automation"] = {
+                            "id":          match.get("id"),
+                            "name":        match.get("name"),
+                            "active":      match.get("active"),
+                            "campaign_id": match.get("instantly_campaign_id"),
+                            "list_id":     match.get("hubspot_list_id"),
+                            "last_run":    match.get("last_run"),
+                        }
+                    else:
+                        result["steps"]["3_automation"] = {"error": "No automation found matching campaign_id or auto_id"}
                 except Exception as e:
-                    result["test_add_exception"] = str(e)
+                    result["steps"]["3_automation"] = {"exception": str(e)}
+
+            # Step 4: Dedup keys in Redis for this campaign
+            if campaign_id:
+                try:
+                    dedup_count = 0
+                    cursor = 0
+                    pattern = f"sent:*:{campaign_id}"
+                    while True:
+                        from urllib.parse import quote as _q
+                        url = f"{UPSTASH_URL}/scan/{cursor}?match={_q(pattern, safe='')}&count=500"
+                        req = Request(url, headers={"Authorization": f"Bearer {UPSTASH_TOKEN}"})
+                        with urlopen(req, timeout=10) as r2:
+                            data = json.loads(r2.read())
+                        res = data.get("result", [0, []])
+                        cursor = int(res[0])
+                        dedup_count += len(res[1] if len(res) > 1 else [])
+                        if cursor == 0:
+                            break
+                    result["steps"]["4_dedup_keys"] = {
+                        "count": dedup_count,
+                        "note": "These contacts are marked as already sent and will be skipped by the sync" if dedup_count > 0 else "No dedup keys — contacts will be picked up on next sync"
+                    }
+                except Exception as e:
+                    result["steps"]["4_dedup_keys"] = {"exception": str(e)}
+
+            # Step 5: HubSpot list contact count
+            auto_match = result.get("steps", {}).get("3_automation", {})
+            list_id = auto_match.get("list_id", "") if isinstance(auto_match, dict) else ""
+            if list_id:
+                try:
+                    hs_resp = requests.get(
+                        f"https://api.hubapi.com/contacts/v1/lists/{list_id}/contacts/all?count=1",
+                        headers={"Authorization": f"Bearer {HUBSPOT_API_KEY}"},
+                        timeout=10
+                    )
+                    if hs_resp.status_code == 200:
+                        body = hs_resp.json()
+                        result["steps"]["5_hubspot_list"] = {
+                            "list_id":        list_id,
+                            "total_contacts": body.get("total", "unknown"),
+                            "has_contacts":   body.get("total", 0) > 0
+                        }
+                    else:
+                        result["steps"]["5_hubspot_list"] = {"error": f"HTTP {hs_resp.status_code}"}
+                except Exception as e:
+                    result["steps"]["5_hubspot_list"] = {"exception": str(e)}
+
+            # Step 6: Test a live add to Instantly
+            test_email = qp.get("test_email", [""])[0]
+            if campaign_id and test_email:
+                try:
+                    r_add = requests.post(
+                        "https://api.instantly.ai/api/v2/leads",
+                        headers={"Authorization": f"Bearer {INSTANTLY_API_KEY}", "Content-Type": "application/json"},
+                        json={"campaign_id": campaign_id, "email": test_email,
+                              "first_name": "Test", "last_name": "Lead", "company_name": "Test Co"},
+                        timeout=10
+                    )
+                    result["steps"]["6_test_add"] = {
+                        "status": r_add.status_code,
+                        "body":   r_add.text[:400],
+                        "ok":     r_add.status_code in (200, 201)
+                    }
+                except Exception as e:
+                    result["steps"]["6_test_add"] = {"exception": str(e)}
+
+            # Summary
+            dedup_info = result["steps"].get("4_dedup_keys", {})
+            dedup_count = dedup_info.get("count", "?") if isinstance(dedup_info, dict) else "?"
+            campaign_info = result["steps"].get("2_campaign", {})
+            campaign_ok = campaign_info.get("ok", False) if isinstance(campaign_info, dict) else False
+            result["summary"] = {
+                "campaign_active_in_instantly": campaign_ok,
+                "dedup_keys_blocking": dedup_count,
+                "action_needed": (
+                    "Clear dedup keys in Upstash then trigger /api/sync" if isinstance(dedup_count, int) and dedup_count > 0
+                    else "Activate campaign in Instantly" if not campaign_ok
+                    else "Trigger /api/sync from browser console"
+                )
+            }
 
             self._json(200, result)
             return
