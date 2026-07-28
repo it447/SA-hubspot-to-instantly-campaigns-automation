@@ -448,23 +448,22 @@ class handler(BaseHTTPRequestHandler):
                     result["campaign_exception"] = str(e)
 
                 try:
-                    # Count leads in campaign using correct v2 POST endpoint
-                    r3 = requests.post(
-                        "https://api.instantly.ai/api/v2/leads/list",
-                        headers={"Authorization": f"Bearer {INSTANTLY_API_KEY}", "Content-Type": "application/json"},
-                        json={"campaign_id": campaign_id, "limit": 5},
-                        timeout=10
-                    )
-                    result["leads_status"] = r3.status_code
-                    if r3.status_code == 200:
-                        data = r3.json()
-                        leads = data if isinstance(data, list) else data.get("items", data.get("leads", []))
-                        result["leads_sample"] = [{"email": l.get("email"), "status": l.get("status")} for l in leads[:5]]
-                        result["leads_count_in_page"] = len(leads)
-                    else:
-                        result["leads_error"] = r3.text[:300]
+                    # Test adding a real lead to see the exact API response
+                    test_email = qp.get("test_email", [""])[0]
+                    if test_email:
+                        r_add = requests.post(
+                            "https://api.instantly.ai/api/v2/leads",
+                            headers={"Authorization": f"Bearer {INSTANTLY_API_KEY}", "Content-Type": "application/json"},
+                            json={
+                                "campaign_id": campaign_id,
+                                "leads": [{"email": test_email, "first_name": "Test", "last_name": "Lead", "company_name": "Test Co"}]
+                            },
+                            timeout=10
+                        )
+                        result["test_add_status"] = r_add.status_code
+                        result["test_add_body"] = r_add.text[:500]
                 except Exception as e:
-                    result["leads_exception"] = str(e)
+                    result["test_add_exception"] = str(e)
 
             self._json(200, result)
             return
