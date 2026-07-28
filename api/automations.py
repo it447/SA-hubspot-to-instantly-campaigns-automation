@@ -456,7 +456,10 @@ class handler(BaseHTTPRequestHandler):
                             headers={"Authorization": f"Bearer {INSTANTLY_API_KEY}", "Content-Type": "application/json"},
                             json={
                                 "campaign_id": campaign_id,
-                                "leads": [{"email": test_email, "first_name": "Test", "last_name": "Lead", "company_name": "Test Co"}]
+                                "email":        test_email,
+                                "first_name":   "Test",
+                                "last_name":    "Lead",
+                                "company_name": "Test Co",
                             },
                             timeout=10
                         )
