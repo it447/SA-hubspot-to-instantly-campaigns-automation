@@ -547,6 +547,54 @@ class handler(BaseHTTPRequestHandler):
             self._json(200, result)
             return
 
+        if path.endswith("/instantly/reset-dedup"):
+            # Clear dedup keys for a specific campaign so contacts can be re-enrolled
+            from urllib.parse import parse_qs as _pqs, urlparse as _up, quote as _q
+            qp = _pqs(_up(self.path).query)
+            campaign_id = qp.get("campaign_id", [""])[0]
+            confirm     = qp.get("confirm", [""])[0]
+            if not campaign_id:
+                self._json(400, {"error": "campaign_id required"})
+                return
+            if confirm != "yes":
+                self._json(400, {"error": "Add &confirm=yes to actually clear the keys"})
+                return
+            try:
+                deleted = 0
+                cursor  = 0
+                pattern = f"sent:*:{campaign_id}"
+                keys_to_delete = []
+                while True:
+                    url = f"{UPSTASH_URL}/scan/{cursor}?match={_q(pattern, safe='')}&count=500"
+                    req = Request(url, headers={"Authorization": f"Bearer {UPSTASH_TOKEN}"})
+                    with urlopen(req, timeout=10) as r:
+                        data = json.loads(r.read())
+                    res    = data.get("result", [0, []])
+                    cursor = int(res[0])
+                    keys_to_delete += res[1] if len(res) > 1 else []
+                    if cursor == 0:
+                        break
+                # Delete in batches via pipeline
+                for i in range(0, len(keys_to_delete), 50):
+                    batch    = keys_to_delete[i:i+50]
+                    pipeline = [["DEL", k] for k in batch]
+                    body     = json.dumps(pipeline).encode()
+                    req      = Request(f"{UPSTASH_URL}/pipeline", data=body, headers={
+                        "Authorization": f"Bearer {UPSTASH_TOKEN}",
+                        "Content-Type":  "application/json"
+                    }, method="POST")
+                    with urlopen(req, timeout=10) as r:
+                        r.read()
+                    deleted += len(batch)
+                self._json(200, {
+                    "ok":      True,
+                    "deleted": deleted,
+                    "message": f"Cleared {deleted} dedup keys for campaign {campaign_id}. Trigger /api/sync to re-enroll contacts."
+                })
+            except Exception as e:
+                self._json(500, {"error": str(e)})
+            return
+
         if path.endswith("/google/debug"):
             try:
                 from urllib.parse import parse_qs as _pqs, urlparse as _up
