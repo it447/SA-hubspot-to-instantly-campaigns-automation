@@ -409,6 +409,65 @@ class handler(BaseHTTPRequestHandler):
         path = self.path.split("?")[0]
 
         # Public debug endpoint — no auth required
+        if path.endswith("/instantly/debug"):
+            from urllib.parse import parse_qs as _pqs, urlparse as _up
+            qp = _pqs(_up(self.path).query)
+            campaign_id = qp.get("campaign_id", [""])[0]
+            result = {"api_key_set": bool(INSTANTLY_API_KEY)}
+            try:
+                # Check API key works by listing campaigns
+                r = requests.get(
+                    "https://api.instantly.ai/api/v2/campaigns?limit=5",
+                    headers={"Authorization": f"Bearer {INSTANTLY_API_KEY}"},
+                    timeout=10
+                )
+                result["campaigns_status"] = r.status_code
+                if r.status_code == 200:
+                    items = r.json() if isinstance(r.json(), list) else r.json().get("items", [])
+                    result["campaigns_sample"] = [{"id": c.get("id"), "name": c.get("name"), "status": c.get("status")} for c in items[:5]]
+                else:
+                    result["campaigns_error"] = r.text[:300]
+            except Exception as e:
+                result["campaigns_exception"] = str(e)
+
+            if campaign_id:
+                try:
+                    # Get campaign details
+                    r2 = requests.get(
+                        f"https://api.instantly.ai/api/v2/campaigns/{campaign_id}",
+                        headers={"Authorization": f"Bearer {INSTANTLY_API_KEY}"},
+                        timeout=10
+                    )
+                    result["campaign_status"] = r2.status_code
+                    if r2.status_code == 200:
+                        c = r2.json()
+                        result["campaign_detail"] = {"id": c.get("id"), "name": c.get("name"), "status": c.get("status")}
+                    else:
+                        result["campaign_error"] = r2.text[:300]
+                except Exception as e:
+                    result["campaign_exception"] = str(e)
+
+                try:
+                    # Count leads in campaign
+                    r3 = requests.get(
+                        f"https://api.instantly.ai/api/v2/leads?campaign_id={campaign_id}&limit=5",
+                        headers={"Authorization": f"Bearer {INSTANTLY_API_KEY}"},
+                        timeout=10
+                    )
+                    result["leads_status"] = r3.status_code
+                    if r3.status_code == 200:
+                        data = r3.json()
+                        leads = data if isinstance(data, list) else data.get("items", data.get("leads", []))
+                        result["leads_sample"] = leads[:3]
+                        result["leads_count_in_page"] = len(leads)
+                    else:
+                        result["leads_error"] = r3.text[:300]
+                except Exception as e:
+                    result["leads_exception"] = str(e)
+
+            self._json(200, result)
+            return
+
         if path.endswith("/google/debug"):
             try:
                 from urllib.parse import parse_qs as _pqs, urlparse as _up
