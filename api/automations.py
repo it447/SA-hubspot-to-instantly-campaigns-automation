@@ -448,17 +448,18 @@ class handler(BaseHTTPRequestHandler):
                     result["campaign_exception"] = str(e)
 
                 try:
-                    # Count leads in campaign
-                    r3 = requests.get(
-                        f"https://api.instantly.ai/api/v2/leads?campaign_id={campaign_id}&limit=5",
-                        headers={"Authorization": f"Bearer {INSTANTLY_API_KEY}"},
+                    # Count leads in campaign using correct v2 POST endpoint
+                    r3 = requests.post(
+                        "https://api.instantly.ai/api/v2/leads/list",
+                        headers={"Authorization": f"Bearer {INSTANTLY_API_KEY}", "Content-Type": "application/json"},
+                        json={"campaign_id": campaign_id, "limit": 5},
                         timeout=10
                     )
                     result["leads_status"] = r3.status_code
                     if r3.status_code == 200:
                         data = r3.json()
                         leads = data if isinstance(data, list) else data.get("items", data.get("leads", []))
-                        result["leads_sample"] = leads[:3]
+                        result["leads_sample"] = [{"email": l.get("email"), "status": l.get("status")} for l in leads[:5]]
                         result["leads_count_in_page"] = len(leads)
                     else:
                         result["leads_error"] = r3.text[:300]

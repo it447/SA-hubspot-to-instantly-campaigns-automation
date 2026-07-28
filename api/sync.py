@@ -391,10 +391,14 @@ def add_to_instantly(email, first_name, last_name, company, campaign_id):
     resp.raise_for_status()
 
 def get_instantly_lead(email, campaign_id):
-    url     = f"https://api.instantly.ai/api/v2/leads?campaign_id={campaign_id}&email={email}&limit=1"
-    headers = {"Authorization": f"Bearer {INSTANTLY_API_KEY}"}
+    headers = {"Authorization": f"Bearer {INSTANTLY_API_KEY}", "Content-Type": "application/json"}
     try:
-        resp  = requests.get(url, headers=headers, timeout=10)
+        resp  = requests.post(
+            "https://api.instantly.ai/api/v2/leads/list",
+            headers=headers,
+            json={"campaign_id": campaign_id, "email": email, "limit": 1},
+            timeout=10
+        )
         resp.raise_for_status()
         data  = resp.json()
         items = data if isinstance(data, list) else data.get("items", data.get("leads", []))
