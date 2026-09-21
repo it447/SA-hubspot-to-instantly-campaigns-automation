@@ -753,7 +753,9 @@ def run_enrichment(automation, sent_cache):
     if clay_enabled:
         _log(f"[enrich] {auto_name}: running Clay push for list {list_id}")
         try:
-            contacts = get_list_contacts(list_id)
+            col_mappings = automation.get("clay_column_mappings", [])
+            extra_props  = [m.get("hs_property", "") for m in col_mappings if m.get("hs_property")]
+            contacts = get_list_contacts(list_id, extra_properties=extra_props)
             run_clay_push(automation, contacts, sent_cache, auto_id)
         except Exception as e:
             _log(f"[enrich] {auto_name}: Clay push error: {e}")
